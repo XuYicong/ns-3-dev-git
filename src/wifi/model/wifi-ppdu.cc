@@ -51,7 +51,7 @@ WifiPpdu::WifiPpdu (const WifiConstPsduMap & psdus, WifiTxVector txVector, Time 
     m_channelWidth (txVector.GetChannelWidth ())
 {
   NS_LOG_FUNCTION (this << psdus << txVector << ppduDuration << band);
-  if (m_preamble == WIFI_PREAMBLE_HE_MU)
+  if (txVector.IsMu ())
     {
       m_muUserInfos = txVector.GetHeMuUserInfoMap ();
     }
