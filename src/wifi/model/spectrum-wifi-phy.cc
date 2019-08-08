@@ -35,8 +35,6 @@
 #include "wifi-utils.h"
 #include "wifi-ppdu.h"
 #include "wifi-psdu.h"
-#include "ap-wifi-mac.h"
-#include "wifi-net-device.h"
 
 namespace ns3 {
 
@@ -360,18 +358,34 @@ SpectrumWifiPhy::StartRx (Ptr<SpectrumSignalParameters> rxParams)
 
   NS_LOG_INFO ("Received Wi-Fi signal");
   Ptr<WifiPpdu> ppdu = Copy (wifiRxParams->ppdu);
-  if ((ppdu->GetTxVector ().GetPreambleType () == WIFI_PREAMBLE_HE_TB) && (m_currentHeTbPpduUid == ppdu->GetUid ()))
+  if ((ppdu->GetTxVector ().GetPreambleType () == WIFI_PREAMBLE_HE_TB))
     {
-      Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice> (GetDevice ());
-      bool isAp = (DynamicCast<ApWifiMac> (device->GetMac ()) != 0);
-      if (isAp)
+      bool isOfdma = (rxDuration == (ppdu->GetTxDuration () - CalculatePhyPreambleAndHeaderDuration (ppdu->GetTxVector ())));
+      if ((m_currentHeTbPpduUid == ppdu->GetUid ()) && (m_currentEvent != 0))
         {
+          //AP already received non-OFDMA part, handle OFDMA payload reception
           StartReceiveOfdmaPayload (ppdu, rxPowerW);
+        }
+      else if (isOfdma)
+        {
+          //PHY receives the OFDMA payload but either it is not an AP or it comes from another BSS
+          NS_LOG_INFO ("Consider UL-OFDMA part of the HE TB PPDU as interference since device is not AP or does not belong to the same BSS");
+          m_interference.Add (ppdu, ppdu->GetTxVector (), rxDuration, rxPowerW);
+          auto it = m_currentPreambleEvents.find (std::make_pair(ppdu->GetUid (), ppdu->GetPreamble ()));
+          if (it != m_currentPreambleEvents.end ())
+            {
+              m_currentPreambleEvents.erase (it);
+            }
+          if (m_currentPreambleEvents.empty ())
+            {
+              Reset ();
+            }
+          SwitchMaybeToCcaBusy ();
         }
       else
         {
-          NS_LOG_INFO ("Ignore UL-OFDMA since device is not AP");
-          m_currentPreambleEvents.clear ();
+          //Start receiving non-OFDMA preamble
+          StartReceivePreamble (ppdu, rxPowerW);
         }
     }
   else
