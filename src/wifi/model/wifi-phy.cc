@@ -2816,8 +2816,17 @@ WifiPhy::Send (WifiConstPsduMap psdus, WifiTxVector txVector)
         }
       return;
     }
-
-  Time txDuration = CalculateTxDuration (psdus, txVector, GetPhyBand ());
+  
+  Time txDuration;
+  if (txVector.GetPreambleType () == WIFI_PREAMBLE_HE_TB)
+    {
+      NS_ASSERT (txVector.GetLength () > 0);
+      txDuration = ConvertLSigLengthToHeTbPpduDuration (txVector.GetLength (), txVector, GetPhyBand ());
+    }
+  else
+    {
+      txDuration = CalculateTxDuration (psdus, txVector, GetPhyBand ());
+    }
 
   if ((m_currentEvent != 0) && (m_currentEvent->GetEndTime () > (Simulator::Now () + m_state->GetDelayUntilIdle ())))
     {

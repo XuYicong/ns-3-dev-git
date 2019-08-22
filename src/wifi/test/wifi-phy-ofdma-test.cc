@@ -1060,6 +1060,13 @@ TestUlOfdmaPpduUid::SendTbPpdu (void)
   Ptr<WifiPsdu> psdu2 = Create<WifiPsdu> (pkt2, hdr2);
   psdus2.insert (std::make_pair (rxStaId2, psdu2));
 
+  Time txDuration1 = m_phySta1->CalculateTxDuration (psdus1, txVector1, m_phySta1->GetPhyBand ());
+  Time txDuration2 = m_phySta2->CalculateTxDuration (psdus2, txVector2, m_phySta1->GetPhyBand ());
+  Time txDuration = std::max (txDuration1, txDuration2);
+  
+  txVector1.SetLength (m_phySta1->ConvertHeTbPpduDurationToLSigLength (txDuration, m_phySta1->GetPhyBand ()));
+  txVector2.SetLength (m_phySta2->ConvertHeTbPpduDurationToLSigLength (txDuration, m_phySta2->GetPhyBand ()));
+
   m_phySta1->Send (psdus1, txVector1);
   m_phySta2->Send (psdus2, txVector2);
 }
