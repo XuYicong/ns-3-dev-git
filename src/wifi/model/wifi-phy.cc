@@ -2631,6 +2631,11 @@ WifiPhy::CalculateTxDuration (uint32_t size, WifiTxVector txVector, WifiPhyBand 
 Time
 WifiPhy::CalculateTxDuration (WifiConstPsduMap psduMap, WifiTxVector txVector, WifiPhyBand band)
 {
+  if (txVector.GetPreambleType () == WIFI_PREAMBLE_HE_TB)
+    {
+      return ConvertLSigLengthToHeTbPpduDuration (txVector.GetLength (), txVector, band);
+    }
+
   Time maxDuration = Seconds (0);
   for (auto & staIdPsdu : psduMap)
     {
