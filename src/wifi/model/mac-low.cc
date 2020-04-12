@@ -793,8 +793,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
             {
               NS_LOG_DEBUG ("rx RTS from=" << hdr.GetAddr2 () << ", schedule CTS");
               NS_ASSERT (m_sendCtsEvent.IsExpired ());
-              m_stationManager->ReportRxOk (hdr.GetAddr2 (),
-                                            rxSnr, txVector.GetMode ());
+              m_stationManager->ReportRxOk (hdr.GetAddr2 (), rxSignalInfo, txVector.GetMode ());
               m_sendCtsEvent = Simulator::Schedule (GetSifs (),
                                                     &MacLow::SendCtsAfterRts, this,
                                                     hdr.GetAddr2 (),
@@ -822,8 +821,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
 
       SnrTag tag;
       packet->RemovePacketTag (tag);
-      m_stationManager->ReportRxOk (m_currentPacket->GetAddr1 (),
-                                    rxSnr, txVector.GetMode ());
+      m_stationManager->ReportRxOk (m_currentPacket->GetAddr1 (), rxSignalInfo, txVector.GetMode ());
       m_stationManager->ReportRtsOk (m_currentPacket->GetAddr1 (), &m_currentPacket->GetHeader (0),
                                      rxSnr, txVector.GetMode (), tag.Get ());
 
@@ -845,8 +843,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
       //When fragmentation is used, only update manager when the last fragment is acknowledged
       if (!m_txParams.HasNextPacket ())
         {
-          m_stationManager->ReportRxOk (m_currentPacket->GetAddr1 (),
-                                        rxSnr, txVector.GetMode ());
+          m_stationManager->ReportRxOk (m_currentPacket->GetAddr1 (), rxSignalInfo, txVector.GetMode ());
           m_stationManager->ReportDataOk (m_currentPacket->GetAddr1 (), &m_currentPacket->GetHeader (0),
                                           rxSnr, txVector.GetMode (), tag.Get (),
                                           m_currentTxVector, m_currentPacket->GetSize ());
@@ -895,7 +892,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
     }
   else if (hdr.IsBlockAckReq () && hdr.GetAddr1 () == m_self)
     {
-      m_stationManager->ReportRxOk (hdr.GetAddr2 (), rxSnr, txVector.GetMode ());
+      m_stationManager->ReportRxOk (hdr.GetAddr2 (), rxSignalInfo, txVector.GetMode ());
 
       CtrlBAckRequestHeader blockAckReq;
       packet->RemoveHeader (blockAckReq);
@@ -983,8 +980,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
               m_cfAckInfo.expectCfAck = false;
             }
         }
-      m_stationManager->ReportRxOk (hdr.GetAddr2 (),
-                                    rxSnr, txVector.GetMode ());
+      m_stationManager->ReportRxOk (hdr.GetAddr2 (), rxSignalInfo, txVector.GetMode ());
       if (hdr.IsQosData () && ReceiveMpdu (mpdu))
         {
           /* From section 9.10.4 in IEEE 802.11:
