@@ -2121,25 +2121,25 @@ TestUlOfdmaPhyTransmission::DoRun (void)
 {
   m_frequency = 5180;
   m_channelWidth = 20;
-  m_expectedPpduDuration = NanoSeconds (271200);
+  m_expectedPpduDuration = NanoSeconds (279200);
   NS_LOG_DEBUG ("Run UL OFDMA PHY transmission test for " << m_channelWidth << " MHz");
   RunOne ();
 
   m_frequency = 5190;
   m_channelWidth = 40;
-  m_expectedPpduDuration = NanoSeconds (148800);
+  m_expectedPpduDuration = NanoSeconds (156800);
   NS_LOG_DEBUG ("Run UL OFDMA PHY transmission test for " << m_channelWidth << " MHz");
   RunOne ();
 
   m_frequency = 5210;
   m_channelWidth = 80;
-  m_expectedPpduDuration = NanoSeconds (94400);
+  m_expectedPpduDuration = NanoSeconds (102400);
   NS_LOG_DEBUG ("Run UL OFDMA PHY transmission test for " << m_channelWidth << " MHz");
   RunOne ();
 
   m_frequency = 5250;
   m_channelWidth = 160;
-  m_expectedPpduDuration = NanoSeconds (67200);
+  m_expectedPpduDuration = NanoSeconds (75200);
   NS_LOG_DEBUG ("Run UL OFDMA PHY transmission test for " << m_channelWidth << " MHz");
   RunOne ();
 
@@ -2495,7 +2495,7 @@ TestPhyPaddingExclusion::DoSetup (void)
 void
 TestPhyPaddingExclusion::DoRun (void)
 {
-  Time expectedPpduDuration = NanoSeconds (271200);
+  Time expectedPpduDuration = NanoSeconds (279200);
   Time ppduWithPaddingDuration = expectedPpduDuration + 10 * NanoSeconds (12800 + 800 /* GI */); //add 10 extra OFDM symbols
 
   Simulator::Schedule (Seconds (0.0), &TestPhyPaddingExclusion::Reset, this);
