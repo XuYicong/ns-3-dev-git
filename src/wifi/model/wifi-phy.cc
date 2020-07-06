@@ -3339,14 +3339,24 @@ WifiPhy::StartReceiveOfdmaPayload (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand
   Time payloadDuration = ppdu->GetTxDuration () - CalculatePhyPreambleAndHeaderDuration (txVector);
   Ptr<Event> event = m_interference.Add (ppdu, txVector, payloadDuration, rxPowersW, !m_ofdmaStarted);
   m_ofdmaStarted = true;
-  Ptr<const WifiPsdu> psdu = GetAddressedPsduInPpdu (ppdu);
-  if (psdu->GetNMpdus () > 1)
+  Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice> (GetDevice ());
+  bool isAp = (DynamicCast<ApWifiMac> (device->GetMac ()) != 0);
+  if (isAp)
     {
-      ScheduleEndOfMpdus (event);
+      Ptr<const WifiPsdu> psdu = GetAddressedPsduInPpdu (ppdu);
+      if (psdu->GetNMpdus () > 1)
+        {
+          ScheduleEndOfMpdus (event);
+        }
+      m_endRxEvents.push_back (Simulator::Schedule (payloadDuration, &WifiPhy::EndReceive, this, event));
+      m_signalNoiseMap.insert ({std::make_pair (ppdu->GetUid (), ppdu->GetStaId ()), SignalNoiseDbm ()});
+      m_statusPerMpduMap.insert ({std::make_pair (ppdu->GetUid (), ppdu->GetStaId ()), std::vector<bool> ()});
     }
-  m_endRxEvents.push_back (Simulator::Schedule (payloadDuration, &WifiPhy::EndReceive, this, event));
-  m_signalNoiseMap.insert ({std::make_pair (ppdu->GetUid (), ppdu->GetStaId ()), SignalNoiseDbm ()});
-  m_statusPerMpduMap.insert ({std::make_pair (ppdu->GetUid (), ppdu->GetStaId ()), std::vector<bool> ()});
+  else
+    {
+      //Don't do anything special for STAs since ResetReceive has already been scheduled by StartReceivePayload
+      NS_ASSERT (m_endRxEvents.size () == 1 && m_endRxEvents.front ().IsRunning ());
+    }
 }
 
 void
@@ -3360,29 +3370,6 @@ WifiPhy::StartReceivePayload (Ptr<Event> event)
   //calculate PER on the primary 20 MHz channel for PHY headers
   uint16_t primaryChannelWidth = std::min (event->GetTxVector ().GetChannelWidth (), static_cast<uint16_t> (20));
   auto primaryBand = GetBand (primaryChannelWidth);
-  if (ppdu->GetTxVector ().GetPreambleType () == WIFI_PREAMBLE_HE_TB)
-    {
-      Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice> (GetDevice ());
-      bool isAp = (DynamicCast<ApWifiMac> (device->GetMac ()) != 0);
-      if (!isAp)
-        {
-          NS_LOG_INFO ("Ignore UL-OFDMA (OFDMA part of HE TB PPDU) received by STA");
-          for (auto it = m_currentPreambleEvents.begin (); it != m_currentPreambleEvents.end (); ++it)
-          {
-            if (it->second == event)
-              {
-                it = m_currentPreambleEvents.erase (it);
-                break;
-              }
-          }
-          if (m_currentPreambleEvents.empty ())
-            {
-              Reset ();
-            }
-          m_interference.NotifyRxEnd (Simulator::Now ());
-          return;
-        }
-    }
   
   if (modulation >= WIFI_MOD_CLASS_HT)
     {
@@ -3417,6 +3404,7 @@ WifiPhy::StartReceivePayload (Ptr<Event> event)
                     }
                 }
             }
+
           if (nss > GetMaxSupportedRxSpatialStreams ())
             {
               NS_LOG_DEBUG ("Packet reception could not be started because not enough RX antennas");
@@ -3431,23 +3419,35 @@ WifiPhy::StartReceivePayload (Ptr<Event> event)
             {
               m_state->SwitchToRx (payloadDuration);
               m_phyRxPayloadBeginTrace (txVector, payloadDuration); //this callback (equivalent to PHY-RXSTART primitive) is triggered only if headers have been correctly decoded and that the mode within is supported
-              success = true;
-              NS_LOG_DEBUG ("Receiving PSDU");
-              m_signalNoiseMap.insert ({std::make_pair (ppdu->GetUid (), staId), SignalNoiseDbm ()});
-              m_statusPerMpduMap.insert ({std::make_pair (ppdu->GetUid (), staId), std::vector<bool> ()});
-              if (psdu->GetNMpdus () > 1 && txVector.GetPreambleType () != WIFI_PREAMBLE_HE_TB)
+
+              Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice> (GetDevice ());
+              bool isAp = device != 0 && (DynamicCast<ApWifiMac> (device->GetMac ()) != 0);
+              if (txVector.GetPreambleType () == WIFI_PREAMBLE_HE_TB && !isAp)
                 {
-                  // for HE TB PPDUs, ScheduleEndOfMpdus is called by StartReceiveOfdmaPayload
-                  ScheduleEndOfMpdus (event);
-                }
-              if (txVector.GetPreambleType () == WIFI_PREAMBLE_HE_TB)
-                {
+                  NS_LOG_DEBUG ("Ignore UL-OFDMA (OFDMA part of HE TB PPDU) received by STA but keep state in Rx");
                   m_currentHeTbPpduUid = ppdu->GetUid ();
-                  //EndReceive is scheduled by StartReceiveOfdmaPayload
+                  //ResetReceive is scheduled below at end of PSDU
                 }
               else
                 {
-                  m_endRxEvents.push_back (Simulator::Schedule (payloadDuration, &WifiPhy::EndReceive, this, event));
+                  success = true;
+                  NS_LOG_DEBUG ("Receiving PSDU");
+                  m_signalNoiseMap.insert ({std::make_pair (ppdu->GetUid (), staId), SignalNoiseDbm ()});
+                  m_statusPerMpduMap.insert ({std::make_pair (ppdu->GetUid (), staId), std::vector<bool> ()});
+                  if (txVector.GetPreambleType () == WIFI_PREAMBLE_HE_TB)
+                    {
+                      //for HE TB PPDUs, ScheduleEndOfMpdus and EndReceive are scheduled by StartReceiveOfdmaPayload
+                      NS_ASSERT (isAp);
+                      m_currentHeTbPpduUid = ppdu->GetUid ();
+                    }
+                  else
+                    {
+                      if (psdu->GetNMpdus () > 1)
+                        {
+                          ScheduleEndOfMpdus (event);
+                        }
+                      m_endRxEvents.push_back (Simulator::Schedule (payloadDuration, &WifiPhy::EndReceive, this, event));
+                    }
                 }
             }
           else //mode is not allowed
@@ -3615,7 +3615,7 @@ WifiPhy::EndReceive (Ptr<Event> event)
       statusPerMpduIt->second.push_back (rxInfo.first);
     }
 
-if (std::count(statusPerMpduIt->second.begin (), statusPerMpduIt->second.end (), true))
+  if (std::count (statusPerMpduIt->second.begin (), statusPerMpduIt->second.end (), true))
    {
       //At least one MPDU has been successfully received
       NotifyMonitorSniffRx (psdu, GetFrequency (), txVector, signalNoiseIt->second, statusPerMpduIt->second);
@@ -3758,6 +3758,8 @@ WifiPhy::ResetReceive (Ptr<Event> event)
       NS_ASSERT (event->GetEndTime () == Simulator::Now ());
     }
   NS_ASSERT (!IsStateRx ());
+  NS_ASSERT (m_endRxEvents.size () == 1 && m_endRxEvents.front ().IsExpired ());
+  m_endRxEvents.clear ();
   m_interference.NotifyRxEnd (Simulator::Now ());
   m_currentEvent = 0;
   m_currentPreambleEvents.clear ();

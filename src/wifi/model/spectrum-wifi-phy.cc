@@ -363,13 +363,13 @@ SpectrumWifiPhy::StartRx (Ptr<SpectrumSignalParameters> rxParams)
       bool isOfdma = (rxDuration == (ppdu->GetTxDuration () - CalculatePhyPreambleAndHeaderDuration (ppdu->GetTxVector ())));
       if ((m_currentHeTbPpduUid == ppdu->GetUid ()) && (m_currentEvent != 0))
         {
-          //AP already received non-OFDMA part, handle OFDMA payload reception
+          //AP and STA already received non-OFDMA part, handle OFDMA payload reception
           StartReceiveOfdmaPayload (ppdu, rxPowerW);
         }
       else if (isOfdma)
         {
-          //PHY receives the OFDMA payload but either it is not an AP or it comes from another BSS
-          NS_LOG_INFO ("Consider UL-OFDMA part of the HE TB PPDU as interference since device is not AP or does not belong to the same BSS");
+          //PHY receives the OFDMA payload while having dropped the preamble
+          NS_LOG_INFO ("Consider UL-OFDMA part of the HE TB PPDU as interference since device dropped the preamble");
           m_interference.Add (ppdu, ppdu->GetTxVector (), rxDuration, rxPowerW);
           auto it = m_currentPreambleEvents.find (std::make_pair(ppdu->GetUid (), ppdu->GetPreamble ()));
           if (it != m_currentPreambleEvents.end ())
@@ -380,7 +380,12 @@ SpectrumWifiPhy::StartRx (Ptr<SpectrumSignalParameters> rxParams)
             {
               Reset ();
             }
-          SwitchMaybeToCcaBusy ();
+
+          if (rxDuration > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
+            {
+              //that packet will be noise _after_ the completion of the OFDMA part of the HE TB PPDUs
+              SwitchMaybeToCcaBusy ();
+            }
         }
       else
         {
