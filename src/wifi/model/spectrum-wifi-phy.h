@@ -31,10 +31,9 @@
 #include "ns3/spectrum-model.h"
 #include "ns3/wifi-spectrum-value-helper.h"
 #include "wifi-phy.h"
+#include "wifi-spectrum-signal-parameters.h"
 
 namespace ns3 {
-
-struct WifiSpectrumSignalParameters;
 
 class WifiSpectrumPhyInterface;
 class WifiPpdu;
