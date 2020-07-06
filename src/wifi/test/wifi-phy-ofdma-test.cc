@@ -2077,15 +2077,32 @@ TestUlOfdmaPhyTransmission::RunOne (void)
   delay += Seconds (1.0);
 
   //---------------------------------------------------------------------------
-  //Send another HE TB PPDU (of another UL MU transmission) on RU 1 and verify that both HE TB PPDUs have been impacted
+  //Send another HE TB PPDU (of another UL MU transmission) on RU 1 and verify that both HE TB PPDUs have been impacted if they are on the same
+  // 20 MHz channel. Only STA 1's HE TB PPDU is impacted otherwise.
   Simulator::Schedule (delay, &TestUlOfdmaPhyTransmission::LogScenario, this,
                        "Reception of HE TB PPDUs with another HE TB PPDU arriving on RU1 during PSDU reception");
   //Another HE TB PPDU arrives at AP on the same RU as STA 1 during payload reception
   Simulator::Schedule (delay + MicroSeconds (50), &TestUlOfdmaPhyTransmission::SendHeTbPpdu, this, 3, 1, 1002, 1, 0);
+  //Expected figures from STA 2
+  uint32_t succ, fail, bytes;
+  if (m_channelWidth > 20)
+    {
+      //One PSDU of 1001 bytes should have been successfully received from STA 2 (since interference from STA 3 on distinct 20 MHz channel)
+      succ = 1;
+      fail = 0;
+      bytes = 1001;
+    }
+  else
+    {
+      //Reception of the PSDU from STA 2 should have failed (since interference from STA 3 on same 20 MHz channel)
+      succ = 0;
+      fail = 1;
+      bytes = 0;
+    }
   ScheduleTest (delay,
                 WifiPhyState::CCA_BUSY, //PHY should move to CCA_BUSY instead of IDLE due to the interference on primary channel
                 0, 1, 0,  //Reception of the PSDU from STA 1 should have failed (since interference from STA 3)
-                0, 1, 0); //Reception of the PSDU from STA 2 should have failed (since interference from STA 3)
+                succ, fail, bytes);
   delay += Seconds (1.0);
 
   //---------------------------------------------------------------------------
