@@ -1816,8 +1816,10 @@ protected:
    * state of interference tracker.  In this model, CCA becomes busy when
    * the aggregation of all signals as tracked by the InterferenceHelper
    * class is higher than the CcaEdThreshold
+   *
+   * \param channelWidth the channel width in MHz used for RSSI measurement
    */
-  void SwitchMaybeToCcaBusy (void);
+  void SwitchMaybeToCcaBusy (uint16_t channelWidth);
 
   /**
    * Return the STA ID that has been assigned to the station this PHY belongs to.
@@ -1827,6 +1829,16 @@ protected:
    * \return the STA ID
    */
   virtual uint16_t GetStaId (const Ptr<const WifiPpdu> ppdu) const;
+
+  /**
+   * Return the channel width used to measure the RSSI.
+   * This corresponds to the primary channel unless it corresponds to the
+   * HE TB PPDU solicited by the AP.
+   *
+   * \param ppdu the PPDU that is being received
+   * \param the channel width (in MHz) used for RSSI measurement
+   */
+  uint16_t GetMeasurementChannelWidth (const Ptr<const WifiPpdu> ppdu) const;
 
   /**
    * Get the start band index and the stop band index for a given band
@@ -1884,6 +1896,7 @@ protected:
 
   uint64_t m_currentHeTbPpduUid;   //!< UID of the HE TB PPDU being received
   uint64_t m_previouslyRxPpduUid;  //!< UID of the previously received PPDU (reused by HE TB PPDUs), reset to UINT64_MAX upon transmission
+  uint64_t m_previouslyTxPpduUid;  //!< UID of the previously sent PPDU, used by AP to recognize response HE TB PPDUs
 
   static uint64_t m_globalPpduUid;     //!< Global counter of the PPDU UID
 
@@ -1994,8 +2007,9 @@ private:
 
   /**
    * Eventually switch to CCA busy
+   * \param channelWidth the channel width in MHz used for RSSI measurement
    */
-  void MaybeCcaBusyDuration (void);
+  void MaybeCcaBusyDuration (uint16_t channelWidth);
 
   /**
    * Starting receiving the PPDU after having detected the medium is idle or after a reception switch.

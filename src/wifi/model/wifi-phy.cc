@@ -514,6 +514,7 @@ WifiPhy::WifiPhy ()
     m_currentEvent (0),
     m_currentHeTbPpduUid (UINT64_MAX),
     m_previouslyRxPpduUid (UINT64_MAX),
+    m_previouslyTxPpduUid (UINT64_MAX),
     m_standard (WIFI_PHY_STANDARD_UNSPECIFIED),
     m_band (WIFI_PHY_BAND_UNSPECIFIED),
     m_isConstructed (false),
@@ -1908,8 +1909,7 @@ WifiPhy::ResumeFromSleep (void)
     case WifiPhyState::SLEEP:
       {
         NS_LOG_DEBUG ("resuming from sleep mode");
-        uint16_t primaryChannelWidth = GetChannelWidth () >= 40 ? 20 : GetChannelWidth ();
-        Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaEdThresholdW, GetBand (primaryChannelWidth));
+        Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaEdThresholdW, GetBand (GetMeasurementChannelWidth (nullptr)));
         m_state->SwitchFromSleep (delayUntilCcaEnd);
         break;
       }
@@ -1940,8 +1940,7 @@ WifiPhy::ResumeFromOff (void)
     case WifiPhyState::OFF:
       {
         NS_LOG_DEBUG ("resuming from off mode");
-        uint16_t primaryChannelWidth = GetChannelWidth () >= 40 ? 20 : GetChannelWidth ();
-        Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaEdThresholdW, GetBand (primaryChannelWidth));
+        Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaEdThresholdW, GetBand (GetMeasurementChannelWidth (nullptr)));
         m_state->SwitchFromOff (delayUntilCcaEnd);
         break;
       }
@@ -2890,7 +2889,7 @@ WifiPhy::Send (WifiConstPsduMap psdus, WifiTxVector txVector)
     {
       AbortCurrentReception (RECEPTION_ABORTED_BY_TX);
       //that packet will be noise _after_ the transmission.
-      MaybeCcaBusyDuration ();
+      MaybeCcaBusyDuration (GetMeasurementChannelWidth (m_currentEvent != 0 ? m_currentEvent->GetPpdu () : nullptr));
     }
 
   for (auto & endPreambleDetectionEvent : m_endPreambleDetectionEvents)
@@ -2938,6 +2937,7 @@ WifiPhy::Send (WifiConstPsduMap psdus, WifiTxVector txVector)
       uid = m_globalPpduUid++;
     }
   m_previouslyRxPpduUid = UINT64_MAX; //reset to use it only once
+  m_previouslyTxPpduUid = uid; //to be able to identify solicited HE TB PPDUs
   Ptr<WifiPpdu> ppdu = Create<WifiPpdu> (psdus, txVector, txDuration, GetPhyBand (), uid);
 
   if (m_wifiRadioEnergyModel != 0 && m_wifiRadioEnergyModel->GetMaximumTimeInState (WifiPhyState::TX) < txDuration)
@@ -2971,15 +2971,15 @@ WifiPhy::StartReceiveHeader (Ptr<Event> event)
   NS_ASSERT (!IsStateRx ());
   NS_ASSERT (m_endPhyRxEvent.IsExpired ());
 
-  //calculate PER on the 20 MHz primary channel for PHY headers
-  uint16_t primaryChannelWidth = GetChannelWidth () >= 40 ? 20 : GetChannelWidth ();
-  auto primaryBand = GetBand (primaryChannelWidth);
-  double maxRxPowerW = 0;
+  //calculate PER on the measurement channel for PHY headers
+  uint16_t measurementChannelWidth = GetMeasurementChannelWidth (event->GetPpdu ());
+  auto measurementBand = GetBand (measurementChannelWidth);
+  double maxRxPowerW = -1; //in case current event may not be sent on measurement channel (rxPowerW would be equal to 0)
   Ptr<Event> maxEvent;
   NS_ASSERT (!m_currentPreambleEvents.empty ());
   for (auto preambleEvent : m_currentPreambleEvents)
   {
-    double rxPowerW = preambleEvent.second->GetRxPowerW (primaryBand);
+    double rxPowerW = preambleEvent.second->GetRxPowerW (measurementBand);
     if (rxPowerW > maxRxPowerW)
       {
         maxRxPowerW = rxPowerW;
@@ -3003,12 +3003,13 @@ WifiPhy::StartReceiveHeader (Ptr<Event> event)
 
   m_currentEvent = event;
   
-  double snr = m_interference.CalculateSnr (m_currentEvent, primaryChannelWidth, 1, primaryBand);
+  double snr = m_interference.CalculateSnr (m_currentEvent, measurementChannelWidth, 1, measurementBand);
   NS_LOG_DEBUG ("SNR(dB)=" << RatioToDb (snr) << " at start of legacy PHY header");
 
   Time headerPayloadDuration = m_currentEvent->GetStartTime () + m_currentEvent->GetPpdu ()->GetTxDuration () - Simulator::Now ();
 
-  if (!m_preambleDetectionModel || (m_preambleDetectionModel->IsPreambleDetected (m_currentEvent->GetRxPowerW (primaryBand), snr, primaryChannelWidth)))
+  if ((!m_preambleDetectionModel && maxRxPowerW > 0.0)
+      || (m_preambleDetectionModel && m_preambleDetectionModel->IsPreambleDetected (m_currentEvent->GetRxPowerW (measurementBand), snr, measurementChannelWidth)))
     {
       for (auto & endPreambleDetectionEvent : m_endPreambleDetectionEvents)
         {
@@ -3083,7 +3084,7 @@ WifiPhy::StartReceiveHeader (Ptr<Event> event)
       // for any received signal greater than the CCA-ED threshold.
       if (event->GetEndTime () > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
         {
-          MaybeCcaBusyDuration ();
+          MaybeCcaBusyDuration (GetMeasurementChannelWidth (event->GetPpdu ()));
         }
     }
 }
@@ -3094,16 +3095,8 @@ WifiPhy::ContinueReceiveHeader (Ptr<Event> event)
   NS_LOG_FUNCTION (this << *event);
   NS_ASSERT (m_endPhyRxEvent.IsExpired ());
 
-  uint16_t channelWidth;
-  if (event->GetTxVector ().GetChannelWidth () >= 40)
-    {
-      channelWidth = 20; //calculate PER on the 20 MHz primary channel for PHY headers
-    }
-  else
-    {
-      channelWidth = event->GetTxVector ().GetChannelWidth ();
-    }
-  InterferenceHelper::SnrPer snrPer = m_interference.CalculateNonHtPhyHeaderSnrPer (event, GetBand (channelWidth));
+  uint16_t measurementChannelWidth = GetMeasurementChannelWidth (event->GetPpdu ());
+  InterferenceHelper::SnrPer snrPer = m_interference.CalculateNonHtPhyHeaderSnrPer (event, measurementChannelWidth, GetBand (measurementChannelWidth));
 
   NS_LOG_DEBUG ("SNR(dB)=" << RatioToDb (snrPer.snr) << ", PER=" << snrPer.per);
   if (m_random->GetValue () > snrPer.per) //legacy PHY header reception succeeded
@@ -3122,7 +3115,7 @@ WifiPhy::ContinueReceiveHeader (Ptr<Event> event)
       m_currentPreambleEvents.clear ();
       if (event->GetEndTime () > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
         {
-          MaybeCcaBusyDuration ();
+          MaybeCcaBusyDuration (GetMeasurementChannelWidth (event->GetPpdu ()));
         }
     }
 }
@@ -3195,7 +3188,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
       NS_LOG_DEBUG ("Cannot start RX because device is OFF");
       if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
         {
-          MaybeCcaBusyDuration ();
+          MaybeCcaBusyDuration (GetMeasurementChannelWidth (nullptr));
         }
       return;
     }
@@ -3205,7 +3198,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
       NS_LOG_DEBUG ("Packet reception stopped because transmitter has been switched off");
       if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
         {
-          MaybeCcaBusyDuration ();
+          MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
         }
       return;
     }
@@ -3226,7 +3219,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
       if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
         {
           //that packet will be noise _after_ the completion of the channel switching.
-          MaybeCcaBusyDuration ();
+          MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
         }
       break;
     case WifiPhyState::RX:
@@ -3255,7 +3248,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
           if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
             {
               //that packet will be noise _after_ the reception of the currently-received packet.
-              MaybeCcaBusyDuration ();
+              MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
             }
         }
       break;
@@ -3265,7 +3258,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
       if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
         {
           //that packet will be noise _after_ the transmission of the currently-transmitted packet.
-          MaybeCcaBusyDuration ();
+          MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
         }
       break;
     case WifiPhyState::CCA_BUSY:
@@ -3286,7 +3279,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
               if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
                 {
                   //that packet will be noise _after_ the reception of the currently-received packet.
-                  MaybeCcaBusyDuration ();
+                  MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
                 }
             }
         }
@@ -3304,7 +3297,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
       if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
         {
           //that packet will be noise _after_ the sleep period.
-          MaybeCcaBusyDuration ();
+          MaybeCcaBusyDuration (GetMeasurementChannelWidth (nullptr));
         }
       break;
     default:
@@ -3314,14 +3307,13 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
 }
 
 void
-WifiPhy::MaybeCcaBusyDuration ()
+WifiPhy::MaybeCcaBusyDuration (uint16_t channelWidth)
 {
   //We are here because we have received the first bit of a packet and we are
   //not going to be able to synchronize on it
   //In this model, CCA becomes busy when the aggregation of all signals as
   //tracked by the InterferenceHelper class is higher than the CcaBusyThreshold
-  uint16_t primaryChannelWidth = GetChannelWidth () >= 40 ? 20 : GetChannelWidth ();
-  Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaEdThresholdW, GetBand (primaryChannelWidth));
+  Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaEdThresholdW, GetBand (channelWidth));
   if (!delayUntilCcaEnd.IsZero ())
     {
       m_state->SwitchMaybeToCcaBusy (delayUntilCcaEnd);
@@ -3366,13 +3358,13 @@ WifiPhy::StartReceivePayload (Ptr<Event> event)
   bool canReceivePayload = false;
   Ptr<const WifiPpdu> ppdu = event->GetPpdu ();
   WifiModulationClass modulation = ppdu->GetModulation ();
-  //calculate PER on the primary 20 MHz channel for PHY headers
-  uint16_t primaryChannelWidth = std::min (event->GetTxVector ().GetChannelWidth (), static_cast<uint16_t> (20));
-  auto primaryBand = GetBand (primaryChannelWidth);
+  //calculate PER on the measurement channel for PHY headers
+  uint16_t measurementChannelWidth = GetMeasurementChannelWidth (ppdu);
+  auto measurementBand = GetBand (measurementChannelWidth);
   
   if (modulation >= WIFI_MOD_CLASS_HT)
     {
-      InterferenceHelper::SnrPer snrPer = m_interference.CalculateHtPhyHeaderSnrPer (event, primaryBand);
+      InterferenceHelper::SnrPer snrPer = m_interference.CalculateHtPhyHeaderSnrPer (event, measurementChannelWidth, measurementBand);
       NS_LOG_DEBUG ("SNR(dB)=" << RatioToDb (snrPer.snr) << ", PER=" << snrPer.per);
       canReceivePayload = (m_random->GetValue () > snrPer.per);
     }
@@ -3462,7 +3454,7 @@ WifiPhy::StartReceivePayload (Ptr<Event> event)
       if (modulation == WIFI_MOD_CLASS_HE)
         {
           HePreambleParameters params;
-          params.rssiW = event->GetRxPowerW (primaryBand);
+          params.rssiW = event->GetRxPowerW (measurementBand);
           params.bssColor = event->GetTxVector ().GetBssColor ();
           NotifyEndOfHePreamble (params);
         }
@@ -3483,7 +3475,7 @@ WifiPhy::StartReceivePayload (Ptr<Event> event)
           AbortCurrentReception (FILTERED); //immediately followed by PHY-RXEND (Filtered)
           if (event->GetEndTime () > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
             {
-              MaybeCcaBusyDuration ();
+              MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
             }
         }
     }
@@ -3649,7 +3641,7 @@ WifiPhy::EndReceive (Ptr<Event> event)
   else
     {
       m_interference.NotifyRxEnd (Simulator::Now ());
-      MaybeCcaBusyDuration ();
+      MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
       m_currentEvent = 0;
       m_currentPreambleEvents.clear ();
       m_endRxEvents.clear ();
@@ -3661,7 +3653,7 @@ WifiPhy::EndReceive (Ptr<Event> event)
         }
       m_endOfMpduEvents.clear ();
     }
-  MaybeCcaBusyDuration ();
+  MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
 }
 
 std::pair<bool, SignalNoiseDbm>
@@ -3774,7 +3766,7 @@ WifiPhy::ResetReceive (Ptr<Event> event)
   m_interference.NotifyRxEnd (Simulator::Now ());
   m_currentEvent = 0;
   m_currentPreambleEvents.clear ();
-  MaybeCcaBusyDuration ();
+  MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
 }
 
 void
@@ -5010,16 +5002,14 @@ WifiPhy::GetLastRxEndTime (void) const
 }
 
 void
-WifiPhy::SwitchMaybeToCcaBusy (void)
+WifiPhy::SwitchMaybeToCcaBusy (uint16_t channelWidth)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << channelWidth);
   //We are here because we have received the first bit of a packet and we are
   //not going to be able to synchronize on it
   //In this model, CCA becomes busy when the aggregation of all signals as
   //tracked by the InterferenceHelper class is higher than the CcaBusyThreshold
-
-  uint16_t primaryChannelWidth = GetChannelWidth () >= 40 ? 20 : GetChannelWidth ();
-  Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaEdThresholdW, GetBand (primaryChannelWidth));
+  Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaEdThresholdW, GetBand (channelWidth));
   if (!delayUntilCcaEnd.IsZero ())
     {
       NS_LOG_DEBUG ("Calling SwitchMaybeToCcaBusy for " << delayUntilCcaEnd.As (Time::S));
@@ -5111,8 +5101,7 @@ void
 WifiPhy::StartRx (Ptr<Event> event)
 {
   NS_LOG_FUNCTION (this << *event);
-  uint16_t primaryChannelWidth = GetChannelWidth () >= 40 ? 20 : GetChannelWidth ();
-  NS_LOG_DEBUG ("sync to signal (power=" << event->GetRxPowerW (GetBand (primaryChannelWidth)) << "W)");
+  NS_LOG_DEBUG ("sync to signal (power=" << event->GetRxPowerW (GetBand (GetMeasurementChannelWidth (event->GetPpdu ()))) << "W)");
   m_interference.NotifyRxStart (); //We need to notify it now so that it starts recording events
   m_endPreambleDetectionEvents.push_back (Simulator::Schedule (GetPreambleDetectionDuration (), &WifiPhy::StartReceiveHeader, this, event));
 }
@@ -5181,6 +5170,32 @@ WifiPhy::GetStaId (const Ptr<const WifiPpdu> ppdu) const
         }
     }
   return staId;
+}
+
+uint16_t
+WifiPhy::GetMeasurementChannelWidth (const Ptr<const WifiPpdu> ppdu) const
+{
+  uint16_t channelWidth = GetChannelWidth ();
+  if (ppdu == nullptr)
+    {
+      // Here because PHY was not receiving anything (e.g. resuming from OFF) nor expecting anything (e.g. sleep)
+      // nor processing a Wi-Fi signal.
+      return channelWidth >= 40 ? 20 : channelWidth;
+    }
+
+  channelWidth = std::min (channelWidth, ppdu->GetTxVector ().GetChannelWidth ());
+  /**
+   * The PHY shall not issue a PHY-RXSTART.indication primitive in response to a PPDU that does not overlap
+   * the primary channel unless the PHY at an AP receives the HE TB PPDU solicited by the AP. For the HE
+   * TB PPDU solicited by the AP, the PHY shall issue a PHY-RXSTART.indication primitive for a PPDU
+   * received in the primary or at the secondary 20 MHz channel, the secondary 40 MHz channel, or the secondary
+   * 80 MHz channel.
+   */
+  if (channelWidth >= 40 && ppdu->GetUid () != m_previouslyTxPpduUid)
+    {
+      channelWidth = 20;
+    }
+  return channelWidth;
 }
 
 WifiSpectrumBand
