@@ -1462,8 +1462,8 @@ TestMultipleHeTbPreambles::DoRun (void)
     Simulator::Schedule (Seconds (4) + NanoSeconds (100), &TestMultipleHeTbPreambles::RxHeTbPpdu, this, uids[0], 2, txPowerWatts, 1002);
     Simulator::Schedule (Seconds (4) + MicroSeconds (5), &TestMultipleHeTbPreambles::RxHeTbPpdu, this, uids[1], 1, txPowerWatts, 1003);
     Simulator::Schedule (Seconds (4) + MicroSeconds (5) + NanoSeconds (100), &TestMultipleHeTbPreambles::RxHeTbPpdu, this, uids[1], 2, txPowerWatts, 1004);
-    //Check that we received the correct reception of 2 UL MU transmissions with the corresponding UIDs
-    Simulator::Schedule (Seconds (4.0) + MicroSeconds (10), &TestMultipleHeTbPreambles::CheckHeTbPreambles, this, 2, uids);
+    //Check that we received the correct reception of the first UL MU transmission with the corresponding UID (second one dropped)
+    Simulator::Schedule (Seconds (4.0) + MicroSeconds (10), &TestMultipleHeTbPreambles::CheckHeTbPreambles, this, 1, std::vector<uint64_t> {uids[0]});
     //The packets of the second UL MU transmission should have been dropped
     Simulator::Schedule (Seconds (4.0) + MicroSeconds (10), &TestMultipleHeTbPreambles::CheckBytesDropped, this, 1003 + 1004);
     Simulator::Schedule (Seconds (4.5), &TestMultipleHeTbPreambles::Reset, this);

@@ -3112,24 +3112,15 @@ WifiPhy::StartReceiveHeader (Ptr<Event> event)
   else
     {
       NS_LOG_DEBUG ("Drop packet because PHY preamble detection failed");
-      m_interference.NotifyRxEnd (Simulator::Now ());
-      NotifyRxDrop (GetAddressedPsduInPpdu (m_currentEvent->GetPpdu ()), PREAMBLE_DETECT_FAILURE);
-      for (auto it = m_currentPreambleEvents.begin (); it != m_currentPreambleEvents.end (); ++it)
+      // Like CCA-SD, CCA-ED is governed by the 4 us CCA window to flag CCA-BUSY
+      // for any received signal greater than the CCA-ED threshold.
+      DropPreambleEvent (m_currentEvent->GetPpdu (), PREAMBLE_DETECT_FAILURE, m_currentEvent->GetEndTime (), GetMeasurementChannelWidth (m_currentEvent->GetPpdu ()));
+      if (m_currentPreambleEvents.empty())
         {
-          if (it->second == m_currentEvent)
-            {
-              it = m_currentPreambleEvents.erase (it);
-              break;
-            }
+          //Do not erase events if there are still pending preamble events to be processed
+          m_interference.NotifyRxEnd (Simulator::Now ());
         }
       m_currentEvent = 0;
-
-      // Like CCA-SD, CCA-ED is governed by the 4μs CCA window to flag CCA-BUSY
-      // for any received signal greater than the CCA-ED threshold.
-      if (event->GetEndTime () > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
-        {
-          MaybeCcaBusyDuration (GetMeasurementChannelWidth (event->GetPpdu ()));
-        }
     }
 }
 
@@ -3157,7 +3148,6 @@ WifiPhy::ContinueReceiveHeader (Ptr<Event> event)
     {
       NS_LOG_DEBUG ("Abort reception because non-HT PHY header reception failed");
       AbortCurrentReception (L_SIG_FAILURE);
-      m_currentPreambleEvents.clear ();
       if (event->GetEndTime () > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
         {
           MaybeCcaBusyDuration (GetMeasurementChannelWidth (event->GetPpdu ()));
@@ -3252,8 +3242,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
   switch (m_state->GetState ())
     {
     case WifiPhyState::SWITCHING:
-      NS_LOG_DEBUG ("drop packet because of channel switching");
-      NotifyRxDrop (GetAddressedPsduInPpdu (ppdu), CHANNEL_SWITCHING);
+      NS_LOG_DEBUG ("Drop packet because of channel switching");
       /*
        * Packets received on the upcoming channel are added to the event list
        * during the switching state. This way the medium can be correctly sensed
@@ -3262,11 +3251,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
        * busy due to other devices' transmissions started before the end of
        * the switching.
        */
-      if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
-        {
-          //that packet will be noise _after_ the completion of the channel switching.
-          MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
-        }
+      DropPreambleEvent (ppdu, CHANNEL_SWITCHING, endRx, GetMeasurementChannelWidth (ppdu));
       break;
     case WifiPhyState::RX:
       if (m_frameCaptureModel != 0
@@ -3280,12 +3265,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
       else
         {
           NS_LOG_DEBUG ("Drop packet because already in Rx");
-          NotifyRxDrop (GetAddressedPsduInPpdu (ppdu), RXING);
-          auto it = m_currentPreambleEvents.find (std::make_pair(ppdu->GetUid (), ppdu->GetPreamble ()));
-          if (it != m_currentPreambleEvents.end ())
-            {
-              m_currentPreambleEvents.erase (it);
-            }
+          DropPreambleEvent (ppdu, RXING, endRx, GetMeasurementChannelWidth (ppdu));
           if (m_currentEvent == 0)
             {
               /*
@@ -3296,21 +3276,11 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
                */
               m_currentPreambleEvents.clear ();
             }
-          if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
-            {
-              //that packet will be noise _after_ the reception of the currently-received packet.
-              MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
-            }
         }
       break;
     case WifiPhyState::TX:
       NS_LOG_DEBUG ("Drop packet because already in Tx");
-      NotifyRxDrop (GetAddressedPsduInPpdu (ppdu), TXING);
-      if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
-        {
-          //that packet will be noise _after_ the transmission of the currently-transmitted packet.
-          MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
-        }
+      DropPreambleEvent (ppdu, TXING, endRx, GetMeasurementChannelWidth (ppdu));
       break;
     case WifiPhyState::CCA_BUSY:
       if (m_currentEvent != 0)
@@ -3326,12 +3296,7 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
           else
             {
               NS_LOG_DEBUG ("Drop packet because already decoding preamble");
-              NotifyRxDrop (ppdu->GetPsdu (), BUSY_DECODING_PREAMBLE);
-              if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
-                {
-                  //that packet will be noise _after_ the reception of the currently-received packet.
-                  MaybeCcaBusyDuration (GetMeasurementChannelWidth (ppdu));
-                }
+              DropPreambleEvent (ppdu, BUSY_DECODING_PREAMBLE, endRx, GetMeasurementChannelWidth (ppdu));
             }
         }
       else
@@ -3344,16 +3309,28 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
       break;
     case WifiPhyState::SLEEP:
       NS_LOG_DEBUG ("Drop packet because in sleep mode");
-      NotifyRxDrop (GetAddressedPsduInPpdu (ppdu), SLEEPING);
-      if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
-        {
-          //that packet will be noise _after_ the sleep period.
-          MaybeCcaBusyDuration (GetMeasurementChannelWidth (nullptr));
-        }
+      DropPreambleEvent (ppdu, SLEEPING, endRx, GetMeasurementChannelWidth (nullptr));
       break;
     default:
       NS_FATAL_ERROR ("Invalid WifiPhy state.");
       break;
+    }
+}
+
+void
+WifiPhy::DropPreambleEvent (Ptr<const WifiPpdu> ppdu, WifiPhyRxfailureReason reason, Time endRx, uint16_t measurementChannelWidth)
+{
+  NS_LOG_FUNCTION (this << *ppdu << reason << endRx << measurementChannelWidth);
+  NotifyRxDrop (GetAddressedPsduInPpdu (ppdu), reason);
+  auto it = m_currentPreambleEvents.find (std::make_pair (ppdu->GetUid (), ppdu->GetPreamble ()));
+  if (it != m_currentPreambleEvents.end ())
+    {
+      m_currentPreambleEvents.erase (it);
+    }
+  if (endRx > (Simulator::Now () + m_state->GetDelayUntilIdle ()))
+    {
+      //that PPDU will be noise _after_ the end of the current event.
+      MaybeCcaBusyDuration (measurementChannelWidth);
     }
 }
 
