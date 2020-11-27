@@ -276,6 +276,9 @@ double
 NistErrorRateModel::GetChunkSuccessRate (WifiMode mode, WifiTxVector txVector, double snr, uint32_t nbits) const
 {
   NS_LOG_FUNCTION (this << mode << txVector.GetMode () << snr << nbits);
+
+  return GetFec256QamBer (snr, nbits, 5);
+
   if (mode.GetModulationClass () == WIFI_MOD_CLASS_ERP_OFDM
       || mode.GetModulationClass () == WIFI_MOD_CLASS_OFDM
       || mode.GetModulationClass () == WIFI_MOD_CLASS_HT

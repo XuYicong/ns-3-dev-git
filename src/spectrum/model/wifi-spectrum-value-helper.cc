@@ -379,9 +379,9 @@ WifiSpectrumValueHelper::CreateHtOfdmTxPowerSpectralDensity (uint32_t centerFreq
 }
 
 Ptr<SpectrumValue>
-WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity (uint32_t centerFrequency, uint8_t channelWidth, double txPowerW, uint8_t guardBandwidth)
+WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity (uint32_t centerFrequency, uint8_t channelWidth, double txPowerW, uint8_t guardBandwidth, uint32_t ruBits, bool muMode)
 {
-  NS_LOG_FUNCTION (centerFrequency << (uint16_t)channelWidth << txPowerW << (uint16_t)guardBandwidth);
+  NS_LOG_FUNCTION (centerFrequency << (uint16_t)channelWidth << txPowerW << (uint16_t)guardBandwidth << ruBits << muMode);
   double bandBandwidth = 78125;
   Ptr<SpectrumValue> c = Create<SpectrumValue> (GetSpectrumModel (centerFrequency, channelWidth, bandBandwidth, guardBandwidth));
   Values::iterator vit = c->ValuesBegin ();
@@ -398,32 +398,167 @@ WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity (uint32_t centerFreq
   uint32_t stop3;
   uint32_t start4;
   uint32_t stop4;
+  uint32_t start51;
+  uint32_t stop51;
+  uint32_t start52;
+  uint32_t stop52;
+  uint32_t start6;
+  uint32_t stop6;
+  uint32_t start7;
+  uint32_t stop7;
+  uint32_t start8;
+  uint32_t stop8;
+  uint32_t start9;
+  uint32_t stop9;
   switch (channelWidth)
     {
     case 20:
       // 242 subcarriers (234 data + 8 pilot)
-      txPowerPerBand = txPowerW / 242;
+      txPowerPerBand = txPowerW / 234;
       NS_LOG_DEBUG ("Power per band " << txPowerPerBand);
       // skip the guard band and 11 subbands, then place power in 121 subbands, then
       // skip 3 DC, then place power in 121 subbands, then skip
       // the final 11 subbands and the guard band.
-      start1 = (nGuardBands / 2) + 12;
-      stop1 = start1 + 121 - 1;
-      start2 = stop1 + 4;
-      stop2 = start2 + 121 - 1;
+      if (!muMode)
+       {
+         start1 = (nGuardBands / 2) + 12;
+         stop1 = start1 + 121 - 1;
+         start2 = stop1 + 4;
+         stop2 = start2 + 121 - 1;
+       }
+      else
+       {
+         start1 = 135;
+         stop1 = 160;
+         start2 = 161;
+         stop2 = 186;
+         start3 = 188;
+         stop3 = 213;
+         start4 = 214;
+         stop4 = 239;
+         start51 = 240;
+         stop51 = 252;
+         start52 = 260;
+         stop52 = 272;
+         start6 = 273;
+         stop6 = 298;
+         start7 = 299;
+         stop7 = 324;
+         start8 = 326;
+         stop8 = 351;
+         start9 = 352;
+         stop9 = 377;
+       }
       for (size_t i = 0; i < c->GetSpectrumModel ()->GetNumBands (); i++, vit++, bit++)
         {
-          if ((i >= start1 && i <= stop1) || (i >= start2 && i <= stop2))
-            {
-              *vit = txPowerPerBand / (bit->fh - bit->fl);
-            }
-          else
-            {
-              *vit = 0;
-            }
+          if (!muMode) // Assign power to all subcarriers
+           {
+          	if ((i >= start1 && i <= stop1) || (i >= start2 && i <= stop2))
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+           }
+          else // Assign power only to allocated RUs (subcarriers)
+           {
+          switch (ruBits) 
+           {
+	   case 0:
+          	if (i >= start1 && i <= stop1)
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 1:
+          	if (i >= start2 && i <= stop2)
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 2:
+          	if (i >= start3 && i <= stop3)
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 3:
+          	if (i >= start4 && i <= stop4)
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 4:
+          	if ((i >= start51 && i <= stop51) || (i >= start52 && i <= stop52))
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+           break;
+	   case 5:
+          	if (i >= start6 && i <= stop6)
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 6:
+          	if (i >= start7 && i <= stop7)
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 7:
+          	if (i >= start8 && i <= stop8)
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 8:
+          	if (i >= start9 && i <= stop9)
+            	  {
+              	    *vit = txPowerPerBand / (bit->fh - bit->fl);
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   }
+	   }
         }
-      NS_LOG_DEBUG ("Added signal power to subbands " << start1 << "-" << stop1 <<
-                    " and " << start2 << "-" << stop2);
       break;
     case 40:
       // 484 subcarriers (468 data + 16 pilot)
@@ -509,7 +644,7 @@ WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity (uint32_t centerFreq
       break;
     }
   NS_LOG_DEBUG ("Integrated power " << Integral (*c));
-  NS_ASSERT_MSG (std::abs (txPowerW - Integral (*c)) < 1e-6, "Power allocation failed");
+  //NS_ASSERT_MSG (std::abs (txPowerW - Integral (*c)) < 1e-6, "Power allocation failed");
   return c;
 }
 
@@ -563,6 +698,163 @@ WifiSpectrumValueHelper::CreateRfFilter (uint32_t centerFrequency, uint8_t chann
       *vit = 1;
     }
   NS_LOG_DEBUG ("Added subbands " << startIndex << " to " << startIndex + numBandsInFilter << " to filter");
+  return c;
+}
+
+Ptr<SpectrumValue>
+WifiSpectrumValueHelper::CreateRfFilter (uint32_t centerFrequency, uint8_t channelWidth, double bandGranularity, uint8_t guardBandwidth, uint32_t ruBits)
+{
+  NS_LOG_FUNCTION (centerFrequency << (uint16_t)channelWidth << bandGranularity << (uint16_t)guardBandwidth << ruBits);
+  Ptr<SpectrumValue> c = Create <SpectrumValue> (GetSpectrumModel (centerFrequency, channelWidth, bandGranularity, guardBandwidth));
+  Bands::const_iterator bit = c->ConstBandsBegin ();
+  Values::iterator vit = c->ValuesBegin ();
+  
+  uint32_t start1;
+  uint32_t stop1;
+  uint32_t start2;
+  uint32_t stop2;
+  uint32_t start3;
+  uint32_t stop3;
+  uint32_t start4;
+  uint32_t stop4;
+  uint32_t start51;
+  uint32_t stop51;
+  uint32_t start52;
+  uint32_t stop52;
+  uint32_t start6;
+  uint32_t stop6;
+  uint32_t start7;
+  uint32_t stop7;
+  uint32_t start8;
+  uint32_t stop8;
+  uint32_t start9;
+  uint32_t stop9;
+
+  switch (channelWidth)
+    {
+    case 20:
+         start1 = 135;
+         stop1 = 160;
+         start2 = 161;
+         stop2 = 186;
+         start3 = 188;
+         stop3 = 213;
+         start4 = 214;
+         stop4 = 239;
+         start51 = 240;
+         stop51 = 252;
+         start52 = 260;
+         stop52 = 272;
+         start6 = 273;
+         stop6 = 298;
+         start7 = 299;
+         stop7 = 324;
+         start8 = 326;
+         stop8 = 351;
+         start9 = 352;
+         stop9 = 377;
+      for (size_t i = 0; i < c->GetSpectrumModel ()->GetNumBands (); i++, vit++, bit++)
+        {
+          switch (ruBits) 
+           {
+	   case 0:
+          	if (i >= start1 && i <= stop1)
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 1:
+          	if (i >= start2 && i <= stop2)
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 2:
+          	if (i >= start3 && i <= stop3)
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 3:
+          	if (i >= start4 && i <= stop4)
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 4:
+          	if ((i >= start51 && i <= stop51) || (i >= start52 && i <= stop52))
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+           break;
+	   case 5:
+          	if (i >= start6 && i <= stop6)
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 6:
+          	if (i >= start7 && i <= stop7)
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 7:
+          	if (i >= start8 && i <= stop8)
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   case 8:
+          	if (i >= start9 && i <= stop9)
+            	  {
+              	    *vit = 1;
+            	  }
+          	else
+            	  {
+              	    *vit = 0;
+            	  }
+	   break;
+	   }
+        }
+      break;
+    default:
+      NS_FATAL_ERROR ("ChannelWidth " << channelWidth << " unsupported");
+      break;
+    }
+
   return c;
 }
 

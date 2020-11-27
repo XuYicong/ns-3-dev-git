@@ -83,7 +83,34 @@ public:
    */
   void StartActiveAssociation (void);
 
+  uint32_t GetBSR (void);
+  void SendTriggerFrameResp (uint32_t ru); //infocom
 
+  void StopMuMode (void);
+
+  void SetTfDuration (uint32_t tfDuration);
+
+  uint32_t GetTfDuration (void) const;
+
+  void TriggerFrameRespAccess (void);
+  void PrepareForTx (void);
+  void CancelTfRespIfNotSent (void);
+  void KillTriggerFrameBeaconRetransmission (void);
+  static void UpdateBsrTx (uint32_t ru);
+  static void ResetBsrTx ();
+  bool GetBsrTx (uint32_t ru);
+  void CheckAndCancel (void);
+  void CancelExpiredEvents (void);
+  static bool m_bsrTx0;
+  static bool m_bsrTx1;
+  static bool m_bsrTx2;
+  static bool m_bsrTx3;
+  static bool m_bsrTx4;
+  static bool m_bsrTx5;
+  static bool m_bsrTx6;
+  static bool m_bsrTx7;
+  static bool m_bsrTx8;
+  void UpdateSlots (uint32_t ru);
 private:
   /**
    * The current MAC state of the STA.
@@ -190,15 +217,29 @@ private:
   CapabilityInformation GetCapabilities (void) const;
 
   MacState m_state;            ///< MAC state
+  int m_noSlots;
+  uint32_t m_muSlots;
   Time m_probeRequestTimeout;  ///< probe request timeout
   Time m_assocRequestTimeout;  ///< assoc request timeout
+  Time m_lastTfBeaconTxStart;
+  Time m_lastTfTxStart; 
+  Time m_lastTfRespRecv;
+  Time m_muUlModeEnd;
+  Time m_muDlModeEnd;
+  bool m_muModeToStart;
+  bool m_firstTf;
+  bool m_bsrAckRecvd;
   EventId m_probeRequestEvent; ///< probe request event
   EventId m_assocRequestEvent; ///< assoc request event
+  EventId m_triggerFrameRespEvent;
+  EventId m_muModeExpireEvent;
+  EventId m_cancelEvent;
+  uint32_t m_tfDuration; 
   EventId m_beaconWatchdog;    ///< beacon watchdog
   Time m_beaconWatchdogEnd;    ///< beacon watchdog end
   uint32_t m_maxMissedBeacons; ///< maximum missed beacons
   bool m_activeProbing;        ///< active probing
-
+  bool m_muUlFlag;
   TracedCallback<Mac48Address> m_assocLogger;   ///< assoc logger
   TracedCallback<Mac48Address> m_deAssocLogger; ///< deassoc logger
 };

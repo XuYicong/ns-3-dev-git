@@ -27,12 +27,16 @@
 #include "dcf-manager.h"
 #include "msdu-standard-aggregator.h"
 #include "mpdu-standard-aggregator.h"
+#include "ns3/simulator.h"
+#include "spectrum-wifi-phy.h"
 
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("RegularWifiMac");
 
 NS_OBJECT_ENSURE_REGISTERED (RegularWifiMac);
+
+std::vector<RegularWifiMac *> RegularWifiMac::m_listeners;
 
 RegularWifiMac::RegularWifiMac ()
   : m_htSupported (0),
@@ -68,11 +72,79 @@ RegularWifiMac::RegularWifiMac ()
   SetupEdcaQueue (AC_VI);
   SetupEdcaQueue (AC_BE);
   SetupEdcaQueue (AC_BK);
+
+  InitializeMuMode ();
 }
 
 RegularWifiMac::~RegularWifiMac ()
 {
   NS_LOG_FUNCTION (this);
+}
+
+void 
+RegularWifiMac::RegisterTfListener (RegularWifiMac *sta)
+{
+  m_listeners.push_back (sta);
+}
+
+void 
+RegularWifiMac::NotifyTfRespAccess (uint32_t ru)
+{
+  for (Listeners::const_iterator i = m_listeners.begin (); i != m_listeners.end (); i++)
+   {
+     (*i)->UpdateSlots (ru);
+   } 
+}
+
+void
+RegularWifiMac::UpdateSlots (uint32_t ru)
+{
+
+}
+
+void 
+RegularWifiMac::InitializeMuMode ()
+{
+  SetMaxTfSlots (16); //infocom: Need to make these two params accessible from the main code
+  SetTfCwMin (16); //infocom: Need to make these two params accessible from the main code
+  SetTfCwMax (16); //infocom: Need to make these two params accessible from the main code
+  SetTfCw (16); //infocom: Need to make these two params accessible from the main code
+  SetTfDuration (2000);
+  SetNScheduled (6);
+  for (uint32_t i = 0; i<9; i++)
+   {  
+     NS_LOG_DEBUG ("Created rxMiddle/txMiddle/macLow/DcfManager/RemoteStationManager for RU "<<i);
+     m_rxMiddleMu[i] = Create<MacRxMiddle> ();
+     m_rxMiddleMu[i]->SetForwardCallback (MakeCallback (&RegularWifiMac::Receive, this));
+ 
+     m_txMiddleMu[i] = Create<MacTxMiddle> ();
+   
+     m_lowMu[i] = Create<MacLow> ();
+     m_lowMu[i]->SetRxCallback (MakeCallback (&MacRxMiddle::Receive, m_rxMiddleMu[i]));
+
+     m_dcfManagerMu[i] = CreateObject<DcfManager> ();
+     m_dcfManagerMu[i]->SetupLow (m_lowMu[i]);
+  
+     m_dcaMu[i] = CreateObject<DcaTxop> ();
+     m_dcaMu[i]->SetAifsn (0);
+     m_dcaMu[i]->SetMinCw (0);
+     m_dcaMu[i]->SetMaxCw (0);
+     m_dcaMu[i]->SetLow (m_lowMu[i]);
+     m_dcaMu[i]->SetManager(m_dcfManagerMu[i]);
+     m_dcaMu[i]->SetTxMiddle (m_txMiddleMu[i]); 
+     m_dcaMu[i]->SetTxOkCallback (MakeCallback (&RegularWifiMac::TxOk, this));
+     m_dcaMu[i]->SetTxFailedCallback (MakeCallback (&RegularWifiMac::TxFailed, this)); 
+     m_dcaMu[i]->SetTxDroppedCallback (MakeCallback (&RegularWifiMac::NotifyTxDrop, this)); 
+
+
+     SetupMuEdcaQueue (AC_VO, i);
+     SetupMuEdcaQueue (AC_VI, i);
+     SetupMuEdcaQueue (AC_BE, i);
+     SetupMuEdcaQueue (AC_BK, i);
+   }
+  tfRv = CreateObject<UniformRandomVariable> ();
+  tfRv->SetAttribute ("Min", DoubleValue (0.0));
+  tfRv->SetAttribute ("Max", DoubleValue (0.01));  
 }
 
 void
@@ -85,6 +157,16 @@ RegularWifiMac::DoInitialize ()
     {
       i->second->Initialize ();
     }
+
+  for (uint32_t j = 0; j < 9; j++)
+    {
+      m_dcaMu[j]->Initialize ();
+      for (EdcaQueues::const_iterator i = m_edcaMu[j].begin (); i != m_edcaMu[j].end (); ++i)
+        {
+          i->second->Initialize ();
+	}
+    }
+
 }
 
 void
@@ -110,8 +192,103 @@ RegularWifiMac::DoDispose ()
       i->second = 0;
     }
 
-  m_dcfManager->Dispose ();
   m_dcfManager = 0;
+
+  for (uint32_t i = 0; i< 9; i++)
+   {
+     m_rxMiddleMu [i] = 0;
+     m_txMiddleMu [i] = 0;
+    
+     m_lowMu [i]->Dispose ();
+     m_lowMu [i] = 0;
+
+     m_phyMu [i] = 0;
+
+     m_stationManagerMu [i] = 0;
+
+     m_dcaMu [i]->Dispose ();
+     m_dcaMu [i] = 0;
+
+     for (EdcaQueues::iterator it = m_edcaMu[i].begin (); it != m_edcaMu[i].end (); ++it) 
+      {
+	it->second->Dispose ();
+	it->second = 0;
+      }
+ 
+     m_dcfManagerMu [i] = 0;
+   }
+}
+
+void
+RegularWifiMac::SetMaxTfSlots (uint32_t q)
+{
+  m_maxTfSlots = q;
+}
+
+uint32_t 
+RegularWifiMac::GetMaxTfSlots (void)
+{
+  return m_maxTfSlots;
+}
+
+void
+RegularWifiMac::SetTfCwMin (uint32_t q)
+{
+  m_tfCwMin = q;
+}
+
+uint32_t 
+RegularWifiMac::GetTfCwMin (void)
+{
+  return m_tfCwMin;
+}
+
+void
+RegularWifiMac::SetTfCwMax (uint32_t q)
+{
+  m_tfCwMax = q;
+}
+
+uint32_t 
+RegularWifiMac::GetTfCwMax (void)
+{
+  return m_tfCwMax;
+}
+
+void
+RegularWifiMac::SetTfCw (uint32_t q)
+{
+  m_tfCw = q;
+}
+
+uint32_t 
+RegularWifiMac::GetTfCw (void)
+{
+  return m_tfCw;
+}
+
+void
+RegularWifiMac::SetNScheduled (uint32_t nScheduled)
+{
+  m_nScheduled = nScheduled;
+}
+
+uint32_t 
+RegularWifiMac::GetNScheduled (void)
+{
+  return m_nScheduled;
+}
+
+double
+RegularWifiMac::GetAlpha (void) const
+{
+  return m_alpha;
+}
+
+void
+RegularWifiMac::SetAlpha (double alpha)
+{
+  m_alpha = alpha;
 }
 
 void
@@ -132,10 +309,65 @@ RegularWifiMac::SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager>
     }
 }
 
+void
+RegularWifiMac::SetMuWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager, uint32_t i)
+{
+  NS_LOG_FUNCTION (this << stationManager);
+
+  m_stationManagerMu[i] = stationManager;
+  m_stationManagerMu[i]->SetHtSupported (GetHtSupported ());
+  m_stationManagerMu[i]->SetVhtSupported (GetVhtSupported ());
+  m_stationManagerMu[i]->SetHeSupported (GetHeSupported ());
+  m_lowMu[i]->SetWifiRemoteStationManager (stationManager);
+
+  m_dcaMu[i]->SetWifiRemoteStationManager (stationManager);
+
+  for (EdcaQueues::const_iterator j = m_edcaMu[i].begin (); j != m_edcaMu[i].end (); ++j)
+    {
+      j->second->SetWifiRemoteStationManager (stationManager);
+    }
+}
+
+void
+RegularWifiMac::StopMuMode ()
+{
+  
+}
+
+void 
+RegularWifiMac::SetMuMode (bool muMode)
+{
+  m_muMode = muMode;
+}
+
+bool 
+RegularWifiMac::GetMuMode (void) const
+{
+  return m_muMode;
+}
+
+void 
+RegularWifiMac::SetRuBits (uint32_t ruBits)
+{
+  m_ruBits = ruBits;
+}
+
+uint32_t 
+RegularWifiMac::GetRuBits (void) const
+{
+  return m_ruBits;
+}
+
 Ptr<WifiRemoteStationManager>
 RegularWifiMac::GetWifiRemoteStationManager () const
 {
   return m_stationManager;
+}
+
+Ptr<WifiRemoteStationManager>
+RegularWifiMac::GetMuWifiRemoteStationManager (uint32_t i) const
+{
+  return m_stationManagerMu[i];
 }
 
 HtCapabilities
@@ -378,6 +610,10 @@ RegularWifiMac::SetVoBlockAckThreshold (uint8_t threshold)
 {
   NS_LOG_FUNCTION (this << (uint16_t) threshold);
   GetVOQueue ()->SetBlockAckThreshold (threshold);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      GetMuVOQueue (i)->SetBlockAckThreshold (threshold);
+    }
 }
 
 void
@@ -385,6 +621,10 @@ RegularWifiMac::SetViBlockAckThreshold (uint8_t threshold)
 {
   NS_LOG_FUNCTION (this << (uint16_t) threshold);
   GetVIQueue ()->SetBlockAckThreshold (threshold);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      GetMuVIQueue (i)->SetBlockAckThreshold (threshold);
+    }
 }
 
 void
@@ -392,6 +632,10 @@ RegularWifiMac::SetBeBlockAckThreshold (uint8_t threshold)
 {
   NS_LOG_FUNCTION (this << (uint16_t) threshold);
   GetBEQueue ()->SetBlockAckThreshold (threshold);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      GetMuBEQueue (i)->SetBlockAckThreshold (threshold);
+    }
 }
 
 void
@@ -399,6 +643,10 @@ RegularWifiMac::SetBkBlockAckThreshold (uint8_t threshold)
 {
   NS_LOG_FUNCTION (this << (uint16_t) threshold);
   GetBKQueue ()->SetBlockAckThreshold (threshold);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      GetMuBKQueue (i)->SetBlockAckThreshold (threshold);
+    }
 }
 
 void
@@ -406,6 +654,10 @@ RegularWifiMac::SetVoBlockAckInactivityTimeout (uint16_t timeout)
 {
   NS_LOG_FUNCTION (this << timeout);
   GetVOQueue ()->SetBlockAckInactivityTimeout (timeout);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      GetMuVOQueue (i)->SetBlockAckInactivityTimeout (timeout);
+    }
 }
 
 void
@@ -413,6 +665,10 @@ RegularWifiMac::SetViBlockAckInactivityTimeout (uint16_t timeout)
 {
   NS_LOG_FUNCTION (this << timeout);
   GetVIQueue ()->SetBlockAckInactivityTimeout (timeout);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      GetMuVIQueue (i)->SetBlockAckInactivityTimeout (timeout);
+    }
 }
 
 void
@@ -420,6 +676,10 @@ RegularWifiMac::SetBeBlockAckInactivityTimeout (uint16_t timeout)
 {
   NS_LOG_FUNCTION (this << timeout);
   GetBEQueue ()->SetBlockAckInactivityTimeout (timeout);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      GetMuBEQueue (i)->SetBlockAckInactivityTimeout (timeout);
+    }
 }
 
 void
@@ -427,6 +687,10 @@ RegularWifiMac::SetBkBlockAckInactivityTimeout (uint16_t timeout)
 {
   NS_LOG_FUNCTION (this << timeout);
   GetBKQueue ()->SetBlockAckInactivityTimeout (timeout);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      GetMuBKQueue (i)->SetBlockAckInactivityTimeout (timeout);
+    }
 }
 
 void
@@ -451,6 +715,29 @@ RegularWifiMac::SetupEdcaQueue (AcIndex ac)
   m_edca.insert (std::make_pair (ac, edca));
 }
 
+void 
+RegularWifiMac::SetupMuEdcaQueue (AcIndex ac, uint32_t ru)
+{
+  NS_LOG_FUNCTION (this << ac << ru);
+  NS_ASSERT (m_edcaMu[ru].find (ac) == m_edcaMu[ru].end());
+
+  Ptr<EdcaTxopN> edca = CreateObject<EdcaTxopN> ();
+  edca->SetAifsn (0);
+  edca->SetMinCw (0);
+  edca->SetMaxCw (0);
+  edca->SetLow (m_lowMu[ru]);
+  edca->SetManager (m_dcfManagerMu[ru]);
+  edca->SetTxMiddle (m_txMiddleMu[ru]);
+  edca->SetTxOkCallback (MakeCallback (&RegularWifiMac::TxOk, this));
+  edca->SetTxFailedCallback (MakeCallback (&RegularWifiMac::TxFailed, this));
+  edca->SetTxDroppedCallback (MakeCallback (&RegularWifiMac::NotifyTxDrop, this));
+  edca->SetAccessCategory (ac);
+  edca->CompleteConfig ();
+
+  m_edcaMu[ru].insert (std::make_pair (ac, edca));
+  
+}
+
 void
 RegularWifiMac::SetTypeOfStation (TypeOfStation type)
 {
@@ -458,6 +745,14 @@ RegularWifiMac::SetTypeOfStation (TypeOfStation type)
   for (EdcaQueues::const_iterator i = m_edca.begin (); i != m_edca.end (); ++i)
     {
       i->second->SetTypeOfStation (type);
+    }
+
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      for (EdcaQueues::const_iterator j = m_edcaMu[i].begin (); j != m_edcaMu[i].end (); ++j)
+        {
+          j->second->SetTypeOfStation (type);
+        }
     }
 }
 
@@ -467,10 +762,22 @@ RegularWifiMac::GetDcaTxop () const
   return m_dca;
 }
 
+Ptr<DcaTxop>
+RegularWifiMac::GetMuDcaTxop (uint32_t i) const
+{
+  return m_dcaMu[i];
+}
+
 Ptr<EdcaTxopN>
 RegularWifiMac::GetVOQueue () const
 {
   return m_edca.find (AC_VO)->second;
+}
+
+Ptr<EdcaTxopN>
+RegularWifiMac::GetMuVOQueue (uint32_t i) const
+{
+  return m_edcaMu[i].find (AC_VO)->second;
 }
 
 Ptr<EdcaTxopN>
@@ -480,15 +787,33 @@ RegularWifiMac::GetVIQueue () const
 }
 
 Ptr<EdcaTxopN>
+RegularWifiMac::GetMuVIQueue (uint32_t i) const
+{
+  return m_edcaMu[i].find (AC_VI)->second;
+}
+
+Ptr<EdcaTxopN>
 RegularWifiMac::GetBEQueue () const
 {
   return m_edca.find (AC_BE)->second;
 }
 
 Ptr<EdcaTxopN>
+RegularWifiMac::GetMuBEQueue (uint32_t i) const
+{
+  return m_edcaMu[i].find (AC_BE)->second;
+}
+
+Ptr<EdcaTxopN>
 RegularWifiMac::GetBKQueue () const
 {
   return m_edca.find (AC_BK)->second;
+}
+
+Ptr<EdcaTxopN>
+RegularWifiMac::GetMuBKQueue (uint32_t i) const
+{
+  return m_edcaMu[i].find (AC_BK)->second;
 }
 
 void
@@ -500,11 +825,32 @@ RegularWifiMac::SetWifiPhy (const Ptr<WifiPhy> phy)
   m_low->SetPhy (phy);
 }
 
+void
+RegularWifiMac::LinkMuAndRegularPhy (uint32_t i)
+{
+}
+
+void
+RegularWifiMac::SetMuWifiPhy (const Ptr<WifiPhy> phy, uint32_t i)
+{
+  NS_LOG_FUNCTION (this << phy << i);
+  m_phyMu[i] = phy;
+  m_dcfManagerMu[i]->SetupPhyListener (phy);
+  m_lowMu[i]->SetPhy (phy);
+}
+
 Ptr<WifiPhy>
 RegularWifiMac::GetWifiPhy (void) const
 {
   NS_LOG_FUNCTION (this);
   return m_phy;
+}
+
+Ptr<WifiPhy>
+RegularWifiMac::GetMuWifiPhy (uint32_t i) const
+{
+  NS_LOG_FUNCTION (this << i);
+  return m_phyMu[i];
 }
 
 void
@@ -660,6 +1006,11 @@ RegularWifiMac::SetCtsToSelfSupported (bool enable)
 {
   NS_LOG_FUNCTION (this);
   m_low->SetCtsToSelfSupported (enable);
+
+  for (uint32_t i = 0; i < 9; i++)
+   {
+     m_lowMu[i]->SetCtsToSelfSupported (enable);
+   }
 }
 
 bool
@@ -668,12 +1019,23 @@ RegularWifiMac::GetCtsToSelfSupported () const
   return m_low->GetCtsToSelfSupported ();
 }
 
+bool
+RegularWifiMac::GetMuCtsToSelfSupported (uint32_t i) const
+{
+  return m_lowMu[i]->GetCtsToSelfSupported ();
+}
+
 void
 RegularWifiMac::SetSlot (Time slotTime)
 {
   NS_LOG_FUNCTION (this << slotTime);
   m_dcfManager->SetSlot (slotTime);
   m_low->SetSlotTime (slotTime);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+       m_dcfManagerMu[i]->SetSlot (slotTime);
+       m_lowMu[i]->SetSlotTime (slotTime);
+    }
 }
 
 Time
@@ -688,6 +1050,11 @@ RegularWifiMac::SetSifs (Time sifs)
   NS_LOG_FUNCTION (this << sifs);
   m_dcfManager->SetSifs (sifs);
   m_low->SetSifs (sifs);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_dcfManagerMu[i]->SetSifs (sifs);
+      m_lowMu[i]->SetSifs (sifs);
+    }
 }
 
 Time
@@ -701,6 +1068,10 @@ RegularWifiMac::SetEifsNoDifs (Time eifsNoDifs)
 {
   NS_LOG_FUNCTION (this << eifsNoDifs);
   m_dcfManager->SetEifsNoDifs (eifsNoDifs);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_dcfManagerMu[i]->SetEifsNoDifs (eifsNoDifs);
+    }
 }
 
 Time
@@ -714,6 +1085,10 @@ RegularWifiMac::SetRifs (Time rifs)
 {
   NS_LOG_FUNCTION (this << rifs);
   m_low->SetRifs (rifs);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetRifs (rifs);
+    }
 }
 
 Time
@@ -727,6 +1102,10 @@ RegularWifiMac::SetPifs (Time pifs)
 {
   NS_LOG_FUNCTION (this << pifs);
   m_low->SetPifs (pifs);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetPifs (pifs);
+    }
 }
 
 Time
@@ -740,6 +1119,10 @@ RegularWifiMac::SetAckTimeout (Time ackTimeout)
 {
   NS_LOG_FUNCTION (this << ackTimeout);
   m_low->SetAckTimeout (ackTimeout);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetAckTimeout (ackTimeout);
+    }
 }
 
 Time
@@ -753,6 +1136,10 @@ RegularWifiMac::SetCtsTimeout (Time ctsTimeout)
 {
   NS_LOG_FUNCTION (this << ctsTimeout);
   m_low->SetCtsTimeout (ctsTimeout);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetCtsTimeout (ctsTimeout);
+    }
 }
 
 Time
@@ -766,6 +1153,10 @@ RegularWifiMac::SetBasicBlockAckTimeout (Time blockAckTimeout)
 {
   NS_LOG_FUNCTION (this << blockAckTimeout);
   m_low->SetBasicBlockAckTimeout (blockAckTimeout);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetBasicBlockAckTimeout (blockAckTimeout);
+    }
 }
 
 Time
@@ -779,6 +1170,10 @@ RegularWifiMac::SetCompressedBlockAckTimeout (Time blockAckTimeout)
 {
   NS_LOG_FUNCTION (this << blockAckTimeout);
   m_low->SetCompressedBlockAckTimeout (blockAckTimeout);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetCompressedBlockAckTimeout (blockAckTimeout);
+    }
 }
 
 Time
@@ -792,6 +1187,10 @@ RegularWifiMac::SetAddress (Mac48Address address)
 {
   NS_LOG_FUNCTION (this << address);
   m_low->SetAddress (address);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetAddress (address);
+    }
 }
 
 Mac48Address
@@ -818,6 +1217,10 @@ RegularWifiMac::SetBssid (Mac48Address bssid)
 {
   NS_LOG_FUNCTION (this << bssid);
   m_low->SetBssid (bssid);
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetBssid (bssid);
+    }
 }
 
 Mac48Address
@@ -830,6 +1233,10 @@ void
 RegularWifiMac::SetPromisc (void)
 {
   m_low->SetPromisc ();
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_lowMu[i]->SetPromisc ();
+    }
 }
 
 void
@@ -879,7 +1286,7 @@ RegularWifiMac::SupportsSendFrom (void) const
 void
 RegularWifiMac::ForwardUp (Ptr<Packet> packet, Mac48Address from, Mac48Address to)
 {
-  NS_LOG_FUNCTION (this << packet << from << to);
+  NS_LOG_FUNCTION (this << packet << from);
   m_forwardUp (packet, from, to);
 }
 
@@ -901,6 +1308,11 @@ RegularWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
     {
       return;
     }
+   
+  if (hdr->IsTFResponse () || hdr->IsBsrAck () || hdr->IsTF ())
+    {
+      return; 
+    } 
 
   if (hdr->IsMgt () && hdr->IsAction ())
     {
@@ -942,6 +1354,10 @@ RegularWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                 //the appropriate queue.
                 AcIndex ac = QosUtilsMapTidToAc (respHdr.GetTid ());
                 m_edca[ac]->GotAddBaResponse (&respHdr, from);
+		for (uint32_t i = 0; i < 9; i++)
+		 {
+                   m_edcaMu[i][ac]->GotAddBaResponse (&respHdr, from);
+		 }
                 //This frame is now completely dealt with, so we're done.
                 return;
               }
@@ -1047,7 +1463,11 @@ RegularWifiMac::SendAddBaResponse (const MgtAddBaRequestHeader *reqHdr,
   //correctly received packets for this Block Ack session
   m_low->CreateBlockAckAgreement (&respHdr, originator,
                                   reqHdr->GetStartingSequence ());
-
+  for (uint32_t i = 0; i < 9; i++)
+   {
+     m_lowMu[i]->CreateBlockAckAgreement (&respHdr, originator,
+                                         reqHdr->GetStartingSequence ());
+   }
   //It is unclear which queue this frame should go into. For now we
   //bung it into the queue corresponding to the TID for which we are
   //establishing an agreement, and push it to the head.
@@ -1204,6 +1624,39 @@ RegularWifiMac::GetTypeId (void)
                    MakeBooleanAccessor (&RegularWifiMac::GetShortSlotTimeSupported,
                                         &RegularWifiMac::SetShortSlotTimeSupported),
                    MakeBooleanChecker ())
+    .AddAttribute ("TfDuration",
+                   "Trigger Frame duration in units of slot time."
+                   "For UL, the duration starts from the time TF Beacon gets access"
+                   "For DL, the duration starts from the time TF gets access",
+                   UintegerValue (2000),
+                   MakeUintegerAccessor (&RegularWifiMac::SetTfDuration),
+                   MakeUintegerChecker<uint32_t> (0, 65535))
+    .AddAttribute ("MaxTfSlots",
+                   "Max time slots for BSR expiry"
+                   "Maximum time slots for expiry of BSR",
+                   UintegerValue (16),
+                   MakeUintegerAccessor (&RegularWifiMac::SetMaxTfSlots),
+                   MakeUintegerChecker<uint32_t> (0, 65535))
+    .AddAttribute ("TfCwMin",
+                   "Min Contention Window for TF",
+                   UintegerValue (16),
+                   MakeUintegerAccessor (&RegularWifiMac::SetTfCwMin),
+                   MakeUintegerChecker<uint32_t> (0, 65535))
+    .AddAttribute ("TfCwMax",
+                   "Max Contention Window for TF",
+                   UintegerValue (16),
+                   MakeUintegerAccessor (&RegularWifiMac::SetTfCwMax),
+                   MakeUintegerChecker<uint32_t> (0, 65535))
+    .AddAttribute ("TfCw",
+                   "Contention Window for TF",
+                   UintegerValue (16),
+                   MakeUintegerAccessor (&RegularWifiMac::SetTfCw),
+                   MakeUintegerChecker<uint32_t> (0, 65535))
+    .AddAttribute ("nScheduled",
+                   "Number of scheduled users in TF",
+                   UintegerValue (6),
+                   MakeUintegerAccessor (&RegularWifiMac::SetNScheduled),
+                   MakeUintegerChecker<uint32_t> (0, 9))
     .AddAttribute ("RifsSupported",
                    "Whether or not RIFS is supported (only used by HT APs or STAs).",
                    BooleanValue (false),
@@ -1235,6 +1688,12 @@ RegularWifiMac::GetTypeId (void)
                    PointerValue (),
                    MakePointerAccessor (&RegularWifiMac::GetBKQueue),
                    MakePointerChecker<EdcaTxopN> ())
+    .AddAttribute ("Alpha",
+                   "Fraction of Downlink traffic",
+                   DoubleValue (0.75),
+                   MakeDoubleAccessor (&RegularWifiMac::SetAlpha,
+                                       &RegularWifiMac::GetAlpha),
+                   MakeDoubleChecker<double> ())
     .AddTraceSource ("TxOkHeader",
                      "The header of successfully transmitted packet.",
                      MakeTraceSourceAccessor (&RegularWifiMac::m_txOkCallback),
@@ -1302,6 +1761,17 @@ RegularWifiMac::ConfigureContentionWindow (uint32_t cwMin, uint32_t cwMax)
     {
       ConfigureDcf (i->second, cwMin, cwMax, isDsssOnly, i->first);
     }
+
+  for (uint32_t i = 0; i < 9; i++)
+    {
+       ConfigureDcf (m_dcaMu[i], cwMin, cwMax, isDsssOnly, AC_BE_NQOS);
+
+       for (EdcaQueues::const_iterator j = m_edcaMu[i].begin (); j != m_edcaMu[i].end (); ++j)
+         {
+           ConfigureDcf (j->second, cwMin, cwMax, isDsssOnly, j->first);
+         }
+    }
+
 }
 
 void
@@ -1354,6 +1824,42 @@ RegularWifiMac::ConfigureAggregation (void)
     {
       GetBKQueue ()->GetMpduAggregator ()->SetMaxAmpduSize (m_bkMaxAmpduSize);
     }
+
+  for (uint32_t i = 0; i < 9; i++)
+   {
+  if (GetMuVOQueue (i)->GetMsduAggregator () != 0)
+    {
+      GetMuVOQueue (i)->GetMsduAggregator ()->SetMaxAmsduSize (m_voMaxAmsduSize);
+    }
+  if (GetMuVIQueue (i)->GetMsduAggregator () != 0)
+    {
+      GetMuVIQueue (i)->GetMsduAggregator ()->SetMaxAmsduSize (m_viMaxAmsduSize);
+    }
+  if (GetMuBEQueue (i)->GetMsduAggregator () != 0)
+    {
+      GetMuBEQueue (i)->GetMsduAggregator ()->SetMaxAmsduSize (m_beMaxAmsduSize);
+    }
+  if (GetMuBKQueue (i)->GetMsduAggregator () != 0)
+    {
+      GetMuBKQueue (i)->GetMsduAggregator ()->SetMaxAmsduSize (m_bkMaxAmsduSize);
+    }
+  if (GetMuVOQueue (i)->GetMpduAggregator () != 0)
+    {
+      GetMuVOQueue (i)->GetMpduAggregator ()->SetMaxAmpduSize (m_voMaxAmpduSize);
+    }
+  if (GetMuVIQueue (i)->GetMpduAggregator () != 0)
+    {
+      GetMuVIQueue (i)->GetMpduAggregator ()->SetMaxAmpduSize (m_viMaxAmpduSize);
+    }
+  if (GetMuBEQueue (i)->GetMpduAggregator () != 0)
+    {
+      GetMuBEQueue (i)->GetMpduAggregator ()->SetMaxAmpduSize (m_beMaxAmpduSize);
+    }
+  if (GetMuBKQueue (i)->GetMpduAggregator () != 0)
+    {
+      GetMuBKQueue (i)->GetMpduAggregator ()->SetMaxAmpduSize (m_bkMaxAmpduSize);
+    }
+   }
 }
 
 void
@@ -1373,6 +1879,23 @@ RegularWifiMac::EnableAggregation (void)
           i->second->SetMpduAggregator (mpduAggregator);
         }
     }
+
+  for (uint32_t j = 0; j < 9; j++)
+    {
+  for (EdcaQueues::const_iterator i = m_edcaMu[j].begin (); i != m_edcaMu[j].end (); ++i)
+    {
+      if (i->second->GetMsduAggregator () == 0)
+        {
+          Ptr<MsduStandardAggregator> msduAggregator = CreateObject<MsduStandardAggregator> ();
+          i->second->SetMsduAggregator (msduAggregator);
+        }
+      if (i->second->GetMpduAggregator () == 0)
+        {
+          Ptr<MpduStandardAggregator> mpduAggregator = CreateObject<MpduStandardAggregator> ();
+          i->second->SetMpduAggregator (mpduAggregator);
+        }
+    }
+    }
   ConfigureAggregation ();
 }
 
@@ -1385,6 +1908,18 @@ RegularWifiMac::DisableAggregation (void)
       i->second->SetMsduAggregator (0);
       i->second->SetMpduAggregator (0);
     }
+}
+
+void
+RegularWifiMac::SetTfDuration (uint32_t tfDuration)
+{
+  m_tfDuration = tfDuration;
+}
+
+uint32_t 
+RegularWifiMac::GetTfDuration (void)
+{
+  return m_tfDuration;
 }
 
 } //namespace ns3

@@ -69,7 +69,11 @@ public:
   /**
    * \param manager the manager to use.
    */
+  void SetMuPhy (const Ptr<WifiPhy> phyMu, uint32_t i);
   void SetRemoteStationManager (const Ptr<WifiRemoteStationManager> manager);
+
+  void SetMuRemoteStationManager (const Ptr<WifiRemoteStationManager> manager, uint32_t i);
+
   /**
    * \returns the mac we are currently using.
    */
@@ -167,6 +171,7 @@ private:
    * connecting all lower components (e.g. MAC, WifiRemoteStation) together.
    */
   void CompleteConfig (void);
+  void CompleteMuConfig (void);
   /**
    * Perform the actions needed to support flow control and dynamic queue limits
    */
@@ -218,8 +223,10 @@ private:
 
   Ptr<Node> m_node; //!< the node
   Ptr<WifiPhy> m_phy; //!< the phy
+  Ptr<WifiPhy> m_phyMu [9];
   Ptr<WifiMac> m_mac; //!< the MAC
   Ptr<WifiRemoteStationManager> m_stationManager; //!< the station manager
+  Ptr<WifiRemoteStationManager> m_stationManagerMu[9]; //!< the station manager
   Ptr<NetDeviceQueueInterface> m_queueInterface;   //!< NetDevice queue interface
   NetDevice::ReceiveCallback m_forwardUp; //!< forward up callback
   NetDevice::PromiscReceiveCallback m_promiscRx; //!< promiscious receive callback

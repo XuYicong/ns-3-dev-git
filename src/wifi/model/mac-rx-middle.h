@@ -63,7 +63,6 @@ public:
 
 
 private:
-  /// allow MacRxMiddleTest associated class access
   friend class MacRxMiddleTest;
   /**
    * Look up for OriginatorRxStatus associated with the sender address

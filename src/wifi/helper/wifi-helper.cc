@@ -30,6 +30,7 @@
 #include "ns3/radiotap-header.h"
 #include "ns3/config.h"
 #include "ns3/names.h"
+#include "ns3/spectrum-wifi-phy.h"
 
 namespace ns3 {
 
@@ -739,10 +740,11 @@ WifiHelper::SetRemoteStationManager (std::string type,
 }
 
 void
-WifiHelper::SetStandard (enum WifiPhyStandard standard)
+WifiHelper::SetStandard (enum WifiPhyStandard standard) 
 {
   m_standard = standard;
 }
+
 
 NetDeviceContainer
 WifiHelper::Install (const WifiPhyHelper &phyHelper,
@@ -761,9 +763,25 @@ WifiHelper::Install (const WifiPhyHelper &phyHelper,
       mac->SetAddress (Mac48Address::Allocate ());
       mac->ConfigureStandard (m_standard);
       phy->ConfigureStandard (m_standard);
+      phy->SetMuMode (0);
+      phy->SetRuBits (9);
       device->SetMac (mac);
       device->SetPhy (phy);
       device->SetRemoteStationManager (manager);
+      
+      if (m_standard == WIFI_PHY_STANDARD_80211ax_5GHZ)
+       {
+  	  for (uint32_t j = 0; j < 9; j++)
+            {
+               Ptr<WifiPhy> phyMu = phyHelper.Create(node, device);
+               Ptr<WifiRemoteStationManager> managerMu = m_stationManager.Create<WifiRemoteStationManager> ();
+               phyMu->ConfigureStandard (m_standard);
+               phyMu->SetMuMode (1);
+               phyMu->SetRuBits (j);
+	       device->SetMuPhy (phyMu, j);              
+               device->SetMuRemoteStationManager (managerMu, j);
+            }      
+       }
       node->AddDevice (device);
       devices.Add (device);
       NS_LOG_DEBUG ("node=" << node << ", mob=" << node->GetObject<MobilityModel> ());

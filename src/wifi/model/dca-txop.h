@@ -58,9 +58,7 @@ class CtrlBAckResponseHeader;
 class DcaTxop : public Object
 {
 public:
-  /// allow DcfListener class access
   friend class DcfListener;
-  /// allow MacLowTransmissionListener class access
   friend class MacLowTransmissionListener;
 
   DcaTxop ();
@@ -135,7 +133,13 @@ public:
    * packet is dropped.
    */
   void SetTxDroppedCallback (TxDropped callback);
+  /**
+   *
+   *
+   */
+  void SetTfAccessGrantCallback (Callback<void> callback);
 
+  void StopMuMode (void);
   /**
    * Return the MacLow associated with this DcaTxop.
    *
@@ -223,6 +227,10 @@ public:
    * can be sent safely.
    */
   virtual void Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr);
+  virtual void QueueButDontSend (Ptr<const Packet> packet, const WifiMacHeader &hdr);
+  virtual void QueueTFResp (Ptr<const Packet> packet, const WifiMacHeader &hdr);
+  void CancelTFRespIfNotSent (void);
+  void CancelNextPacket (void);
 
   /* Event handlers */
   /**
@@ -249,7 +257,6 @@ public:
   virtual void GotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac48Address recipient, double rxSnr, WifiMode txMode, double dataSnr);
   /**
    * Event handler when a Block ACK timeout has occurred.
-   * \param nMpdus the number of MPDUs sent in the A-MPDU transmission that results in a Block ACK timeout.
    */
   virtual void MissedBlockAck (uint8_t nMpdus);
 
@@ -290,10 +297,17 @@ public:
    * \return the number of stream indices assigned by this model.
    */
   int64_t AssignStreams (int64_t stream);
+  void SetMuMode (bool muMode);
+  bool GetMuMode (void) const;
+  void SetRuBits (uint32_t ruBits);
+  uint32_t GetRuBits (void) const; 
+  /**
+   * Request access from DCF manager if needed.
+   */
+  virtual void StartAccessIfNeeded (void);
 
 
 protected:
-  ///< DcfState associated class
   friend class DcfState;
 
   virtual void DoDispose (void);
@@ -325,10 +339,6 @@ protected:
    * Restart access request if needed.
    */
   virtual void RestartAccessIfNeeded (void);
-  /**
-   * Request access from DCF manager if needed.
-   */
-  virtual void StartAccessIfNeeded (void);
 
   /**
    * Check if RTS should be re-transmitted if CTS was missed.
@@ -410,6 +420,8 @@ protected:
   TxOk m_txOkCallback; //!< the transmit OK callback
   TxFailed m_txFailedCallback; //!< the transmit failed callback
   TxDropped m_txDroppedCallback; //!< the packet dropped callback
+  Callback<void> m_tfAccessGrantCallback;
+  Callback<void> m_tfBeaconAccessGrantCallback;
   Ptr<WifiMacQueue> m_queue; //!< the wifi MAC queue
   Ptr<MacTxMiddle> m_txMiddle; //!< the MacTxMiddle
   Ptr <MacLow> m_low; //!< the MacLow
@@ -420,6 +432,8 @@ protected:
   WifiMacHeader m_currentHdr; //!< the current header
   MacLowTransmissionParameters m_currentParams; ///< current transmission parameters
   uint8_t m_fragmentNumber; //!< the fragment number
+  uint32_t m_ruBits;
+  bool m_muMode;
 };
 
 } //namespace ns3

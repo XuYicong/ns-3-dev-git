@@ -141,14 +141,11 @@ public:
    *          has not been granted already, false otherwise.
    */
   bool IsAccessRequested (void) const;
+  void CancelAccessRequested (void);
 
 
 protected:
-  /// DcfManager associated class
   friend class DcfManager;
-
-  // Inherited from ns3::Object
-  void DoDispose (void);
 
   /**
    * Return the current number of backoff slots.

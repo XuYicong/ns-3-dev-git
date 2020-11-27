@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # encoding: ISO8859-1
 # Thomas Nagy, 2005-2016
 
@@ -31,7 +31,8 @@ POSSIBILITY OF SUCH DAMAGE.
 """
 
 import os, sys, inspect
-
+reload(sys)
+sys.setdefaultencoding('utf8')
 VERSION="1.8.19"
 REVISION="b1fc8f7baef51bd2db4c2971909a568d"
 GIT="22213cd8abbd141bda40667f7ca2a48f2d6ad785"

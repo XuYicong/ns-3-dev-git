@@ -33,7 +33,9 @@ namespace ns3 {
 class MgtAddBaResponseHeader;
 class MgtAddBaRequestHeader;
 class MacTxMiddle;
-class WifiMacQueue;
+class WifiMacQueueItem;
+template <typename Item> class WifiQueue;
+typedef WifiQueue<WifiMacQueueItem> WifiMacQueue;
 
 /**
  * \ingroup wifi
@@ -72,12 +74,8 @@ class BlockAckManager : public Object
 private:
   /// type conversion operator
   BlockAckManager (const BlockAckManager&);
-  /**
-   * assignment operator
-   * \param block BlockAckManager to assign
-   * \returns the assigned BlockAckManager
-   */
-  BlockAckManager& operator= (const BlockAckManager& block);
+  /// assignment operator
+  BlockAckManager& operator= (const BlockAckManager&);
 
 
 public:
@@ -326,8 +324,8 @@ public:
   void SetUnblockDestinationCallback (Callback<void, Mac48Address, uint8_t> callback);
 
   /**
-   * \param recipient the destination address
-   * \param tid the Traffic ID
+   * \param recipient
+   * \param tid
    * \param startingSeq
    *
    * \return true if there are packets in the queue that could be sent under block ACK,
@@ -340,8 +338,8 @@ public:
    */
   bool SwitchToBlockAckIfNeeded (Mac48Address recipient, uint8_t tid, uint16_t startingSeq);
   /**
-   * \param recipient the destination address
-   * \param tid the Traffic ID
+   * \param recipient
+   * \param tid
    *
    * \return the sequence number of the next retry packet for a specific agreement
    *
@@ -352,19 +350,10 @@ public:
   uint16_t GetSeqNumOfNextRetryPacket (Mac48Address recipient, uint8_t tid) const;
   /**
    * Checks if the packet already exists in the retransmit queue or not if it does then it doesn't add it again
-   *
-   * \param currentSeq the current sequence
-   * \param recipient the destination address
-   * \param tid the Traffic ID
-   * \returns true if the packet already exists
    */
   bool AlreadyExists (uint16_t currentSeq, Mac48Address recipient, uint8_t tid) const;
   /**
    * Remove a packet after you peek in the queue and get it
-   * \param tid the Traffic ID
-   * \param recipient the destination address
-   * \param seqnumber sequence number
-   * \returns true if a packet was removed
    */
   bool RemovePacket (uint8_t tid, Mac48Address recipient, uint16_t seqnumber);
   /**
@@ -386,7 +375,7 @@ public:
    *
    * \param tid Traffic ID
    * \param seqNumber sequence number
-   * \param recipient MAC address
+   * \param recipient mac address
    *
    * \returns true if BAR retransmission needed
    */

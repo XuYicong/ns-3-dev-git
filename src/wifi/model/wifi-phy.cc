@@ -437,6 +437,34 @@ WifiPhy::SetReceiveErrorCallback (RxErrorCallback callback)
 }
 
 void
+WifiPhy::SetKillTfBReTxCallback (Callback<void> callback)
+{
+  m_killTfBReTxCallback = callback;
+}
+
+void
+WifiPhy::SetRuBits (uint32_t ruBits) 
+{
+}
+
+uint32_t
+WifiPhy::GetRuBits () const
+{
+  return -1;
+}
+
+void
+WifiPhy::SetMuMode (bool muMode) 
+{
+}
+
+bool 
+WifiPhy::GetMuMode (void) const
+{
+  return false;
+}
+
+void
 WifiPhy::RegisterListener (WifiPhyListener *listener)
 {
   m_state->RegisterListener (listener);
@@ -447,6 +475,7 @@ WifiPhy::UnregisterListener (WifiPhyListener *listener)
 {
   m_state->UnregisterListener (listener);
 }
+
 
 void
 WifiPhy::InitializeFrequencyChannelNumber (void)
@@ -819,10 +848,10 @@ WifiPhy::ConfigureDefaultsForStandard (WifiPhyStandard standard)
       NS_ASSERT (GetChannelNumber () == 1);
       break;
     case WIFI_PHY_STANDARD_80211ax_5GHZ:
-      SetChannelWidth (80);
-      SetFrequency (5210);
+      SetChannelWidth (20);
+      SetFrequency (5180);
       // Channel number should be aligned by SetFrequency () to 42
-      NS_ASSERT (GetChannelNumber () == 42);
+      NS_ASSERT (GetChannelNumber () == 36);
       break;
     case WIFI_PHY_STANDARD_UNSPECIFIED:
       NS_LOG_WARN ("Configuring unspecified standard; performing no action");
@@ -2140,7 +2169,7 @@ WifiPhy::GetPayloadDuration (uint32_t size, WifiTxVector txVector, uint16_t freq
     }
 
   double numDataBitsPerSymbol = payloadMode.GetDataRate (txVector) * symbolDuration.GetNanoSeconds () / 1e9;
-
+  
   double numSymbols = 0;
   if (mpdutype == MPDU_IN_AGGREGATE && preamble != WIFI_PREAMBLE_NONE)
     {
@@ -2184,7 +2213,8 @@ WifiPhy::GetPayloadDuration (uint32_t size, WifiTxVector txVector, uint16_t freq
     {
       NS_FATAL_ERROR ("Wrong combination of preamble and packet type");
     }
-
+  
+  Time t;
   switch (payloadMode.GetModulationClass ())
     {
     case WIFI_MOD_CLASS_OFDM:
@@ -2193,11 +2223,13 @@ WifiPhy::GetPayloadDuration (uint32_t size, WifiTxVector txVector, uint16_t freq
         //Add signal extension for ERP PHY
         if (payloadMode.GetModulationClass () == WIFI_MOD_CLASS_ERP_OFDM)
           {
-            return FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ()) + MicroSeconds (6);
+            t = FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ()) + MicroSeconds (6);
+            return t;
           }
         else
           {
-            return FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ());
+            t = FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ());
+            return t;
           }
       }
     case WIFI_MOD_CLASS_HT:
@@ -2207,11 +2239,13 @@ WifiPhy::GetPayloadDuration (uint32_t size, WifiTxVector txVector, uint16_t freq
             && ((mpdutype == NORMAL_MPDU && preamble != WIFI_PREAMBLE_NONE)
                 || (mpdutype == LAST_MPDU_IN_AGGREGATE && preamble == WIFI_PREAMBLE_NONE))) //at 2.4 GHz
           {
-            return FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ()) + MicroSeconds (6);
+            t = FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ()) + MicroSeconds (6);
+            return t;
           }
         else //at 5 GHz
           {
-            return FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ());
+            t = FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ());
+            return t;
           }
       }
     case WIFI_MOD_CLASS_HE:
@@ -2220,11 +2254,13 @@ WifiPhy::GetPayloadDuration (uint32_t size, WifiTxVector txVector, uint16_t freq
             && ((mpdutype == NORMAL_MPDU && preamble != WIFI_PREAMBLE_NONE)
                 || (mpdutype == LAST_MPDU_IN_AGGREGATE && preamble == WIFI_PREAMBLE_NONE))) //at 2.4 GHz
           {
-            return FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ()) + MicroSeconds (6);
+            t = FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ()) + MicroSeconds (6);
+            return t;
           }
         else //at 5 GHz
           {
-            return FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ());
+            t = FemtoSeconds (numSymbols * symbolDuration.GetFemtoSeconds ());
+            return t;
           }
       }
     case WIFI_MOD_CLASS_DSSS:
@@ -2340,6 +2376,9 @@ WifiPhy::SendPacket (Ptr<const Packet> packet, WifiTxVector txVector, MpduType m
       return;
     }
 
+  txVector.SetMuMode (GetMuMode ());
+  txVector.SetRuBits (GetRuBits ()); // infocom: Set the MU mode so that TX duration can be calculated correctly
+  // TODO Check the correct setting of TxDuration
   Time txDuration = CalculateTxDuration (packet->GetSize (), txVector, GetFrequency (), mpdutype, 1);
   NS_ASSERT (txDuration.IsStrictlyPositive ());
 
@@ -2348,7 +2387,7 @@ WifiPhy::SendPacket (Ptr<const Packet> packet, WifiTxVector txVector, MpduType m
       m_endPlcpRxEvent.Cancel ();
       m_endRxEvent.Cancel ();
       m_interference.NotifyRxEnd ();
-    }
+    } 
   NotifyTxBegin (packet);
   if ((mpdutype == MPDU_IN_AGGREGATE) && (txVector.GetPreambleType () != WIFI_PREAMBLE_NONE))
     {
@@ -2376,6 +2415,12 @@ WifiPhy::StartReceivePreambleAndHeader (Ptr<Packet> packet, double rxPowerW, Tim
   //This function should be later split to check separately whether plcp preamble and plcp header can be successfully received.
   //Note: plcp preamble reception is not yet modeled.
   NS_LOG_FUNCTION (this << packet << WToDbm (rxPowerW) << rxDuration);
+  WifiMacHeader hdr;
+  packet->PeekHeader (hdr);
+  if (hdr.IsTFResponse ())
+   {
+     m_killTfBReTxCallback ();
+   }
   Time endRx = Simulator::Now () + rxDuration;
 
   WifiPhyTag tag;
@@ -2394,25 +2439,16 @@ WifiPhy::StartReceivePreambleAndHeader (Ptr<Packet> packet, double rxPowerW, Tim
       NS_FATAL_ERROR ("MCS value does not match NSS value: MCS = " << (uint16_t)txVector.GetMode ().GetMcsValue () << ", NSS = " << (uint16_t)txVector.GetNss ());
     }
 
+  if (txVector.GetNss () > GetMaxSupportedRxSpatialStreams ())
+    {
+      NS_FATAL_ERROR ("Reception ends in failure because of an unsupported number of spatial streams");
+    }
+
   Ptr<InterferenceHelper::Event> event;
   event = m_interference.Add (packet,
                               txVector,
                               rxDuration,
                               rxPowerW);
-
-  if (txVector.GetNss () > GetMaxSupportedRxSpatialStreams ())
-    {
-      NS_LOG_DEBUG ("drop packet because not enough RX antennas");
-      NotifyRxDrop (packet);
-      m_plcpSuccess = false;
-      if (endRx > Simulator::Now () + m_state->GetDelayUntilIdle ())
-        {
-          //that packet will be noise _after_ the transmission of the
-          //currently-transmitted packet.
-          MaybeCcaBusyDuration ();
-          return;
-        }
-    }
 
   MpduType mpdutype = tag.GetMpduType ();
   switch (m_state->GetState ())
@@ -2559,7 +2595,7 @@ WifiPhy::EndReceive (Ptr<Packet> packet, WifiPreamble preamble, MpduType mpdutyp
           NotifyRxEnd (packet);
           SignalNoiseDbm signalNoise;
           signalNoise.signal = RatioToDb (event->GetRxPowerW ()) + 30;
-          signalNoise.noise = RatioToDb (event->GetRxPowerW () / snrPer.snr) + 30;
+          signalNoise.noise = RatioToDb (event->GetRxPowerW () / snrPer.snr) - GetRxNoiseFigure () + 30;
           MpduInfo aMpdu;
           aMpdu.type = mpdutype;
           aMpdu.mpduRefNumber = m_rxMpduReferenceNumber;

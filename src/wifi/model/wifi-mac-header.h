@@ -42,6 +42,9 @@ enum WifiMacType
   WIFI_MAC_CTL_BACKRESP,
 
   WIFI_MAC_MGT_BEACON,
+  WIFI_MAC_MGT_BSR_ACK, 
+  WIFI_MAC_MGT_TF_RESP,
+  WIFI_MAC_MGT_TF,
   WIFI_MAC_MGT_ASSOCIATION_REQUEST,
   WIFI_MAC_MGT_ASSOCIATION_RESPONSE,
   WIFI_MAC_MGT_DISASSOCIATION,
@@ -140,6 +143,10 @@ public:
    * Set Type/Subtype values for a data packet with
    * no subtype equal to 0.
    */
+  void SetBsrAck (void); //infocom: TF definitions
+  void SetTriggerFrameResp (void);
+  void SetTriggerFrame (void);
+
   void SetTypeData (void);
   /**
    * Set Type/Subtype values for an action header.
@@ -493,6 +500,11 @@ public:
    *
    * \return the raw duration from the Duration/ID field
    */
+
+  bool IsBsrAck (void) const; // infocom: Trigger Frame definitions
+  bool IsTFResponse (void) const;
+  bool IsTF (void) const;
+
   uint16_t GetRawDuration (void) const;
   /**
    * Return the duration from the Duration/ID field (Time object).

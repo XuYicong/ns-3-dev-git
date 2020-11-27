@@ -66,6 +66,7 @@ public:
    * \param phy
    */
   void RemovePhyListener (Ptr<WifiPhy> phy);
+  void RemoveOtherPhyListener (Ptr<WifiPhy> phy);
   /**
    * Set up listener for MacLow events.
    *
@@ -201,10 +202,8 @@ public:
    * Notify that CTS timer has resetted.
    */
   void NotifyCtsTimeoutResetNow ();
-
-protected:
-  // Inherited from ns3::Object
-  void DoDispose (void);
+  void UpdateBusyDuration (void);
+  void DoRestartAccessTimeoutIfNeeded (void);
 
 private:
   /**
@@ -294,7 +293,6 @@ private:
    */
   Time GetBackoffEndFor (Ptr<DcfState> state);
 
-  void DoRestartAccessTimeoutIfNeeded (void);
 
   /**
    * Called when access timeout should occur
@@ -349,6 +347,7 @@ private:
   uint32_t m_slotTimeUs;        //!< the slot time in microseconds
   Time m_sifs;                  //!< the SIFS time
   PhyListener* m_phyListener;   //!< the phy listener
+  PhyListener* m_otherPhyListener;   //!< the phy listener
 };
 
 } //namespace ns3

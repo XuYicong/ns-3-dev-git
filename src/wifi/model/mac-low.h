@@ -41,7 +41,8 @@ class DcaTxop;
 class EdcaTxopN;
 class DcfManager;
 class WifiMacQueueItem;
-class WifiMacQueue;
+template <typename Item> class WifiQueue;
+typedef WifiQueue<WifiMacQueueItem> WifiMacQueue;
 
 /**
  * \brief control how a packet is transmitted.
@@ -212,7 +213,6 @@ public:
 private:
   friend std::ostream &operator << (std::ostream &os, const MacLowTransmissionParameters &params);
   uint32_t m_nextSize; //!< the next size
-  /// wait ack enumerated type
   enum
   {
     ACK_NONE,
@@ -244,9 +244,8 @@ std::ostream &operator << (std::ostream &os, const MacLowTransmissionParameters 
 class MacLow : public Object
 {
 public:
-  /// Allow test cases to access private members
+  // Allow test cases to access private members
   friend class ::TwoLevelAggregationTest;
-  /// Allow test cases to access private members
   friend class ::AmpduAggregationTest;
   /**
    * typedef for a callback for MacLowRx
@@ -262,6 +261,8 @@ public:
    */
   static TypeId GetTypeId (void);
 
+  void SetTfRespAccessGrantCallback (Callback<void> callback);
+  void SetKillTriggerFrameBeaconRetransmissionCallback (Callback<void> callback);
   /**
    * Set up WifiPhy associated with this MacLow.
    *
@@ -282,6 +283,7 @@ public:
    * \param manager WifiRemoteStationManager associated with this MacLow
    */
   void SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> manager);
+  void KillTfBReTx (void);
   /**
    * Set MAC address of this MacLow.
    *
@@ -425,8 +427,7 @@ public:
    *         false otherwise
    */
   bool IsPromisc (void) const;
-
-  /**
+    /**
    * \param callback the callback which receives every incoming packet.
    *
    * This callback typically forwards incoming packets to
@@ -493,6 +494,9 @@ public:
                                   MacLowTransmissionParameters parameters,
                                   Ptr<DcaTxop> dca);
 
+  Time CalculateTfBeaconDuration (Ptr<const Packet> packet, const WifiMacHeader &hdr);
+  uint32_t CalculateStaPayloadDuration (void);
+  uint32_t CalculateApPayloadDuration (void);
   /**
    * \param packet packet received
    * \param rxSnr snr of packet received
@@ -588,7 +592,7 @@ public:
    * This function decides if a given packet can be added to an A-MPDU or not
    *
    */
-  bool StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size) const;
+  bool StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size);
   /**
    *
    * This function is called to flush the aggregate queue, which is used for A-MPDU
@@ -1096,14 +1100,12 @@ private:
   /**
    * A struct for packet, Wifi header, and timestamp.
    */
-  struct Item
+  typedef struct
   {
     Ptr<const Packet> packet; //!< the packet
     WifiMacHeader hdr; //!< the header
     Time timestamp; //!< the timestamp
-  }; //!< item structure
-
-  typedef struct Item Item;
+  } Item; //!< item structure
 
   /**
    * typedef for an iterator for a list of DcfManager.
@@ -1114,6 +1116,8 @@ private:
    */
   typedef std::vector<Ptr<DcfManager> > DcfManagers;
   DcfManagers m_dcfManagers; //!< List of DcfManager
+  Callback<void> m_tfRespAccessGrantCallback;
+  Callback<void> m_killTfBCallback;
 
   EventId m_normalAckTimeoutEvent;      //!< Normal ACK timeout event
   EventId m_fastAckTimeoutEvent;        //!< Fast ACK timeout event

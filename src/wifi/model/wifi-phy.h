@@ -32,6 +32,7 @@
 #include "interference-helper.h"
 #include "ns3/node.h"
 #include "ns3/string.h"
+#include "wifi-mac-header.h"
 
 namespace ns3 {
 
@@ -228,7 +229,7 @@ public:
    *        upon erroneous packet reception.
    */
   void SetReceiveErrorCallback (RxErrorCallback callback);
-
+  void SetKillTfBReTxCallback (Callback<void> callback);
   /**
    * \param listener the new listener
    *
@@ -304,7 +305,10 @@ public:
    * Resume from sleep mode.
    */
   void ResumeFromSleep (void);
-
+  virtual void SetRuBits (uint32_t ruBits); //infocom
+  virtual void SetMuMode (bool muMode); //infocom
+  virtual uint32_t GetRuBits (void) const; //infocom
+  virtual bool GetMuMode (void) const; //infocom
   /**
    * \return true of the current state of the PHY layer is WifiPhy::IDLE, false otherwise.
    */
@@ -588,14 +592,14 @@ public:
    *
    * Channel center frequency = Channel starting frequency + 5 MHz * (nch - 1)
    *
-   * where Starting channel frequency is standard-dependent,
+   * where Starting channel frequency is standard-dependent, see SetStandard()
    * as defined in (Section 18.3.8.4.2 "Channel numbering"; IEEE Std 802.11-2012).
    * This method may fail to take action if the Phy model determines that
    * the channel number cannot be switched for some reason (e.g. sleep state)
    *
    * \param id the channel number
    */
-  virtual void SetChannelNumber (uint8_t id);
+  void SetChannelNumber (uint8_t id);
   /**
    * Return current channel number.
    *
@@ -612,7 +616,7 @@ public:
    *
    * \param standard the Wi-Fi standard
    */
-  virtual void ConfigureStandard (WifiPhyStandard standard);
+  void ConfigureStandard (WifiPhyStandard standard);
 
   /**
    * Get the configured Wi-Fi standard
@@ -1266,7 +1270,7 @@ public:
    * \param txVector the TXVECTOR that holds rx parameters
    * \param aMpdu the type of the packet (0 is not A-MPDU, 1 is a MPDU that is part of an A-MPDU and 2 is the last MPDU in an A-MPDU)
    *        and the A-MPDU reference number (must be a different value for each A-MPDU but the same for each subframe within one A-MPDU)
-   * \param signalNoise signal power and noise power in dBm (noise power includes the noise figure)
+   * \param signalNoise signal power and noise power in dBm
    */
   void NotifyMonitorSniffRx (Ptr<const Packet> packet,
                              uint16_t channelFreqMhz,
@@ -1488,7 +1492,7 @@ public:
   /**
    * \param freq the operating center frequency (MHz) on this node.
    */
-  virtual void SetFrequency (uint16_t freq);
+  void SetFrequency (uint16_t freq);
   /**
    * \return the operating center frequency (MHz)
    */
@@ -1628,7 +1632,7 @@ public:
   /**
    * \param channelwidth channel width
    */
-  virtual void SetChannelWidth (uint8_t channelwidth);
+  void SetChannelWidth (uint8_t channelwidth);
   /**
    * \param channelwidth channel width (in MHz) to support
    */
@@ -1694,6 +1698,7 @@ protected:
 
   EventId m_endRxEvent;                //!< the end reeive event
   EventId m_endPlcpRxEvent;            //!< the end PLCP receive event
+
 
 private:
   /**
@@ -1980,6 +1985,7 @@ private:
 
   Ptr<InterferenceHelper::Event> m_currentEvent; //!< Hold the current event
   Ptr<FrameCaptureModel> m_frameCaptureModel; //!< Frame capture model
+  Callback<void> m_killTfBReTxCallback;
 };
 
 /**

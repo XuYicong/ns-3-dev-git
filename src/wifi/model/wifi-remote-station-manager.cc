@@ -466,6 +466,7 @@ WifiRemoteStationManager::SetQosSupported (bool enable)
 void
 WifiRemoteStationManager::SetHtSupported (bool enable)
 {
+  SetQosSupported (enable);
   m_htSupported = enable;
 }
 
@@ -573,6 +574,7 @@ WifiRemoteStationManager::HasHtSupported (void) const
 void
 WifiRemoteStationManager::SetVhtSupported (bool enable)
 {
+  SetQosSupported (enable);
   m_vhtSupported = enable;
 }
 
@@ -585,6 +587,7 @@ WifiRemoteStationManager::HasVhtSupported (void) const
 void
 WifiRemoteStationManager::SetHeSupported (bool enable)
 {
+  SetQosSupported (enable);
   m_heSupported = enable;
 }
 
@@ -807,7 +810,7 @@ WifiRemoteStationManager::PrepareForQueue (Mac48Address address, const WifiMacHe
     }
   WifiRemoteStation *station = Lookup (address, header);
   WifiTxVector rts = DoGetRtsTxVector (station);
-  WifiTxVector data = DoGetDataTxVector (station);
+  WifiTxVector data = DoGetDataTxVector (station); //infocom: DoGetDataTxVector implemented in child class (constant-rate-wifi-manager.cc for my case. Added support to set muMode and ruBits there)
   WifiTxVector ctstoself = DoGetCtsToSelfTxVector ();
   HighLatencyDataTxVectorTag datatag;
   HighLatencyRtsTxVectorTag rtstag;
@@ -841,6 +844,8 @@ WifiRemoteStationManager::GetDataTxVector (Mac48Address address, const WifiMacHe
       v.SetNss (1);
       v.SetNess (0);
       v.SetStbc (false);
+      v.SetMuMode (0); //infocom: This is what is used for management frames, disabling MU mode
+      v.SetRuBits (1);
       return v;
     }
   if (!IsLowLatency ())

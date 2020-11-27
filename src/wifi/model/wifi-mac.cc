@@ -118,6 +118,33 @@ WifiMac::GetDefaultCompressedBlockAckTimeout (void)
 }
 
 void
+WifiMac::SetMuWifiPhy (const Ptr<WifiPhy> phy, uint32_t i)
+{
+}
+
+void
+WifiMac::LinkMuAndRegularPhy (uint32_t i)
+{
+}
+
+Ptr<WifiPhy>
+WifiMac::GetMuWifiPhy (uint32_t i) const
+{
+  return 0;
+}
+
+void
+WifiMac::SetMuWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager, uint32_t i)
+{
+}
+
+Ptr<WifiRemoteStationManager>
+WifiMac::GetMuWifiRemoteStationManager (uint32_t i) const
+{
+  return 0;
+}
+
+void
 WifiMac::SetBasicBlockAckTimeout (Time blockAckTimeout)
 {
   //this method must be implemented by QoS WifiMacs

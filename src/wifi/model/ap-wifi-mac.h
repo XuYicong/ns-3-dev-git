@@ -31,6 +31,7 @@
 #include "erp-information.h"
 #include "edca-parameter-set.h"
 #include "ns3/random-variable-stream.h"
+#include "mgt-headers.h"
 
 namespace ns3 {
 
@@ -86,8 +87,16 @@ public:
    */
   void Enqueue (Ptr<const Packet> packet, Mac48Address to, Mac48Address from);
 
+  /**
+   * Starts MuMode 
+   */
+  void StartMuModeUplink (void); // infocom: Starts MU Mode in Uplink
+  void StartMuModeDownlink (void); // infocom: Starts MU Mode in Downlink
+  void CalculateTfDuration (void);
+  void TriggerFrameExpire ();
   bool SupportsSendFrom (void) const;
-
+  Time CalculateCurrentTfDuration (void);
+ 
   /**
    * \param address the current address of this MAC layer.
    */
@@ -144,8 +153,10 @@ public:
    * \return the number of stream indices assigned by this model
    */
   int64_t AssignStreams (int64_t stream);
-
-
+  void KillTriggerFrameBeaconRetransmission (void);
+ 
+  void StartMuModeDelayed (void);
+  void StopMuMode (void);
 private:
   void Receive (Ptr<Packet> packet, const WifiMacHeader *hdr);
   /**
@@ -215,6 +226,11 @@ private:
    * Forward a beacon packet to the beacon special DCF.
    */
   void SendOneBeacon (void);
+  /**
+   * Forward a TF beacon to the beacon special DCF
+   */
+  void SendBsrAck (Mac48Address to, uint32_t ru);
+  void SendTriggerFrame (bool flag);
   /**
    * Return the Capability information of the current AP.
    *
@@ -288,10 +304,27 @@ private:
   void DoDispose (void);
   void DoInitialize (void);
 
+  //typedef std::map<Mac48Address, std::pair<uint32_t, bool>> RUAllocations;
+  bool m_muUlFlag;
+  bool m_tfSent;
+  bool m_muModeToStart;
+  uint32_t m_repInterval;
+  RUAllocations m_tfAlloc;                   //!< infocom: Allocations sent in the TF Beacon 
   Ptr<DcaTxop> m_beaconDca;                  //!< Dedicated DcaTxop for beacons
   Time m_beaconInterval;                     //!< Interval between beacons
+  Time m_timeToTF;
+  Time m_lastTfBeaconAccessStart; 
+  Time m_lastTfAccessStart; 
+  Time m_tfBeaconDuration;
+  uint32_t m_tfPacketDuration;
   bool m_enableBeaconGeneration;             //!< Flag whether beacons are being generated
   EventId m_beaconEvent;                     //!< Event to generate one beacon
+  EventId m_triggerFrameUplinkEvent;               //!< Event to generate one TF beacon
+  EventId m_triggerFrameDownlinkEvent;               //!< Event to generate one TF beacon
+  EventId m_triggerFrameBeaconExpireEvent;   //!< infocom: expiry of m_maxTfSlots
+  EventId m_muModeExpireEvent;               //!< infocom: Time until TF continues
+  EventId m_tfBeaconExpire;
+  EventId m_cancelEvent;
   Ptr<UniformRandomVariable> m_beaconJitter; //!< UniformRandomVariable used to randomize the time of the first beacon
   bool m_enableBeaconJitter;                 //!< Flag whether the first beacon should be generated at random time
   std::list<Mac48Address> m_staList;         //!< List of all stations currently associated to the AP

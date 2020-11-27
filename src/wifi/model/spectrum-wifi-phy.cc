@@ -29,6 +29,7 @@
 #include "ns3/boolean.h"
 #include "wifi-spectrum-signal-parameters.h"
 #include "wifi-utils.h"
+#include "ns3/simulator.h"
 
 namespace ns3 {
 
@@ -89,6 +90,30 @@ SpectrumWifiPhy::DoInitialize (void)
     }
 }
 
+void
+SpectrumWifiPhy::SetRuBits (uint32_t ruBits) //infocom
+{
+  m_currentRu = ruBits; 
+}
+
+void
+SpectrumWifiPhy::SetMuMode (bool muMode) //infocom
+{
+  m_muMode = muMode;
+}
+
+uint32_t 
+SpectrumWifiPhy::GetRuBits () const
+{
+  return m_currentRu;
+}
+
+bool 
+SpectrumWifiPhy::GetMuMode () const
+{
+  return m_muMode;
+}
+
 Ptr<const SpectrumModel>
 SpectrumWifiPhy::GetRxSpectrumModel () const
 {
@@ -126,62 +151,6 @@ SpectrumWifiPhy::SetChannel (const Ptr<SpectrumChannel> channel)
 }
 
 void
-SpectrumWifiPhy::ResetSpectrumModel (void)
-{
-  NS_LOG_FUNCTION (this);
-  NS_ASSERT_MSG (IsInitialized (), "Executing method before run-time");
-  NS_LOG_DEBUG ("Run-time change of spectrum model from frequency/width pair of (" << GetFrequency () << ", " << (uint16_t)GetChannelWidth () << ")");
-  // Replace existing spectrum model with new one, and must call AddRx ()
-  // on the SpectrumChannel to provide this new spectrum model to it
-  m_rxSpectrumModel = WifiSpectrumValueHelper::GetSpectrumModel (GetFrequency (), GetChannelWidth (), GetBandBandwidth (), GetGuardBandwidth ());
-  m_channel->AddRx (m_wifiSpectrumPhyInterface);
-}
-
-void
-SpectrumWifiPhy::SetChannelNumber (uint8_t nch)
-{
-  NS_LOG_FUNCTION (this << (uint16_t) nch);
-  WifiPhy::SetChannelNumber (nch);
-  if (IsInitialized ())
-    {
-      ResetSpectrumModel ();
-    }
-}
-
-void
-SpectrumWifiPhy::SetFrequency (uint16_t freq)
-{
-  NS_LOG_FUNCTION (this << freq);
-  WifiPhy::SetFrequency (freq);
-  if (IsInitialized ())
-    {
-      ResetSpectrumModel ();
-    }
-}
-
-void
-SpectrumWifiPhy::SetChannelWidth (uint8_t channelwidth)
-{
-  NS_LOG_FUNCTION (this << (uint16_t) channelwidth);
-  WifiPhy::SetChannelWidth (channelwidth);
-  if (IsInitialized ())
-    {
-      ResetSpectrumModel ();
-    }
-}
-
-void 
-SpectrumWifiPhy::ConfigureStandard (WifiPhyStandard standard)
-{
-  NS_LOG_FUNCTION (this << standard);
-  WifiPhy::ConfigureStandard (standard);
-  if (IsInitialized ())
-    {
-      ResetSpectrumModel ();
-    }
-}
-
-void
 SpectrumWifiPhy::AddOperationalChannel (uint8_t channelNumber)
 {
   m_operationalChannelList.push_back (channelNumber);
@@ -212,6 +181,7 @@ void
 SpectrumWifiPhy::StartRx (Ptr<SpectrumSignalParameters> rxParams)
 {
   NS_LOG_FUNCTION (this << rxParams);
+  Ptr<WifiSpectrumSignalParameters> temp = DynamicCast<WifiSpectrumSignalParameters> (rxParams);
   Time rxDuration = rxParams->duration;
   Ptr<SpectrumValue> receivedSignalPsd = rxParams->psd;
   NS_LOG_DEBUG ("Received signal with PSD " << *receivedSignalPsd << " and duration " << rxDuration.As (Time::NS));
@@ -220,11 +190,23 @@ SpectrumWifiPhy::StartRx (Ptr<SpectrumSignalParameters> rxParams)
     {
       senderNodeId = rxParams->txPhy->GetDevice ()->GetNode ()->GetId ();
     }
+  if (senderNodeId == this->GetDevice ()->GetNode ()->GetId () || temp->muMode != GetMuMode () || temp->ruBits != GetRuBits ())
+    {
+      return;
+    }
   NS_LOG_DEBUG ("Received signal from " << senderNodeId << " with unfiltered power " << WToDbm (Integral (*receivedSignalPsd)) << " dBm");
   // Integrate over our receive bandwidth (i.e., all that the receive
   // spectral mask representing our filtering allows) to find the
   // total energy apparent to the "demodulator".
-  Ptr<SpectrumValue> filter = WifiSpectrumValueHelper::CreateRfFilter (GetFrequency (), GetChannelWidth (), GetBandBandwidth (), GetGuardBandwidth ());
+  Ptr<SpectrumValue> filter;
+  if (!GetMuMode ())
+   {
+    filter = WifiSpectrumValueHelper::CreateRfFilter (GetFrequency (), GetChannelWidth (), GetBandBandwidth (), GetGuardBandwidth ());
+   }
+  else 
+   {
+    filter = WifiSpectrumValueHelper::CreateRfFilter (GetFrequency (), GetChannelWidth (), GetBandBandwidth (), GetGuardBandwidth (), GetRuBits ());
+   }
   SpectrumValue filteredSignal = (*filter) * (*receivedSignalPsd);
   // Add receiver antenna gain
   NS_LOG_DEBUG ("Signal power received (watts) before antenna gain: " << Integral (filteredSignal));
@@ -284,10 +266,13 @@ SpectrumWifiPhy::CreateWifiSpectrumPhyInterface (Ptr<NetDevice> device)
 }
 
 Ptr<SpectrumValue>
-SpectrumWifiPhy::GetTxPowerSpectralDensity (uint16_t centerFrequency, uint8_t channelWidth, double txPowerW, WifiModulationClass modulationClass) const
+SpectrumWifiPhy::GetTxPowerSpectralDensity (uint16_t centerFrequency, uint8_t channelWidth, double txPowerW, WifiModulationClass modulationClass, uint32_t ruBits, bool muMode) const
 {
   NS_LOG_FUNCTION (centerFrequency << (uint16_t)channelWidth << txPowerW);
   Ptr<SpectrumValue> v;
+  v = WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity (centerFrequency, channelWidth, txPowerW, GetGuardBandwidth (), ruBits, muMode);
+  // Overriding this for now. Beacons and other control messages are not sent in the HE mode. Not compatible with the spectrumModel
+  /*
   switch (modulationClass)
     {
     case WIFI_MOD_CLASS_OFDM:
@@ -309,6 +294,7 @@ SpectrumWifiPhy::GetTxPowerSpectralDensity (uint16_t centerFrequency, uint8_t ch
       NS_FATAL_ERROR ("modulation class unknown: " << modulationClass);
       break;
     }
+  */
   return v;
 }
 
@@ -317,7 +303,10 @@ SpectrumWifiPhy::StartTx (Ptr<Packet> packet, WifiTxVector txVector, Time txDura
 {
   NS_LOG_DEBUG ("Start transmission: signal power before antenna gain=" << GetPowerDbm (txVector.GetTxPowerLevel ()) << "dBm");
   double txPowerWatts = DbmToW (GetPowerDbm (txVector.GetTxPowerLevel ()) + GetTxGain ());
-  Ptr<SpectrumValue> txPowerSpectrum = GetTxPowerSpectralDensity (GetFrequency (), GetChannelWidth (), txPowerWatts, txVector.GetMode ().GetModulationClass ());
+  Ptr<SpectrumValue> txPowerSpectrum = GetTxPowerSpectralDensity (GetFrequency (), GetChannelWidth (), txPowerWatts, txVector.GetMode ().GetModulationClass (), GetRuBits (), GetMuMode ());
+  std::cout<<"transmitting node = "<< this->GetDevice()->GetNode()->GetId () << " muMode = "<< m_muMode <<" ruBits = " << m_currentRu << " packet size = "<< packet->GetSize () <<" time = " << Simulator::Now ().GetMicroSeconds ()<< std::endl;
+  packet->Print(std::cout);
+  std::cout<<"\n\n\n";
   Ptr<WifiSpectrumSignalParameters> txParams = Create<WifiSpectrumSignalParameters> ();
   txParams->duration = txDuration;
   txParams->psd = txPowerSpectrum;
@@ -325,6 +314,8 @@ SpectrumWifiPhy::StartTx (Ptr<Packet> packet, WifiTxVector txVector, Time txDura
   txParams->txPhy = m_wifiSpectrumPhyInterface->GetObject<SpectrumPhy> ();
   txParams->txAntenna = m_antenna;
   txParams->packet = packet;
+  txParams->ruBits = GetRuBits ();
+  txParams->muMode = GetMuMode ();
   NS_LOG_DEBUG ("Starting transmission with power " << WToDbm (txPowerWatts) << " dBm on channel " << (uint16_t) GetChannelNumber ());
   NS_LOG_DEBUG ("Starting transmission with integrated spectrum power " << WToDbm (Integral (*txPowerSpectrum)) << " dBm; spectrum model Uid: " << txPowerSpectrum->GetSpectrumModel ()->GetUid ());
   m_channel->StartTx (txParams);

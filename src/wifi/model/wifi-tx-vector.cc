@@ -34,7 +34,9 @@ WifiTxVector::WifiTxVector ()
     m_aggregation (false),
     m_stbc (false),
     m_modeInitialized (false),
-    m_txPowerLevelInitialized (false)
+    m_txPowerLevelInitialized (false),
+    m_muMode (0),
+    m_ruBits (1)
 {
 }
 
@@ -205,6 +207,30 @@ void
 WifiTxVector::SetStbc (bool stbc)
 {
   m_stbc = stbc;
+}
+
+void 
+WifiTxVector::SetMuMode (bool muMode)
+{
+  m_muMode = muMode;
+}
+
+void 
+WifiTxVector::SetRuBits (uint32_t ruBits)
+{
+  m_ruBits = ruBits;
+}
+
+bool 
+WifiTxVector::GetMuMode (void) const
+{
+  return m_muMode;
+}
+
+uint32_t 
+WifiTxVector::GetRuBits (void) const
+{
+  return m_ruBits;
 }
 
 std::ostream & operator << ( std::ostream &os, const WifiTxVector &v)

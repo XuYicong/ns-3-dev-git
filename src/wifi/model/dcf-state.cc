@@ -56,14 +56,6 @@ DcfState::~DcfState ()
 }
 
 void
-DcfState::DoDispose (void)
-{
-  NS_LOG_FUNCTION (this);
-  m_txop->Dispose ();
-  m_txop = 0;
-}
-
-void
 DcfState::SetAifsn (uint32_t aifsn)
 {
   NS_LOG_FUNCTION (this << aifsn);
@@ -204,6 +196,13 @@ DcfState::NotifyAccessGranted (void)
   NS_ASSERT (m_accessRequested);
   m_accessRequested = false;
   m_txop->NotifyAccessGranted ();
+}
+
+void
+DcfState::CancelAccessRequested (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_accessRequested = false;
 }
 
 void

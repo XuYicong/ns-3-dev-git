@@ -203,6 +203,11 @@ public:
    * \param stbc enable or disable STBC
    */
   void SetStbc (bool stbc);
+  bool GetMuMode (void) const;
+  uint32_t GetRuBits (void) const;
+
+  void SetMuMode (bool muMode);
+  void SetRuBits (uint32_t ruBits);
 
 
 private:
@@ -225,6 +230,8 @@ private:
 
   bool     m_modeInitialized;         /**< Internal initialization flag */
   bool     m_txPowerLevelInitialized; /**< Internal initialization flag */
+  bool 	   m_muMode;
+  uint32_t m_ruBits; 
 };
 
 /**

@@ -27,7 +27,6 @@ namespace ns3 {
 
 NS_OBJECT_ENSURE_REGISTERED (WifiMacHeader);
 
-/// type enumeration
 enum
 {
   TYPE_MGT = 0,
@@ -35,7 +34,6 @@ enum
   TYPE_DATA = 2
 };
 
-/// subtype enumeration
 enum
 {
   //Reserved: 0 - 6
@@ -236,15 +234,15 @@ WifiMacHeader::SetType (WifiMacType type)
       break;
     case WIFI_MAC_MGT_DISASSOCIATION:
       m_ctrlType = TYPE_MGT;
-      m_ctrlSubtype = 10;
+      m_ctrlSubtype = 16;
       break;
     case WIFI_MAC_MGT_AUTHENTICATION:
       m_ctrlType = TYPE_MGT;
-      m_ctrlSubtype = 11;
+      m_ctrlSubtype = 17;
       break;
     case WIFI_MAC_MGT_DEAUTHENTICATION:
       m_ctrlType = TYPE_MGT;
-      m_ctrlSubtype = 12;
+      m_ctrlSubtype = 18;
       break;
     case WIFI_MAC_MGT_ACTION:
       m_ctrlType = TYPE_MGT;
@@ -257,6 +255,18 @@ WifiMacHeader::SetType (WifiMacType type)
     case WIFI_MAC_MGT_MULTIHOP_ACTION:
       m_ctrlType = TYPE_MGT;
       m_ctrlSubtype = 15;
+      break;
+    case WIFI_MAC_MGT_BSR_ACK: //infocom: Type and subtype for TF beacon, TF response, TF 
+      m_ctrlType = TYPE_MGT;
+      m_ctrlSubtype = 10;
+      break;
+    case WIFI_MAC_MGT_TF_RESP: //infocom: Type and subtype for TF beacon, TF response, TF
+      m_ctrlType = TYPE_MGT;
+      m_ctrlSubtype = 11;
+      break;
+    case WIFI_MAC_MGT_TF: //infocom: Type and subtype for TF beacon, TF response, TF
+      m_ctrlType = TYPE_MGT;
+      m_ctrlSubtype = 12;
       break;
     case WIFI_MAC_DATA:
       m_ctrlType = TYPE_DATA;
@@ -511,17 +521,23 @@ WifiMacHeader::GetType (void) const
         case 8:
           return WIFI_MAC_MGT_BEACON;
         case 10:
-          return WIFI_MAC_MGT_DISASSOCIATION;
+          return WIFI_MAC_MGT_BSR_ACK; //GetType for TF
         case 11:
-          return WIFI_MAC_MGT_AUTHENTICATION;
+          return WIFI_MAC_MGT_TF_RESP;
         case 12:
-          return WIFI_MAC_MGT_DEAUTHENTICATION;
+          return WIFI_MAC_MGT_TF;
         case 13:
           return WIFI_MAC_MGT_ACTION;
         case 14:
           return WIFI_MAC_MGT_ACTION_NO_ACK;
         case 15:
           return WIFI_MAC_MGT_MULTIHOP_ACTION;
+        case 16:
+          return WIFI_MAC_MGT_DISASSOCIATION;
+        case 17:
+          return WIFI_MAC_MGT_AUTHENTICATION;
+        case 18:
+          return WIFI_MAC_MGT_DEAUTHENTICATION;
         }
       break;
     case TYPE_CTL:
@@ -576,7 +592,7 @@ WifiMacHeader::GetType (void) const
       break;
     }
   // NOTREACHED
-  NS_ASSERT (false);
+  //NS_ASSERT (false);
   return (WifiMacType) - 1;
 }
 
@@ -634,6 +650,27 @@ WifiMacHeader::IsCfpoll (void) const
     default:
       return false;
     }
+}
+
+void
+WifiMacHeader::SetBsrAck (void) //infocom: set TF beacon, response and TF
+{
+  m_ctrlType = TYPE_MGT;
+  m_ctrlSubtype = 10;
+}
+
+void
+WifiMacHeader::SetTriggerFrameResp (void) //infocom: set TF beacon, response and TF
+{
+  m_ctrlType = TYPE_MGT;
+  m_ctrlSubtype = 11;
+}
+
+void
+WifiMacHeader::SetTriggerFrame (void) //infocom: set TF beacon, response and TF
+{
+  m_ctrlType = TYPE_MGT;
+  m_ctrlSubtype = 12;
 }
 
 bool
@@ -737,6 +774,25 @@ WifiMacHeader::IsBlockAck (void) const
 {
   return (GetType () == WIFI_MAC_CTL_BACKRESP) ? true : false;
 }
+
+bool
+WifiMacHeader::IsBsrAck (void) const //infocom: TF
+{
+  return (GetType () == WIFI_MAC_MGT_BSR_ACK);
+}
+
+bool
+WifiMacHeader::IsTFResponse (void) const //infocom: TF
+{
+  return (GetType () == WIFI_MAC_MGT_TF_RESP);
+}
+
+bool
+WifiMacHeader::IsTF (void) const //infocom: TF
+{
+  return (GetType () == WIFI_MAC_MGT_TF);
+}
+
 
 uint16_t
 WifiMacHeader::GetRawDuration (void) const
@@ -965,6 +1021,9 @@ case WIFI_MAC_ ## x: \
       FOO (CTL_BACKRESP);
 
       FOO (MGT_BEACON);
+      FOO (MGT_BSR_ACK);
+      FOO (MGT_TF_RESP);
+      FOO (MGT_TF);
       FOO (MGT_ASSOCIATION_REQUEST);
       FOO (MGT_ASSOCIATION_RESPONSE);
       FOO (MGT_DISASSOCIATION);
@@ -1058,6 +1117,9 @@ WifiMacHeader::Print (std::ostream &os) const
     case WIFI_MAC_MGT_PROBE_RESPONSE:
     case WIFI_MAC_MGT_AUTHENTICATION:
     case WIFI_MAC_MGT_DEAUTHENTICATION:
+    case WIFI_MAC_MGT_BSR_ACK: //infocom: TF
+    case WIFI_MAC_MGT_TF_RESP:
+    case WIFI_MAC_MGT_TF:
       PrintFrameControl (os);
       os << " Duration/ID=" << m_duration << "us"
          << ", DA=" << m_addr1 << ", SA=" << m_addr2

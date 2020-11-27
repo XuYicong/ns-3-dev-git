@@ -53,5 +53,4 @@ WifiSpectrumSignalParameters::Copy ()
   return wssp;
 }
 
-
 } // namespace ns3

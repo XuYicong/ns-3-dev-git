@@ -35,9 +35,12 @@
 #include "erp-information.h"
 #include "edca-parameter-set.h"
 #include "he-capabilities.h"
-
+#include <map> //infocom
+#include "ns3/mac48-address.h" //infocom
+ 
 namespace ns3 {
 
+#define MAX_STATIONS_HE 32
 /**
  * \ingroup wifi
  * Implement the header for management frames of type association request.
@@ -608,9 +611,77 @@ public:
    * \return The TypeId.
    */
   static TypeId GetTypeId (void);
+  
+};
+
+class MgtBsrAckHeader : public Header
+{
+public:
+  /** Register this type. */
+  /**
+   * Register this type.
+   * \return The TypeId.
+   */
+
+  static TypeId GetTypeId (void);
+  void Serialize (Buffer::Iterator start) const;
+  uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t GetSerializedSize (void) const; 
+  TypeId GetInstanceTypeId (void) const;
+  void Print (std::ostream &os) const; 
+  void SetRu (uint16_t data);
+  uint16_t GetRu (void) const;
+
+private:
+  uint16_t m_ru;
+};
+
+class MgtTFRespHeader : public Header
+{
+public:
+
+  static TypeId GetTypeId (void);
+  void Serialize (Buffer::Iterator start) const;
+  uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t GetSerializedSize (void) const;
+  void SetData (uint16_t data);
+  uint16_t GetData (void) const;
+  void SetRu (uint16_t data);
+  uint16_t GetRu (void) const;
+  TypeId GetInstanceTypeId (void) const;
+  void Print (std::ostream &os) const;
+
+private:
+  uint16_t m_data;
+  uint16_t m_ru;
 };
 
 
+class MgtTFHeader : public Header
+{
+public:
+  typedef std::map<Mac48Address, uint32_t> RUAllocations;
+  static TypeId GetTypeId (void);
+  TypeId GetInstanceTypeId (void) const;
+  void Serialize (Buffer::Iterator start) const;
+  uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t GetSerializedSize (void) const;
+  RUAllocations GetRUAllocations (void) const;
+  void SetRUAllocations (RUAllocations alloc);
+  void SetNoSta (uint32_t n);
+  uint32_t GetNoSta (void) const;
+  void SetUplinkFlag (uint32_t flag);
+  uint32_t GetUplinkFlag (void) const; 
+  void SetTfDuration (uint32_t tfDuration);
+  uint32_t GetTfDuration (void) const;
+  void Print (std::ostream &os) const;
+
+private:
+  RUAllocations m_RUAllocations;
+  uint32_t m_noSta;
+  uint32_t m_ulFlag;
+  uint32_t m_tfDuration;
+};
 /****************************
 *     Action frames
 *****************************/

@@ -20,6 +20,7 @@
  *          Mirko Banchi <mk.banchi@gmail.com>
  */
 
+#include "ns3/address-utils.h"
 #include "mgt-headers.h"
 #include "ns3/simulator.h"
 
@@ -447,6 +448,258 @@ MgtBeaconHeader::GetTypeId (void)
 }
 
 
+NS_OBJECT_ENSURE_REGISTERED (MgtBsrAckHeader);
+
+
+TypeId
+MgtBsrAckHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::MgtBsrAckHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Wifi")
+    .AddConstructor<MgtBsrAckHeader> ()
+  ;
+  return tid;
+}
+
+void
+MgtBsrAckHeader::Serialize (Buffer::Iterator start) const
+{
+  start.WriteHtonU16 (m_ru);
+}
+
+uint32_t 
+MgtBsrAckHeader::Deserialize (Buffer::Iterator start)
+{
+  m_ru = start.ReadNtohU16 ();
+  return 2;
+}
+
+uint32_t 
+MgtBsrAckHeader::GetSerializedSize (void) const
+{
+  return 2;
+}
+
+void 
+MgtBsrAckHeader::Print (std::ostream &os) const
+{
+  os << "RU = "<<m_ru;
+}
+
+TypeId
+MgtBsrAckHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+void 
+MgtBsrAckHeader::SetRu (uint16_t ru)
+{
+  m_ru = ru;
+}
+
+uint16_t
+MgtBsrAckHeader::GetRu (void) const
+{
+  return m_ru;
+}
+
+
+// Define TF Response Header
+NS_OBJECT_ENSURE_REGISTERED (MgtTFRespHeader);
+
+TypeId
+MgtTFRespHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::MgtTFRespHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Wifi")
+    .AddConstructor<MgtTFRespHeader> ()
+  ;
+  return tid;
+}
+
+TypeId
+MgtTFRespHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+void 
+MgtTFRespHeader::Print (std::ostream &os) const
+{
+  os << "BSR = " << m_data << ", RU = "<<m_ru;
+}
+
+void
+MgtTFRespHeader::Serialize (Buffer::Iterator start) const
+{
+  start.WriteHtonU16 (m_data);
+  start.WriteHtonU16 (m_ru);
+}
+
+uint32_t
+MgtTFRespHeader::Deserialize (Buffer::Iterator start)
+{
+  m_data = start.ReadNtohU16 ();
+  m_ru = start.ReadNtohU16 ();
+  return 4;
+}
+
+uint32_t 
+MgtTFRespHeader::GetSerializedSize (void) const
+{
+  return 4;
+}
+
+void 
+MgtTFRespHeader::SetData (uint16_t data)
+{
+  m_data = data;
+}
+
+uint16_t
+MgtTFRespHeader::GetData (void) const
+{
+  return m_data;
+}
+
+void 
+MgtTFRespHeader::SetRu (uint16_t ru)
+{
+  m_ru = ru;
+}
+
+uint16_t
+MgtTFRespHeader::GetRu (void) const
+{
+  return m_ru;
+}
+
+NS_OBJECT_ENSURE_REGISTERED (MgtTFHeader);
+
+
+TypeId
+MgtTFHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::MgtTFHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Wifi")
+    .AddConstructor<MgtTFHeader> ()
+  ;
+  return tid;
+}
+
+void
+MgtTFHeader::Serialize (Buffer::Iterator start) const
+{
+  start.WriteHtonU32 (m_noSta);
+  start.WriteHtonU32 (m_ulFlag);
+  start.WriteHtonU32 (m_tfDuration);
+
+  NS_ASSERT (m_noSta == m_RUAllocations.size());
+  Mac48Address addr;
+  uint32_t ru;
+  RUAllocations::const_iterator it = m_RUAllocations.begin();
+  while (it!=m_RUAllocations.end ())
+   {
+     addr = it->first;
+     ru = it->second; 
+     WriteTo (start, addr);
+     start.WriteHtonU32 (ru);
+     it++;
+   }
+}
+
+uint32_t 
+MgtTFHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+  m_noSta = i.ReadNtohU32 ();
+  m_ulFlag = i.ReadNtohU32 ();
+  m_tfDuration = i.ReadNtohU32 ();
+
+  Mac48Address addr;
+  uint32_t ru;
+  
+  for (uint32_t it = 0; it < m_noSta; it++)
+   {
+     ReadFrom (i, addr);
+     ru = i.ReadNtohU32();
+     m_RUAllocations.insert(std::pair<Mac48Address, uint32_t> (addr, ru));
+   }
+
+  uint32_t dist = i.GetDistanceFrom(start);
+  return dist;
+}
+
+uint32_t 
+MgtTFHeader::GetSerializedSize (void) const
+{
+  uint32_t size = 4 + 4 + m_noSta * (6 + 4) + 4;
+  return size;
+}
+
+uint32_t
+MgtTFHeader::GetTfDuration (void) const
+{
+  return m_tfDuration;
+}
+
+void
+MgtTFHeader::SetTfDuration (uint32_t tfDuration)
+{
+  m_tfDuration = tfDuration;
+}
+
+void 
+MgtTFHeader::SetUplinkFlag (uint32_t flag)
+{
+  m_ulFlag = flag;
+}
+
+uint32_t 
+MgtTFHeader::GetUplinkFlag (void) const
+{
+  return m_ulFlag;
+}
+void 
+MgtTFHeader::SetRUAllocations (RUAllocations alloc)
+{
+  m_RUAllocations = alloc;
+}
+
+MgtTFHeader::RUAllocations 
+MgtTFHeader::GetRUAllocations (void) const
+{
+  return m_RUAllocations;
+}
+
+void 
+MgtTFHeader::SetNoSta (uint32_t n)
+{
+  m_noSta = n;
+}
+
+uint32_t 
+MgtTFHeader::GetNoSta (void) const
+{
+  return m_noSta;
+}
+
+void 
+MgtTFHeader::Print (std::ostream &os) const
+{
+  os << "Number of stations allocated " << m_noSta << ", "
+     << "ULFlag " << m_ulFlag;
+}
+
+TypeId
+MgtTFHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
 /***********************************************************
  *          Assoc Request
  ***********************************************************/

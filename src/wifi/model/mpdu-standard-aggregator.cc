@@ -21,6 +21,7 @@
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
 #include "mpdu-standard-aggregator.h"
+#include "ns3/simulator.h"
 
 NS_LOG_COMPONENT_DEFINE ("MpduStandardAggregator");
 

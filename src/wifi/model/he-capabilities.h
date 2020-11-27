@@ -40,10 +40,7 @@ public:
    * \param hesupported the HE supported indicator
    */
   void SetHeSupported (uint8_t hesupported);
-  /**
-   * Get the wifi information element ID
-   * \returns the wifi information element ID
-   */
+
   WifiInformationElementId ElementId () const;
   /**
    * Get information field size
@@ -290,8 +287,8 @@ private:
 std::ostream &operator << (std::ostream &os, const HeCapabilities &HeCapabilities);
 std::istream &operator >> (std::istream &is, HeCapabilities &HeCapabilities);
 
-ATTRIBUTE_HELPER_HEADER (HeCapabilities);
-
+ATTRIBUTE_HELPER_HEADER (HeCapabilities)
+;
 } //namespace ns3
 
 #endif /* HE_CAPABILITY_H */

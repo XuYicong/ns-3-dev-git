@@ -105,7 +105,7 @@ public:
    * \param guardBandwidth width of the guard band (MHz)
    * \return a pointer to a newly allocated SpectrumValue representing the HE OFDM Transmit Power Spectral Density in W/Hz for each Band
    */
-  static Ptr<SpectrumValue> CreateHeOfdmTxPowerSpectralDensity (uint32_t centerFrequency, uint8_t channelWidth, double txPowerW, uint8_t guardBandwidth);
+  static Ptr<SpectrumValue> CreateHeOfdmTxPowerSpectralDensity (uint32_t centerFrequency, uint8_t channelWidth, double txPowerW, uint8_t guardBandwidth, uint32_t ruBits, bool muMode);
 
   /**
    * Create a power spectral density corresponding to the noise
@@ -140,6 +140,7 @@ public:
    * to an received power spectral density
    */
   static Ptr<SpectrumValue> CreateRfFilter (uint32_t centerFrequency, uint8_t channelWidth, double bandBandwidth, uint8_t guardBandwidth);
+  static Ptr<SpectrumValue> CreateRfFilter (uint32_t centerFrequency, uint8_t channelWidth, double bandBandwidth, uint8_t guardBandwidth, uint32_t ruBits);
 };
 
 /**

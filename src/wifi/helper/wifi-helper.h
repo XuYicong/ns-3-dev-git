@@ -26,6 +26,7 @@
 #include "ns3/trace-helper.h"
 #include "ns3/wifi-phy.h"
 #include "wifi-mac-helper.h"
+#include "ns3/wifi-remote-station-manager.h"
 
 namespace ns3 {
 
@@ -162,7 +163,7 @@ protected:
                                 WifiTxVector txVector,
                                 MpduInfo aMpdu,
                                 SignalNoiseDbm signalNoise);
-
+  
   ObjectFactory m_phy; ///< PHY object
   ObjectFactory m_errorRateModel; ///< error rate model
 
@@ -351,7 +352,6 @@ public:
   * \return the number of stream indices assigned by this helper
   */
   int64_t AssignStreams (NetDeviceContainer c, int64_t stream);
-
 
 protected:
   ObjectFactory m_stationManager; ///< station manager

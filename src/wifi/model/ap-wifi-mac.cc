@@ -55,7 +55,7 @@ ApWifiMac::GetTypeId (void)
                    MakePointerChecker<UniformRandomVariable> ())
     .AddAttribute ("EnableBeaconJitter",
                    "If beacons are enabled, whether to jitter the initial send event.",
-                   BooleanValue (true),
+                   BooleanValue (false),
                    MakeBooleanAccessor (&ApWifiMac::m_enableBeaconJitter),
                    MakeBooleanChecker ())
     .AddAttribute ("BeaconGeneration",
@@ -83,7 +83,7 @@ ApWifiMac::ApWifiMac ()
 {
   NS_LOG_FUNCTION (this);
   m_beaconDca = CreateObject<DcaTxop> ();
-  m_beaconDca->SetAifsn (1);
+  m_beaconDca->SetAifsn (0);
   m_beaconDca->SetMinCw (0);
   m_beaconDca->SetMaxCw (0);
   m_beaconDca->SetLow (m_low);
@@ -92,6 +92,14 @@ ApWifiMac::ApWifiMac ()
 
   //Let the lower layers know that we are acting as an AP.
   SetTypeOfStation (AP);
+
+  m_tfPacketDuration = 12932;
+  m_muModeToStart = false;
+  for (int ru = 0; ru < 9; ru++)
+   {
+     m_lowMu[ru]->SetKillTriggerFrameBeaconRetransmissionCallback (MakeCallback (&ApWifiMac::KillTriggerFrameBeaconRetransmission, this));
+   }
+  m_beaconDca->SetTfAccessGrantCallback (MakeCallback (&ApWifiMac::TriggerFrameExpire, this));
 }
 
 ApWifiMac::~ApWifiMac ()
@@ -337,11 +345,71 @@ ApWifiMac::ForwardDown (Ptr<const Packet> packet, Mac48Address from,
     {
       //Sanity check that the TID is valid
       NS_ASSERT (tid < 8);
-      m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+      if (m_muModeToStart)
+       {
+         RegularWifiMac::RUAllocations::const_iterator it;
+         it = m_tfAlloc.find (to);
+         if (it == m_tfAlloc.end ())
+          {
+            m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+          }
+         else
+          {
+            m_edcaMu[it->second][QosUtilsMapTidToAc (tid)]->QueueButDontSend (packet, hdr);
+          }
+       }
+      else if (!GetMuMode ())
+       {
+         m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+       }
+      else 
+       {
+         RegularWifiMac::RUAllocations::const_iterator it;
+         it = m_tfAlloc.find (to);
+         if (it == m_tfAlloc.end ())
+          {
+            m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+          }
+         else
+          {
+            m_dcfManagerMu[it->second]->UpdateBusyDuration (); // Removes BUSY state from dcfManagerMu
+            m_edcaMu[it->second][QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+          }
+       }
     }
   else
     {
-      m_dca->Queue (packet, hdr);
+      if (m_muModeToStart)
+       {
+         RegularWifiMac::RUAllocations::const_iterator it;
+         it = m_tfAlloc.find (to);
+         if (it == m_tfAlloc.end ())
+          {
+            m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+          }
+         else
+          {
+            m_edcaMu[it->second][QosUtilsMapTidToAc (tid)]->QueueButDontSend (packet, hdr);
+          }
+       }
+      else if (!GetMuMode ())
+       {
+         m_dca->Queue (packet, hdr);
+       }
+      else 
+       {
+         RegularWifiMac::RUAllocations::const_iterator it;
+         it = m_tfAlloc.find (to);
+         if (it == m_tfAlloc.end ())
+          {
+            m_dca->Queue (packet, hdr);
+          }
+         else
+          {
+            m_dcfManagerMu[it->second]->UpdateBusyDuration ();
+            m_dcaMu[it->second]->Queue (packet, hdr);
+          }
+       }
     }
 }
 
@@ -585,7 +653,6 @@ ApWifiMac::SendProbeResp (Mac48Address to)
   hdr.SetAddr3 (GetAddress ());
   hdr.SetDsNotFrom ();
   hdr.SetDsNotTo ();
-  hdr.SetNoOrder ();
   Ptr<Packet> packet = Create<Packet> ();
   MgtProbeResponseHeader probe;
   probe.SetSsid (GetSsid ());
@@ -610,6 +677,7 @@ ApWifiMac::SendProbeResp (Mac48Address to)
     {
       probe.SetHtCapabilities (GetHtCapabilities ());
       probe.SetHtOperation (GetHtOperation ());
+      hdr.SetNoOrder ();
     }
   if (m_vhtSupported || m_heSupported)
     {
@@ -640,7 +708,6 @@ ApWifiMac::SendAssocResp (Mac48Address to, bool success)
   hdr.SetAddr3 (GetAddress ());
   hdr.SetDsNotFrom ();
   hdr.SetDsNotTo ();
-  hdr.SetNoOrder ();
   Ptr<Packet> packet = Create<Packet> ();
   MgtAssocResponseHeader assoc;
   StatusCode code;
@@ -668,6 +735,7 @@ ApWifiMac::SendAssocResp (Mac48Address to, bool success)
     {
       assoc.SetHtCapabilities (GetHtCapabilities ());
       assoc.SetHtOperation (GetHtOperation ());
+      hdr.SetNoOrder ();
     }
   if (m_vhtSupported || m_heSupported)
     {
@@ -698,7 +766,6 @@ ApWifiMac::SendOneBeacon (void)
   hdr.SetAddr3 (GetAddress ());
   hdr.SetDsNotFrom ();
   hdr.SetDsNotTo ();
-  hdr.SetNoOrder ();
   Ptr<Packet> packet = Create<Packet> ();
   MgtBeaconHeader beacon;
   beacon.SetSsid (GetSsid ());
@@ -723,6 +790,7 @@ ApWifiMac::SendOneBeacon (void)
     {
       beacon.SetHtCapabilities (GetHtCapabilities ());
       beacon.SetHtOperation (GetHtOperation ());
+      hdr.SetNoOrder ();
     }
   if (m_vhtSupported || m_heSupported)
     {
@@ -758,6 +826,218 @@ ApWifiMac::SendOneBeacon (void)
 }
 
 void
+ApWifiMac::KillTriggerFrameBeaconRetransmission (void)
+{
+  /*
+   * This function will be called by the PHY layer 
+   * as soon as the AP starts receiving a TF Response
+   * In this case, a Trigger Frame needs to be sent out
+   * with allocations corresponding to STAs who were
+   * successful in sending out their BSRs.
+   */
+  if (!m_tfBeaconExpire.IsExpired ())
+   {
+     std::cout<<"Canceling TF retransmission because at least one STA transmitted, time = "<<Simulator::Now ().GetMicroSeconds () << std::endl;	
+     //m_tfBeaconExpire.Cancel ();
+     //m_cancelEvent.Cancel ();
+     Time timeToExpire = MicroSeconds (440) + GetSifs ();
+     std::cout<<"Collision canceling scheduled at "<<(Now () + timeToExpire).GetMicroSeconds () << std::endl;
+   }
+}
+
+void
+ApWifiMac::TriggerFrameExpire ()
+{
+   m_muModeToStart = false;
+   /*
+    * At this point TF has gained access to the medium, now declare the 20 MHz dcfManager busy until MU mode ends
+    */
+   Time timeToExpire = CalculateCurrentTfDuration () + GetSifs () + GetSlot (); // Difs
+   //m_tfBeaconExpire = Simulator::Schedule (timeToExpire, &ApWifiMac::StartMuModeUplink, this);
+   std::cout<<"DIFS canceling scheduled at "<<(Now () + timeToExpire).GetMicroSeconds () << std::endl;
+
+   m_dcfManager->NotifyMaybeCcaBusyStartNow (GetTfDuration () * GetSlot ()); // Tell the 20 MHz DcfManager that you are busy until MU mode ends  
+   m_muModeExpireEvent = Simulator::Schedule (GetTfDuration () * GetSlot (), &ApWifiMac::StopMuMode, this);
+   if (!m_muUlFlag) // Don't start MU Mode at AP if this is a UL TF
+    {
+      Simulator::Schedule (MicroSeconds (200), &ApWifiMac::StartMuModeDelayed, this); // Hack: The TF takes 200 microseconds to reach the RX, so start MU mode only after TF reaches STAs
+    }
+}
+
+void
+ApWifiMac::StartMuModeDelayed (void)
+{
+  SetMuMode (1);
+  for (RegularWifiMac::RUAllocations::iterator it = m_tfAlloc.begin (); it!=m_tfAlloc.end (); ++it)
+   {
+     m_dcfManagerMu[it->second]->UpdateBusyDuration ();
+     for (uint32_t ac = 0; ac < 8; ac++)
+      {
+        m_edcaMu[it->second][QosUtilsMapTidToAc(ac)]->StartAccessIfNeeded ();
+      }
+     m_dcfManagerMu[it->second]->DoRestartAccessTimeoutIfNeeded ();
+   }
+}
+
+void 
+ApWifiMac::SendBsrAck (Mac48Address to, uint32_t ru)
+{
+  NS_LOG_FUNCTION (this);
+
+  WifiMacHeader hdr;
+  hdr.SetBsrAck ();
+  hdr.SetAddr1 (to);
+  hdr.SetAddr2 (GetAddress ());
+  hdr.SetAddr3 (GetAddress ());
+  hdr.SetDsNotFrom ();
+  hdr.SetDsNotTo ();
+  Ptr<Packet> packet = Create<Packet> ();
+
+  MgtBsrAckHeader bsrAck;
+  bsrAck.SetRu (ru);
+  packet->AddHeader (bsrAck);
+
+  std::cout<<"Queueing BSR ACK, time = "<<Simulator::Now ().GetMicroSeconds () << std::endl;  
+  m_edcaMu[ru][AC_BE]->SetAifsn (0);
+  m_edcaMu[ru][AC_BE]->SetMinCw (0);
+  m_edcaMu[ru][AC_BE]->SetMaxCw (0);
+  m_edcaMu[ru][AC_BE]->Queue (packet, hdr);
+  m_dcfManagerMu[ru]->UpdateBusyDuration ();
+  m_edcaMu[ru][AC_BE]->StartAccessIfNeeded ();
+  m_dcfManagerMu[ru]->DoRestartAccessTimeoutIfNeeded ();
+}
+
+void
+ApWifiMac::SendTriggerFrame(bool flag)
+{
+  NS_LOG_FUNCTION (this);
+  /*
+   * The beaconDca is used to send TF beacon and TF, so the below 
+   * parameters do not apply for TF and TF beacon; the Tx will start 
+   * 25 microseconds after scheduling because of Sifs and 1 Slot. 
+   * The below parameters are applicable for DL data packets
+   */
+  if (m_tfPacketDuration == 0)
+   {
+     if (!flag)
+      {
+        std::cout << "No data to send in DL, not sending TF\n";
+        Simulator::ScheduleNow (&ApWifiMac::StopMuMode, this);
+        return; 
+      }
+   }
+  if (!flag)
+   {
+    for (uint32_t ru = 0; ru < 9; ru++)
+     {
+       m_dcaMu[ru]->SetAifsn (0);
+       m_dcaMu[ru]->SetMinCw (0);
+       m_dcaMu[ru]->SetMaxCw (0);
+       for (uint32_t ac = 0; ac < 8; ac++)
+        {
+	  m_edcaMu[ru][QosUtilsMapTidToAc(ac)]->SetAifsn (0);
+	  m_edcaMu[ru][QosUtilsMapTidToAc(ac)]->SetMinCw (0);
+	  m_edcaMu[ru][QosUtilsMapTidToAc(ac)]->SetMaxCw (0);
+        }
+     }
+   }
+  m_muModeToStart = true;
+  WifiMacHeader hdr;
+  hdr.SetTriggerFrame ();
+  hdr.SetAddr1 (Mac48Address::GetBroadcast());
+  hdr.SetAddr2 (GetAddress ());
+  hdr.SetAddr3 (GetAddress ());
+  hdr.SetDsNotFrom ();
+  hdr.SetDsNotTo ();
+  Ptr<Packet> packet = Create<Packet> ();
+ 
+  CalculateTfDuration ();
+  MgtTFHeader tf;
+  tf.SetNoSta (m_tfAlloc.size ());
+  tf.SetRUAllocations (m_tfAlloc);
+  tf.SetUplinkFlag (flag);
+  tf.SetTfDuration (GetTfDuration ());
+  packet->AddHeader (tf);
+
+  std::cout<<"Sending TF, time = "<< Simulator::Now ().GetMicroSeconds ()<<std::endl;
+  std::cout<<"Number of STAs allocated = " << m_tfAlloc.size () <<std::endl;
+  for (RegularWifiMac::RUAllocations::iterator it = m_tfAlloc.begin (); it!=m_tfAlloc.end (); ++it)
+   {
+	std::cout <<"STA = "<<it->first <<"\t RU = "<<it->second<<std::endl;
+   }
+  m_beaconDca->Queue (packet, hdr);
+  m_dcfManager->UpdateBusyDuration ();
+  m_beaconDca->StartAccessIfNeeded ();
+  m_dcfManager->DoRestartAccessTimeoutIfNeeded ();
+}
+
+
+void
+ApWifiMac::StartMuModeUplink (void) //starts the OFDMA based MU Mode
+{
+  NS_ASSERT (m_triggerFrameUplinkEvent.IsExpired ());
+  m_muUlFlag = 1;
+  RegularWifiMac::RUAllocations alloc;
+  uint32_t j = 0;
+  uint32_t n_sc = GetNScheduled ();
+  for (std::list<Mac48Address>::const_iterator i = m_staList.begin (); i != m_staList.end (); i++)
+   {
+     if (j >= n_sc)
+      {
+	alloc.insert (std::pair<Mac48Address, uint32_t>(Mac48Address::GetBroadcast(), 9-n_sc));        
+      }
+     else 
+      {
+        alloc.insert (std::pair<Mac48Address, uint32_t>(*i, j%9)); 
+      }
+     j++;
+     if (j == 9)
+      {
+        break;
+      }
+   }
+  m_tfAlloc = alloc;
+  m_triggerFrameUplinkEvent = Simulator::ScheduleNow (&ApWifiMac::SendTriggerFrame, this, m_muUlFlag);
+}
+
+
+void
+ApWifiMac::StartMuModeDownlink (void) //starts OFDMA mode in DL
+{
+  NS_ASSERT (m_triggerFrameDownlinkEvent.IsExpired ());
+  m_muUlFlag = 0;
+  RegularWifiMac::RUAllocations alloc;
+  uint32_t j = 0;
+    for (std::list<Mac48Address>::const_iterator i = m_staList.begin (); i != m_staList.end (); i++)
+      {
+	alloc.insert (std::pair<Mac48Address, uint32_t>(*i, j%9)); // Hack: It does not matter which 9 users are scheduled, so always schedule first 9 
+        j++;
+        if (j == 9)
+         {
+           break;
+         }
+      }
+  m_tfAlloc = alloc;
+  uint32_t temp[9];
+  uint32_t max_data = 0;
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      m_phyMu[i]->SetMuMode (1); //Just making sure that all MU PHYs are in the MU Mode
+      temp[i] = m_low->CalculateApPayloadDuration (); // The data is buffered initially into regular queues, so using m_low instead of m_lowMu. Must fix after the same queue is used
+    }
+  for (uint32_t i = 0; i < 9; i++)
+    {
+      if (temp[i] > max_data)
+       {
+         max_data = temp[i];
+       }
+    }
+  m_tfPacketDuration = max_data;
+  CalculateTfDuration ();
+  m_triggerFrameDownlinkEvent = Simulator::ScheduleNow (&ApWifiMac::SendTriggerFrame, this, m_muUlFlag); //Downlink TF
+}
+
+void
 ApWifiMac::TxOk (const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this);
@@ -783,6 +1063,70 @@ ApWifiMac::TxFailed (const WifiMacHeader &hdr)
       NS_LOG_DEBUG ("assoc failed with sta=" << hdr.GetAddr1 ());
       m_stationManager->RecordGotAssocTxFailed (hdr.GetAddr1 ());
     }
+}
+
+Time 
+ApWifiMac::CalculateCurrentTfDuration (void)
+{
+  Ptr<Packet> trigger_frame = Create<Packet> ();
+  MgtTFHeader tf;
+  tf.SetNoSta (m_tfAlloc.size ());
+  tf.SetRUAllocations (m_tfAlloc);
+  tf.SetUplinkFlag (m_muUlFlag);
+  tf.SetTfDuration (GetTfDuration ());
+  trigger_frame->AddHeader (tf); 
+  WifiMacHeader hdr;
+  hdr.SetTriggerFrame ();
+  hdr.SetAddr1 (Mac48Address::GetBroadcast());
+  hdr.SetAddr2 (GetAddress ());
+  hdr.SetAddr3 (GetAddress ());
+  hdr.SetDsNotFrom ();
+  hdr.SetDsNotTo ();
+  return m_low->CalculateTfBeaconDuration (trigger_frame, hdr);
+}
+
+void
+ApWifiMac::CalculateTfDuration (void)
+{
+  Ptr<Packet> trigger_frame = Create<Packet> ();
+  MgtTFHeader tf;
+  tf.SetNoSta (m_tfAlloc.size ());
+  tf.SetRUAllocations (m_tfAlloc);
+  tf.SetUplinkFlag (m_muUlFlag);
+  tf.SetTfDuration (GetTfDuration ());
+  trigger_frame->AddHeader (tf); 
+  WifiMacHeader hdr;
+  hdr.SetTriggerFrame ();
+  hdr.SetAddr1 (Mac48Address::GetBroadcast());
+  hdr.SetAddr2 (GetAddress ());
+  hdr.SetAddr3 (GetAddress ());
+  hdr.SetDsNotFrom ();
+  hdr.SetDsNotTo ();
+  Time t1 = m_low->CalculateTfBeaconDuration (trigger_frame, hdr);
+  Time t2 = MicroSeconds (m_tfPacketDuration);
+  Time total;
+  if (m_tfPacketDuration > 0)
+   {
+     if (GetNScheduled () < 9)
+      {
+     	total = t1 + GetSifs () + MicroSeconds (440) + GetSifs () + MicroSeconds (416) + GetSifs () + t2 + GetSifs () + MicroSeconds (224); //164: time taken for ACK
+      }
+     else if (GetNScheduled () == 9)
+      {
+	total = t1 + GetSifs () + t2 + GetSifs () + MicroSeconds (224);
+      }
+     // AP ----TF----> STA ----TFResp----> AP ----BSRACK----> STA ----Payload----> AP ----ACK----> STA
+   }
+  else
+   {  
+     total = t1 + GetSifs ();
+   }
+  std::cout<<"t1 = "<<t1.GetMicroSeconds () << std::endl;
+  std::cout<<"t2 = "<<t2.GetMicroSeconds () << std::endl;
+  std::cout<<"total = "<<total.GetMicroSeconds () << std::endl;
+  uint32_t tfDuration = total.GetMicroSeconds () / GetSlot ().GetMicroSeconds ();
+  std::cout<<"tfDuration = "<<tfDuration + 1 << std::endl;
+  SetTfDuration (tfDuration + 1);
 }
 
 void
@@ -863,7 +1207,13 @@ ApWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
     }
   else if (hdr->IsMgt ())
     {
-      if (hdr->IsProbeReq ())
+      if (hdr->IsTFResponse ())
+        {
+          MgtTFRespHeader resp;
+          packet->RemoveHeader (resp);
+          Simulator::ScheduleNow (&ApWifiMac::SendBsrAck, this, from, resp.GetRu ());
+        }
+      else if (hdr->IsProbeReq ())
         {
           NS_ASSERT (hdr->GetAddr1 ().IsBroadcast ());
           SendProbeResp (from);
@@ -1141,9 +1491,12 @@ ApWifiMac::DoInitialize (void)
         {
           NS_LOG_DEBUG ("Scheduling initial beacon for access point " << GetAddress () << " at time 0");
           m_beaconEvent = Simulator::ScheduleNow (&ApWifiMac::SendOneBeacon, this);
+          NS_LOG_DEBUG ("Scheduling initial Trigger Frame beacon for access point " << GetAddress () << " at time 0");
+          Simulator::Schedule (MicroSeconds(999920), &ApWifiMac::StartMuModeUplink, this);
         }
     }
   RegularWifiMac::DoInitialize ();
+  
 }
 
 bool
@@ -1174,6 +1527,41 @@ ApWifiMac::GetRifsMode (void) const
       m_stationManager->SetRifsPermitted (false);
     }
   return rifsMode;
+}
+
+void
+ApWifiMac::StopMuMode (void)
+{
+  NS_LOG_UNCOND ("Inside ApWifiMac:Stopping MuMode, time = "<<Simulator::Now ().GetMicroSeconds ());
+  SetMuMode (0);
+  SetRuBits (0);
+  m_tfAlloc.clear ();
+  m_dca->CancelNextPacket ();
+
+  for (uint32_t ru = 0; ru < 9; ru++)
+   {
+     m_dcaMu[ru]->StopMuMode ();
+     m_dcfManagerMu[ru]->NotifyMaybeCcaBusyStartNow (Seconds (1));
+     for (uint32_t ac = 0; ac < 8; ac++)
+      {
+	m_edcaMu[ru][QosUtilsMapTidToAc(ac)]->StopMuMode ();
+      }
+   }
+  Ptr<UniformRandomVariable> rv = CreateObject<UniformRandomVariable> ();
+  rv->SetAttribute ("Min", DoubleValue (0.0));
+  rv->SetAttribute ("Max", DoubleValue (1.0));
+  
+  if (rv->GetValue () < m_alpha)
+   {
+     m_tfPacketDuration = 0;
+     Simulator::ScheduleNow (&ApWifiMac::StartMuModeDownlink, this);
+   }
+  else
+   {
+     m_tfPacketDuration = 12932;
+     Simulator::ScheduleNow (&ApWifiMac::StartMuModeUplink, this);
+   }
+
 }
 
 } //namespace ns3

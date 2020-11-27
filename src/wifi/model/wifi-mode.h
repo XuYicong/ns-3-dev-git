@@ -135,6 +135,16 @@ public:
    */
   uint64_t GetDataRate (uint8_t channelWidth, uint16_t guardInterval, uint8_t nss) const;
   /**
+   *
+   * \param channelWidth the considered channel width in MHz
+   * \param guardInterval the considered guard interval duration in nanoseconds
+   * \param nss the considered number of streams
+   * \param ruBits RU allocation
+   *
+   * \returns the data bit rate of this signal.
+   */
+  uint64_t GetDataRate (uint8_t channelWidth, uint16_t guardInterval, uint8_t nss, uint32_t ruBits) const;
+  /**
    * \param txVector the WifiTxVector of the signal
    *
    * \returns the data bit rate of this signal.
@@ -222,9 +232,7 @@ public:
 
 
 private:
-  /// allow WifiModeFactory class access
   friend class WifiModeFactory;
-  /// allow WifiPhyTag class access
   friend class WifiPhyTag; // access the UID-based constructor
   /**
    * Create a WifiMode from a given unique ID.
@@ -301,7 +309,6 @@ public:
 
 
 private:
-  /// allow WifiMode class access
   friend class WifiMode;
   friend std::istream & operator >> (std::istream &is, WifiMode &mode);
 

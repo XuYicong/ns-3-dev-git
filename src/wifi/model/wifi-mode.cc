@@ -135,8 +135,15 @@ WifiMode::GetDataRate (uint8_t channelWidth) const
 
 uint64_t
 WifiMode::GetDataRate (WifiTxVector txVector) const
-{
-  return GetDataRate (txVector.GetChannelWidth (), txVector.GetGuardInterval (), txVector.GetNss ());
+{ 
+  if (!txVector.GetMuMode ())
+    {
+        return GetDataRate (txVector.GetChannelWidth (), txVector.GetGuardInterval (), txVector.GetNss ());
+    }
+  else
+    {
+        return GetDataRate (txVector.GetChannelWidth (), txVector.GetGuardInterval (), txVector.GetNss (), txVector.GetRuBits ());
+    }
 }
 
 uint64_t
@@ -309,7 +316,170 @@ WifiMode::GetDataRate (uint8_t channelWidth, uint16_t guardInterval, uint8_t nss
     {
       NS_ASSERT ("undefined datarate for the modulation class!");
     }
+  dataRate *= nss; // number of spatial streams 
+  //std::cout<<"DataRate (normal mode) = "<<dataRate<<std::endl;
+  return dataRate;
+}
+
+uint64_t
+WifiMode::GetDataRate (uint8_t channelWidth, uint16_t guardInterval, uint8_t nss, uint32_t ruBits) const
+{
+  //TODO: nss > 4 not supported yet
+  NS_ASSERT (nss <= 4);
+  WifiModeFactory::WifiModeItem *item = WifiModeFactory::GetFactory ()->Get (m_uid);
+  uint64_t dataRate = 0;
+  uint16_t usableSubCarriers = 0;
+  double symbolRate = 0;
+  double codingRate = 0;
+  uint32_t numberOfBitsPerSubcarrier = log2 (GetConstellationSize ());
+  if (item->modClass == WIFI_MOD_CLASS_DSSS || item->modClass == WIFI_MOD_CLASS_HR_DSSS)
+    {
+      NS_FATAL_ERROR ("MOD_CLASS_DSSS not supported");
+    }
+  else if (item->modClass == WIFI_MOD_CLASS_OFDM || item->modClass == WIFI_MOD_CLASS_ERP_OFDM)
+    {
+      usableSubCarriers = 48; // 48/9
+      switch (channelWidth)
+        {
+        case 20:
+        default:
+          symbolRate = (1 / 4.0) * 1e6;
+          break;
+        case 10:
+        case 5:
+          NS_FATAL_ERROR ("Only 20 MHz supported for MU mode");
+          break;
+        }
+
+      switch (GetCodeRate ())
+        {
+        case WIFI_CODE_RATE_3_4:
+          codingRate = (3.0 / 4.0);
+          break;
+        case WIFI_CODE_RATE_2_3:
+          codingRate = (2.0 / 3.0);
+          break;
+        case WIFI_CODE_RATE_1_2:
+          codingRate = (1.0 / 2.0);
+          break;
+        case WIFI_CODE_RATE_UNDEFINED:
+        default:
+          NS_FATAL_ERROR ("trying to get datarate for a mcs without any coding rate defined");
+          break;
+        }
+
+      dataRate = lrint (ceil (symbolRate * usableSubCarriers * numberOfBitsPerSubcarrier * codingRate));
+    }
+  else if (item->modClass == WIFI_MOD_CLASS_HT || item->modClass == WIFI_MOD_CLASS_VHT)
+    {
+      if (item->modClass == WIFI_MOD_CLASS_VHT)
+        {
+          NS_ASSERT_MSG (IsAllowed (channelWidth, nss), "VHT MCS " << (uint16_t)item->mcsValue << " forbidden at " << (uint16_t)channelWidth << " MHz when NSS is " << (uint16_t)nss);
+        }
+
+      NS_ASSERT (guardInterval == 800 || guardInterval == 400);
+      symbolRate = (1 / (3.2 + ((double)guardInterval / 1000))) * 1e6;
+
+      if (item->modClass == WIFI_MOD_CLASS_HT)
+        {
+          switch (channelWidth)
+            {
+            case 20:
+            default:
+              usableSubCarriers = 52; // 52/9
+              break;
+            case 40:
+            case 80:
+            case 160:
+              NS_FATAL_ERROR ("Only 20 MHz supported for MU mode");
+              break;
+            }
+        }
+      else //WIFI_MOD_CLASS_VHT
+        {
+          switch (channelWidth)
+            {
+            case 20:
+            default:
+              usableSubCarriers = 52;
+              break;
+            case 40:
+            case 80:
+            case 160:
+              NS_FATAL_ERROR ("Only 20 MHz supported for MU mode");
+              break;
+            }
+        }
+
+      switch (GetCodeRate ())
+        {
+        case WIFI_CODE_RATE_5_6:
+          codingRate = (5.0 / 6.0);
+          break;
+        case WIFI_CODE_RATE_3_4:
+          codingRate = (3.0 / 4.0);
+          break;
+        case WIFI_CODE_RATE_2_3:
+          codingRate = (2.0 / 3.0);
+          break;
+        case WIFI_CODE_RATE_1_2:
+          codingRate = (1.0 / 2.0);
+          break;
+        case WIFI_CODE_RATE_UNDEFINED:
+        default:
+          NS_FATAL_ERROR ("trying to get datarate for a mcs without any coding rate defined with nss: " << (uint16_t) nss);
+          break;
+        }
+
+      dataRate = lrint (ceil (symbolRate * usableSubCarriers * numberOfBitsPerSubcarrier * codingRate));
+    }
+  else if (item->modClass == WIFI_MOD_CLASS_HE)
+    {
+      NS_ASSERT (guardInterval == 800 || guardInterval == 1600 || guardInterval == 3200);
+      symbolRate = (1 / (12.8 + ((double)guardInterval / 1000))) * 1e6;
+
+      switch (channelWidth)
+        {
+        case 20:
+        default:
+          usableSubCarriers = 234; // 234/9
+          break;
+        case 40:
+        case 80:
+        case 160:
+          NS_FATAL_ERROR ("Only 20 MHz supported for MU mode");
+          break;
+        }
+
+      switch (GetCodeRate ())
+        {
+        case WIFI_CODE_RATE_5_6:
+          codingRate = (5.0 / 6.0);
+          break;
+        case WIFI_CODE_RATE_3_4:
+          codingRate = (3.0 / 4.0);
+          break;
+        case WIFI_CODE_RATE_2_3:
+          codingRate = (2.0 / 3.0);
+          break;
+        case WIFI_CODE_RATE_1_2:
+          codingRate = (1.0 / 2.0);
+          break;
+        case WIFI_CODE_RATE_UNDEFINED:
+        default:
+          NS_FATAL_ERROR ("trying to get datarate for a mcs without any coding rate defined with nss: " << (uint16_t) nss);
+          break;
+        }
+
+      dataRate = lrint (ceil (symbolRate * usableSubCarriers * numberOfBitsPerSubcarrier * codingRate));
+    }
+  else
+    {
+      NS_ASSERT ("undefined datarate for the modulation class!");
+    }
   dataRate *= nss; // number of spatial streams
+  dataRate = dataRate/9;
+  //std::cout<<"DataRate (MU mode) = "<<dataRate<<std::endl;
   return dataRate;
 }
 

@@ -126,6 +126,7 @@ public:
    *         false otherwise.
    */
   bool GetCtsToSelfSupported () const;
+  bool GetMuCtsToSelfSupported (uint32_t) const;
 
   /**
    * Enable or disable short slot time feature.
@@ -141,6 +142,7 @@ public:
    *         false otherwise.
    */
   bool GetShortSlotTimeSupported (void) const;
+  bool GetMuShortSlotTimeSupported (uint32_t i) const;
   /**
    * Enable or disable RIFS feature.
    *
@@ -217,10 +219,13 @@ public:
    * \param phy the physical layer attached to this MAC.
    */
   void SetWifiPhy (const Ptr<WifiPhy> phy);
+  void SetMuWifiPhy (const Ptr<WifiPhy> phy, uint32_t i);
+  void LinkMuAndRegularPhy (uint32_t i);
   /**
    * \return the physical layer attached to this MAC.
    */
   Ptr<WifiPhy> GetWifiPhy (void) const;
+  Ptr<WifiPhy> GetMuWifiPhy (uint32_t i) const;
   /**
    * removes attached WifiPhy device from this MAC.
    */
@@ -229,10 +234,12 @@ public:
    * \param stationManager the station manager attached to this MAC.
    */
   virtual void SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager);
+  virtual void SetMuWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager, uint32_t i);
   /**
    * \return the station manager attached to this MAC.
    */
   Ptr<WifiRemoteStationManager> GetWifiRemoteStationManager (void) const;
+  Ptr<WifiRemoteStationManager> GetMuWifiRemoteStationManager (uint32_t i) const;
   /**
    * Return the HT capability of the device.
    *
@@ -282,19 +289,50 @@ public:
   Time GetBasicBlockAckTimeout (void) const;
   void SetCompressedBlockAckTimeout (Time blockAckTimeout);
   Time GetCompressedBlockAckTimeout (void) const;
+  typedef std::map<Mac48Address, uint32_t> RUAllocations; 
 
+  void InitializeMuMode ();
+  void SetMuMode (bool muMode);
+  bool GetMuMode (void) const;
+  void SetRuBits (uint32_t ruBits);
+  uint32_t GetRuBits (void) const; 
+  virtual void StopMuMode (void);
+  void SetTfDuration (uint32_t tfDuration); 
+  uint32_t GetTfDuration (void);
+  uint32_t GetMaxTfSlots (void);
+  void SetMaxTfSlots (uint32_t q); 
+  uint32_t GetTfCwMax (void);
+  void SetTfCwMax (uint32_t q); 
+  uint32_t GetTfCwMin (void);
+  void SetTfCwMin (uint32_t q); 
+  uint32_t GetTfCw (void);
+  void SetTfCw (uint32_t q); 
+  uint32_t GetNScheduled (void);
+  void SetNScheduled (uint32_t nScheduled); 
+  void SetAlpha (double alpha);
+  double GetAlpha (void) const;
 
 protected:
   virtual void DoInitialize ();
   virtual void DoDispose ();
 
   Ptr<MacRxMiddle> m_rxMiddle;  //!< RX middle (de-fragmentation etc.)
+  Ptr<MacRxMiddle> m_rxMiddleMu [9];
   Ptr<MacTxMiddle> m_txMiddle;  //!< TX middle (aggregation etc.)
+  Ptr<MacTxMiddle> m_txMiddleMu [9];
   Ptr<MacLow> m_low;        //!< MacLow (RTS, CTS, DATA, ACK etc.)
+  Ptr<MacLow> m_lowMu [9];
   Ptr<DcfManager> m_dcfManager; //!< DCF manager (access to channel)
+  Ptr<DcfManager> m_dcfManagerMu [9];
   Ptr<WifiPhy> m_phy;       //!< Wifi PHY
+  Ptr<WifiPhy> m_phyMu [9]; 
+  double m_alpha;
+  uint32_t m_ruBits;
+  bool m_muMode;
+  uint32_t m_tfDuration;
 
   Ptr<WifiRemoteStationManager> m_stationManager; //!< Remote station manager (rate control, RTS/CTS/fragmentation thresholds etc.)
+  Ptr<WifiRemoteStationManager> m_stationManagerMu [9];
 
   ForwardUpCallback m_forwardUp; //!< Callback to forward packet up the stack
   Callback<void> m_linkUp;       //!< Callback when a link is up
@@ -304,7 +342,8 @@ protected:
 
   /** This holds a pointer to the DCF instance for this WifiMac - used
   for transmission of frames to non-QoS peers. */
-  Ptr<DcaTxop> m_dca;
+  Ptr<DcaTxop> m_dca; 
+  Ptr<DcaTxop> m_dcaMu [9];
 
   /** This type defines a mapping between an Access Category index,
   and a pointer to the corresponding channel access function */
@@ -313,6 +352,7 @@ protected:
   /** This is a map from Access Category index to the corresponding
   channel access function */
   EdcaQueues m_edca;
+  EdcaQueues m_edcaMu [9];
 
   /**
    * Accessor for the DCF object
@@ -320,6 +360,7 @@ protected:
    * \return a smart pointer to DcaTxop
    */
   Ptr<DcaTxop> GetDcaTxop (void) const;
+  Ptr<DcaTxop> GetMuDcaTxop (uint32_t i) const;
 
   /**
    * Accessor for the AC_VO channel access function
@@ -327,24 +368,28 @@ protected:
    * \return a smart pointer to EdcaTxopN
    */
   Ptr<EdcaTxopN> GetVOQueue (void) const;
+  Ptr<EdcaTxopN> GetMuVOQueue (uint32_t i) const;
   /**
    * Accessor for the AC_VI channel access function
    *
    * \return a smart pointer to EdcaTxopN
    */
   Ptr<EdcaTxopN> GetVIQueue (void) const;
+  Ptr<EdcaTxopN> GetMuVIQueue (uint32_t i) const;
   /**
    * Accessor for the AC_BE channel access function
    *
    * \return a smart pointer to EdcaTxopN
    */
   Ptr<EdcaTxopN> GetBEQueue (void) const;
+  Ptr<EdcaTxopN> GetMuBEQueue (uint32_t i) const;
   /**
    * Accessor for the AC_BK channel access function
    *
    * \return a smart pointer to EdcaTxopN
    */
   Ptr<EdcaTxopN> GetBKQueue (void) const;
+  Ptr<EdcaTxopN> GetMuBKQueue (uint32_t i) const;
 
   /**
    * \param standard the phy standard to be used
@@ -564,18 +609,23 @@ protected:
    * \return true if HE is supported, false otherwise
    */
   bool GetHeSupported () const;
-
+  uint32_t m_maxTfSlots;                     //!< infocom: q, as per the paper
+  uint32_t m_tfCw;                     //!< infocom: q, as per the paper
+  uint32_t m_tfCwMin;                     //!< infocom: q, as per the paper
+  uint32_t m_tfCwMax;                     //!< infocom: q, as per the paper
+  uint32_t m_nScheduled;
+  Ptr<UniformRandomVariable> tfRv;
+  static void RegisterTfListener (RegularWifiMac *sta);
+  static void NotifyTfRespAccess (uint32_t ru);
+  virtual void UpdateSlots (uint32_t ru);
 
 private:
   /// type conversion operator
+  typedef std::vector <RegularWifiMac *> Listeners;
   RegularWifiMac (const RegularWifiMac &);
-  /**
-   * assignment operator
-   *
-   * \param mac the RegularWifiMac to assign
-   * \returns the assigned value
-   */
-  RegularWifiMac & operator= (const RegularWifiMac & mac);
+  /// assignment operator
+  RegularWifiMac & operator= (const RegularWifiMac &);
+  static Listeners m_listeners;
 
   /**
    * This method is a private utility invoked to configure the channel
@@ -584,6 +634,7 @@ private:
    * \param ac the Access Category of the queue to initialise.
    */
   void SetupEdcaQueue (AcIndex ac);
+  void SetupMuEdcaQueue (AcIndex ac, uint32_t ru);
 
   /**
    * Set the maximum A-MSDU size for AC_VO.

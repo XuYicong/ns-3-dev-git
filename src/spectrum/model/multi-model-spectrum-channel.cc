@@ -311,7 +311,8 @@ MultiModelSpectrumChannel::StartTx (Ptr<SpectrumSignalParameters> txParams)
           if ((*rxPhyIterator) != txParams->txPhy)
             {
               NS_LOG_LOGIC (" copying signal parameters " << txParams);
-              Ptr<SpectrumSignalParameters> rxParams = txParams->Copy ();
+              //Ptr<SpectrumSignalParameters> rxParams = txParams->Copy ();
+              Ptr<SpectrumSignalParameters> rxParams = txParams;
               rxParams->psd = Copy<SpectrumValue> (convertedTxPowerSpectrum);
               Time delay = MicroSeconds (0);
 

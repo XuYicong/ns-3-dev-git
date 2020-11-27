@@ -246,7 +246,6 @@ AmpduAggregationTest::DoRun (void)
   m_edca->Dispose ();
   m_edca = 0;
 
-  m_dcfManager->Dispose ();
   m_dcfManager = 0;
 }
 

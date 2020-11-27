@@ -117,17 +117,6 @@ DcfManager::~DcfManager ()
 }
 
 void
-DcfManager::DoDispose (void)
-{
-  NS_LOG_FUNCTION (this);
-  for (Ptr<DcfState> i : m_states)
-    {
-      i->Dispose ();
-      i = 0;
-    } 
-}
-
-void
 DcfManager::SetupPhyListener (Ptr<WifiPhy> phy)
 {
   NS_LOG_FUNCTION (this << phy);
@@ -332,7 +321,8 @@ DcfManager::RequestAccess (Ptr<DcfState> state)
           return;
         }
     }
-  DoGrantAccess ();
+  //DoGrantAccess ();
+  Simulator::Schedule(MicroSeconds(16), &DcfManager::DoGrantAccess, this);
   DoRestartAccessTimeoutIfNeeded ();
 }
 
@@ -571,6 +561,7 @@ DcfManager::NotifyRxEndErrorNow (void)
 void
 DcfManager::NotifyTxStartNow (Time duration)
 {
+  std::cout<<"In NotifyTxStartNow\n";
   NS_LOG_FUNCTION (this << duration);
   if (m_rxing)
     {
@@ -596,6 +587,19 @@ DcfManager::NotifyMaybeCcaBusyStartNow (Time duration)
   UpdateBackoff ();
   m_lastBusyStart = Simulator::Now ();
   m_lastBusyDuration = duration;
+}
+
+void
+DcfManager::UpdateBusyDuration (void)
+{
+  NS_LOG_FUNCTION (this);
+  Time now = Simulator::Now ();
+  if (m_lastBusyStart + m_lastBusyDuration > now)
+    {
+      m_lastBusyDuration = now - m_lastBusyStart;
+    }
+  NS_LOG_DEBUG ("m_lastBusyDuration updated to "<<m_lastBusyDuration.GetMicroSeconds ());
+  DoRestartAccessTimeoutIfNeeded ();
 }
 
 void

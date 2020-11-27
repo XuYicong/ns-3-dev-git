@@ -160,16 +160,10 @@ public:
 
   Ptr<Channel> GetChannel (void) const;
 
-  // The following four methods call to the base WifiPhy class method
-  // but also generate a new SpectrumModel if called during runtime
-
-  virtual void SetChannelNumber (uint8_t id);
-
-  virtual void SetFrequency (uint16_t freq);
-
-  virtual void SetChannelWidth (uint8_t channelwidth);
-
-  virtual void ConfigureStandard (WifiPhyStandard standard);
+  void SetRuBits (uint32_t ruBits);
+  void SetMuMode (bool muMode);
+  uint32_t GetRuBits (void) const;
+  bool GetMuMode (void) const;
 
 protected:
   // Inherited
@@ -188,16 +182,12 @@ private:
    * This is a helper function to create the right Tx PSD corresponding
    * to the standard in use.
    */
-  Ptr<SpectrumValue> GetTxPowerSpectralDensity (uint16_t centerFrequency, uint8_t channelWidth, double txPowerW, WifiModulationClass modulationClass) const;
-
-  /**
-   * Perform run-time spectrum model change
-   */
-  void ResetSpectrumModel (void);
+  Ptr<SpectrumValue> GetTxPowerSpectralDensity (uint16_t centerFrequency, uint8_t channelWidth, double txPowerW, WifiModulationClass modulationClass, uint32_t ruBits, bool muMode) const;
 
   Ptr<SpectrumChannel> m_channel;        //!< SpectrumChannel that this SpectrumWifiPhy is connected to
   std::vector<uint8_t> m_operationalChannelList; //!< List of possible channels
-
+  uint32_t m_currentRu; //infocom
+  bool m_muMode; //infocom
   Ptr<WifiSpectrumPhyInterface> m_wifiSpectrumPhyInterface; //!< Spectrum phy interface
   Ptr<AntennaModel> m_antenna; //!< antenna model
   mutable Ptr<const SpectrumModel> m_rxSpectrumModel; //!< receive spectrum model

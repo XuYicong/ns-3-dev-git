@@ -78,6 +78,8 @@ DcaTxop::DcaTxop ()
   m_dcf = CreateObject<DcfState> (this);
   m_queue = CreateObject<WifiMacQueue> ();
   m_rng = CreateObject<UniformRandomVariable> ();
+  m_muMode = 0;
+  m_ruBits = 0;
 }
 
 DcaTxop::~DcaTxop ()
@@ -145,6 +147,13 @@ DcaTxop::SetTxDroppedCallback (TxDropped callback)
   NS_LOG_FUNCTION (this << &callback);
   m_txDroppedCallback = callback;
   m_queue->TraceConnectWithoutContext ("Drop", MakeCallback (&DcaTxop::TxDroppedPacket, this));
+}
+
+void
+DcaTxop::SetTfAccessGrantCallback (Callback<void> callback)
+{ 
+  NS_LOG_FUNCTION (this << &callback);
+  m_tfAccessGrantCallback = callback;
 }
 
 void
@@ -224,6 +233,49 @@ DcaTxop::Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr)
   StartAccessIfNeeded ();
 }
 
+void
+DcaTxop::QueueButDontSend (Ptr<const Packet> packet, const WifiMacHeader &hdr)
+{
+  NS_LOG_FUNCTION (this << packet << &hdr);
+  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
+  m_queue->Enqueue (Create<WifiMacQueueItem> (packet, hdr));
+}
+
+void
+DcaTxop::CancelTFRespIfNotSent (void)
+{
+  Ptr<const WifiMacQueueItem> item = m_queue->Peek ();
+  if (item)
+   {
+     Ptr<const Packet> p = item->GetPacket ();
+     WifiMacHeader hdr= item->GetHeader ();
+     if (hdr.IsTFResponse ())
+      {
+        Ptr<WifiMacQueueItem> to_be_removed = m_queue->Remove ();
+        m_dcf->CancelAccessRequested ();
+      }
+     else
+      {
+      }
+   }
+  else
+   {
+   }
+}
+
+void
+DcaTxop::CancelNextPacket (void)
+{
+  m_dcf->CancelAccessRequested ();
+}
+void
+DcaTxop::QueueTFResp (Ptr<const Packet> packet, const WifiMacHeader &hdr)
+{
+  NS_LOG_FUNCTION (this << packet << &hdr);
+  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
+  m_queue->PushFront (Create<WifiMacQueueItem> (packet, hdr));
+}
+
 int64_t
 DcaTxop::AssignStreams (int64_t stream)
 {
@@ -254,6 +306,30 @@ DcaTxop::StartAccessIfNeeded (void)
     {
       m_manager->RequestAccess (m_dcf);
     }
+}
+
+void 
+DcaTxop::SetMuMode (bool muMode)
+{
+  m_muMode = muMode;
+}
+
+bool 
+DcaTxop::GetMuMode (void) const
+{
+  return m_muMode;
+}
+
+void 
+DcaTxop::SetRuBits (uint32_t ruBits)
+{
+  m_ruBits = ruBits;
+}
+
+uint32_t 
+DcaTxop::GetRuBits (void) const
+{
+  return m_ruBits;
 }
 
 Ptr<MacLow>
@@ -332,6 +408,17 @@ DcaTxop::GetFragmentOffset (void) const
                                               m_currentPacket, m_fragmentNumber);
 }
 
+void
+DcaTxop::StopMuMode (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_queue->RemoveAll ();
+  if (m_currentPacket!=0)
+   {
+    m_currentPacket = 0;
+   }
+}
+
 Ptr<Packet>
 DcaTxop::GetFragmentPacket (WifiMacHeader *hdr)
 {
@@ -388,6 +475,14 @@ DcaTxop::NotifyAccessGranted (void)
                     ", seq=" << m_currentHdr.GetSequenceControl ());
     }
   m_currentParams.DisableOverrideDurationId ();
+  if (m_currentHdr.IsBsrAck ())
+    {
+      m_tfBeaconAccessGrantCallback (); //Gaurang: Here is where I called back to RegularWifiMac when TF Beacon got access to the channel
+    }
+  if (m_currentHdr.IsTF ())
+    {
+      m_tfAccessGrantCallback ();
+    }
   if (m_currentHdr.GetAddr1 ().IsGroup ())
     {
       m_currentParams.DisableRts ();
@@ -395,6 +490,14 @@ DcaTxop::NotifyAccessGranted (void)
       m_currentParams.DisableNextData ();
       GetLow ()->StartTransmission (m_currentPacket, &m_currentHdr, m_currentParams, this);
       NS_LOG_DEBUG ("tx broadcast");
+    }
+  else if (m_currentHdr.IsTFResponse () || m_currentHdr.IsBsrAck ()) 
+    {
+      m_currentParams.DisableRts ();
+      m_currentParams.DisableAck ();
+      m_currentParams.DisableNextData ();
+      GetLow ()->StartTransmission (m_currentPacket, &m_currentHdr, m_currentParams, this);
+      NS_LOG_DEBUG ("txing TF Response");
     }
   else
     {
@@ -486,7 +589,7 @@ DcaTxop::MissedCts (void)
     {
       m_dcf->UpdateFailedCw ();
     }
-  m_dcf->StartBackoffNow (m_rng->GetInteger (0, m_dcf->GetCw ()));
+   m_dcf->StartBackoffNow (m_rng->GetInteger (0, m_dcf->GetCw ()));
   RestartAccessIfNeeded ();
 }
 
@@ -508,7 +611,7 @@ DcaTxop::GotAck (void)
        */
       m_currentPacket = 0;
       m_dcf->ResetCw ();
-      m_dcf->StartBackoffNow (m_rng->GetInteger (0, m_dcf->GetCw ()));
+     m_dcf->StartBackoffNow (m_rng->GetInteger (0, m_dcf->GetCw ()));
       RestartAccessIfNeeded ();
     }
   else
@@ -540,7 +643,7 @@ DcaTxop::MissedAck (void)
       m_currentHdr.SetRetry ();
       m_dcf->UpdateFailedCw ();
     }
-  m_dcf->StartBackoffNow (m_rng->GetInteger (0, m_dcf->GetCw ()));
+     m_dcf->StartBackoffNow (m_rng->GetInteger (0, m_dcf->GetCw ()));
   RestartAccessIfNeeded ();
 }
 

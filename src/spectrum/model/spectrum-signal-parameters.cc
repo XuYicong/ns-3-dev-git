@@ -56,6 +56,4 @@ SpectrumSignalParameters::Copy ()
   return Create<SpectrumSignalParameters> (*this);
 }
 
-
-
 } // namespace ns3

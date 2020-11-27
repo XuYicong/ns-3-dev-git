@@ -73,6 +73,8 @@ EdcaTxopN::EdcaTxopN ()
     m_currentIsFragmented (false)
 {
   NS_LOG_FUNCTION (this);
+  m_muMode = 0;
+  m_ruBits = 0;
   m_qosBlockedDestinations = Create<QosBlockedDestinations> ();
   m_baManager = CreateObject<BlockAckManager> ();
   m_baManager->SetQueue (m_queue);
@@ -212,7 +214,8 @@ EdcaTxopN::NotifyAccessGranted (void)
             {
               return;
             }
-          item = m_queue->DequeueFirstAvailable (m_qosBlockedDestinations);
+          //item = m_queue->DequeueFirstAvailable (m_qosBlockedDestinations); 
+          item = m_queue->Dequeue (); //Hack: I want to dequeue the packet at the head of the queue, because it maybe TFResp
           m_currentPacket = item->GetPacket ();
           m_currentHdr = item->GetHeader ();
           m_currentPacketTimestamp = item->GetTimeStamp ();
@@ -329,6 +332,13 @@ EdcaTxopN::NotifyAccessGranted (void)
                 }
             }
           m_currentParams.DisableNextData ();
+          if (m_currentHdr.IsTFResponse () || m_currentHdr.IsBsrAck ()) 
+            {
+              m_currentParams.DisableRts ();
+              m_currentParams.DisableAck ();
+              m_currentParams.DisableNextData ();
+              NS_LOG_DEBUG ("txing TF Response");
+            }
           m_low->StartTransmission (m_currentPacket, &m_currentHdr, m_currentParams, this);
           if (!GetAmpduExist (m_currentHdr.GetAddr1 ()))
             {
@@ -423,7 +433,14 @@ void EdcaTxopN::NotifyInternalCollision (void)
         }
     }
   m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-  m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
   RestartAccessIfNeeded ();
 }
 
@@ -432,7 +449,14 @@ EdcaTxopN::NotifyCollision (void)
 {
   NS_LOG_FUNCTION (this);
   m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-  m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
   RestartAccessIfNeeded ();
 }
 
@@ -495,7 +519,14 @@ EdcaTxopN::MissedCts (void)
       m_cwTrace = m_dcf->GetCw ();
     }
   m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-  m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
   RestartAccessIfNeeded ();
 }
 
@@ -543,7 +574,14 @@ EdcaTxopN::GotAck (void)
             }
           m_cwTrace = m_dcf->GetCw ();
           m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-          m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
           RestartAccessIfNeeded ();
         }
     }
@@ -557,7 +595,14 @@ EdcaTxopN::GotAck (void)
               m_txopTrace (m_startTxop, Simulator::Now () - m_startTxop);
               m_cwTrace = m_dcf->GetCw ();
               m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-              m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
               m_fragmentNumber++;
               RestartAccessIfNeeded ();
             }
@@ -626,7 +671,14 @@ EdcaTxopN::MissedAck (void)
       m_cwTrace = m_dcf->GetCw ();
     }
   m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-  m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
   RestartAccessIfNeeded ();
 }
 
@@ -700,7 +752,14 @@ EdcaTxopN::MissedBlockAck (uint8_t nMpdus)
       m_cwTrace = m_dcf->GetCw ();
     }
   m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-  m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
   RestartAccessIfNeeded ();
 }
 
@@ -963,7 +1022,14 @@ EdcaTxopN::EndTxNoAck (void)
   m_dcf->ResetCw ();
   m_cwTrace = m_dcf->GetCw ();
   m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-  m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
   StartAccessIfNeeded ();
 }
 
@@ -1293,7 +1359,14 @@ EdcaTxopN::GotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac48Address rec
         }
       m_cwTrace = m_dcf->GetCw ();
       m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-      m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
       RestartAccessIfNeeded ();
     }
 }
@@ -1563,7 +1636,14 @@ EdcaTxopN::DoInitialize ()
   m_dcf->ResetCw ();
   m_cwTrace = m_dcf->GetCw ();
   m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
-  m_dcf->StartBackoffNow (m_backoffTrace);
+  if (!GetMuMode ())
+   {
+     m_dcf->StartBackoffNow (m_backoffTrace);
+   }
+  else
+   {
+     m_dcf->StartBackoffNow (0);
+   }
 }
 
 void

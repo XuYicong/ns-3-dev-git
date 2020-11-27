@@ -73,6 +73,11 @@ WifiNetDevice::WifiNetDevice ()
   : m_configComplete (false)
 {
   NS_LOG_FUNCTION_NOARGS ();
+  for (uint32_t i = 0; i<9; i++)
+    {
+      m_phyMu[i]=0;
+      m_stationManagerMu[i]=0;
+    }
 }
 
 WifiNetDevice::~WifiNetDevice ()
@@ -123,6 +128,32 @@ WifiNetDevice::CompleteConfig (void)
   m_stationManager->SetupPhy (m_phy);
   m_stationManager->SetupMac (m_mac);
   m_configComplete = true;
+}
+
+void
+WifiNetDevice::CompleteMuConfig (void)
+{
+
+  uint32_t i;
+   for (i = 0; i < 9; i++)
+     {
+       if (m_mac == 0 || m_phyMu[i] == 0 || m_stationManagerMu[i] == 0)
+        {
+           return;
+        }
+     }
+  
+   for (i = 0; i < 9; i++)
+     {
+       m_mac->SetMuWifiRemoteStationManager (m_stationManagerMu[i], i);
+       m_mac->SetMuWifiPhy (m_phyMu[i], i);
+       m_stationManagerMu[i]->SetupPhy (m_phyMu[i]);
+       m_stationManagerMu[i]->SetupMac (m_mac);
+       m_phyMu[i]->Initialize ();
+       m_stationManagerMu[i]->Initialize ();
+       m_mac->LinkMuAndRegularPhy (i);       
+     }
+
 }
 
 void
@@ -212,10 +243,24 @@ WifiNetDevice::SetPhy (const Ptr<WifiPhy> phy)
 }
 
 void
+WifiNetDevice::SetMuPhy (const Ptr<WifiPhy> phyMu, uint32_t i)
+{
+  m_phyMu[i] = phyMu;
+  CompleteMuConfig ();
+}
+
+void
 WifiNetDevice::SetRemoteStationManager (const Ptr<WifiRemoteStationManager> manager)
 {
   m_stationManager = manager;
   CompleteConfig ();
+}
+
+void
+WifiNetDevice::SetMuRemoteStationManager (const Ptr<WifiRemoteStationManager> manager, uint32_t i)
+{
+  m_stationManagerMu[i] = manager;
+  CompleteMuConfig ();
 }
 
 Ptr<WifiMac>

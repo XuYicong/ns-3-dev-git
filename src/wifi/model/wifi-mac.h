@@ -200,22 +200,27 @@ public:
    * \param phy the physical layer attached to this MAC.
    */
   virtual void SetWifiPhy (Ptr<WifiPhy> phy) = 0;
+  virtual void SetMuWifiPhy (const Ptr<WifiPhy> phy, uint32_t i);
+  virtual void LinkMuAndRegularPhy (uint32_t i);
   /**
-   * \return currently attached WifiPhy device
+   * return current attached WifiPhy device
    */
   virtual Ptr<WifiPhy> GetWifiPhy (void) const = 0;
+  virtual Ptr<WifiPhy> GetMuWifiPhy (uint32_t i) const;
   /**
-   * remove currently attached WifiPhy device from this MAC.
+   * remove current attached WifiPhy device from this MAC.
    */
   virtual void ResetWifiPhy (void) = 0;
   /**
    * \param stationManager the station manager attached to this MAC.
    */
   virtual void SetWifiRemoteStationManager (Ptr<WifiRemoteStationManager> stationManager) = 0;
+  virtual void SetMuWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager, uint32_t i);
   /**
    * \return the station manager attached to this MAC.
    */
   virtual Ptr<WifiRemoteStationManager> GetWifiRemoteStationManager (void) const = 0;
+  virtual Ptr<WifiRemoteStationManager> GetMuWifiRemoteStationManager (uint32_t i) const;
 
   /**
    * \param upCallback the callback to invoke when a packet must be forwarded up the stack.
@@ -308,6 +313,13 @@ public:
    * \sa WifiMac::Configure80211ax_5Ghz
    */
   void ConfigureStandard (WifiPhyStandard standard);
+  /**
+   * \return the default maximum propagation delay
+   *
+   * By default, we get the maximum propagation delay from 1000 m and speed of light
+   * (3e8 m/s).
+   */
+  static Time GetDefaultMaxPropagationDelay (void);
 
 
 protected:
@@ -324,13 +336,6 @@ protected:
 
 
 private:
-  /**
-   * \return the default maximum propagation delay
-   *
-   * By default, we get the maximum propagation delay from 1000 m and speed of light
-   * (3e8 m/s).
-   */
-  static Time GetDefaultMaxPropagationDelay (void);
   /**
    * \return the default slot duration
    *

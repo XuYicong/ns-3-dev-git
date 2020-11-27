@@ -357,6 +357,10 @@ def configure(conf):
     conf.load('clang_compilation_database', tooldir=['waf-tools'])
 
     env = conf.env
+    '''if Options.options.with_python is None:
+      if sys.version_info<(3,):
+        Options.options.python='python3'
+        conf.msg('2333333333333',Options.options.python,'GREEN')'''
 
     if Options.options.enable_gcov:
         env['GCOV_ENABLED'] = True
@@ -1079,7 +1083,7 @@ def shutdown(ctx):
     # Write the build status file.
     build_status_file = os.path.join(bld.out_dir, 'build-status.py')
     out = open(build_status_file, 'w')
-    out.write('#! /usr/bin/env python\n')
+    out.write('#! /usr/bin/env python2\n')
     out.write('\n')
     out.write('# Programs that are runnable.\n')
     out.write('ns3_runnable_programs = ' + str(env['NS3_RUNNABLE_PROGRAMS']) + '\n')

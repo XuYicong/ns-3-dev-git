@@ -46,8 +46,6 @@ struct WifiSpectrumSignalParameters : public SpectrumSignalParameters
 
   /**
    * copy constructor
-   *
-   * \param p the wifi spectrum signal parameters
    */
   WifiSpectrumSignalParameters (const WifiSpectrumSignalParameters& p);
 
@@ -55,6 +53,10 @@ struct WifiSpectrumSignalParameters : public SpectrumSignalParameters
    * The packet being transmitted with this signal
    */
   Ptr<Packet> packet;
+
+  uint32_t ruBits;
+
+  bool muMode;
 };
 
 }  // namespace ns3

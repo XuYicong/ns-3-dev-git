@@ -57,10 +57,7 @@ public:
   void NotifyTxSuccess (uint32_t retryCounter);
   /// Updates average frame error rate when final data or RTS has failed.
   void NotifyTxFailed ();
-  /**
-   * Return frame error rate (probability that frame is corrupted due to transmission error).
-   * \returns the frame error rate
-   */
+  /// Return frame error rate (probability that frame is corrupted due to transmission error).
   double GetFrameErrorRate () const;
 private:
   /**
@@ -1578,6 +1575,7 @@ struct WifiRemoteStationState
   bool m_htSupported;         //!< Flag if HT is supported by the station
   bool m_vhtSupported;        //!< Flag if VHT is supported by the station
   bool m_heSupported;         //!< Flag if HE is supported by the station
+  uint32_t m_currentRu;       //!< infocom: Stores the current Resource Unit used by the station
 };
 
 /**

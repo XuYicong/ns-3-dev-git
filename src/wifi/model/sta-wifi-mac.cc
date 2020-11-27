@@ -97,13 +97,64 @@ StaWifiMac::StaWifiMac ()
 
   //Let the lower layers know that we are acting as a non-AP STA in
   //an infrastructure BSS.
+  SetMuMode (false);
+  m_muUlModeEnd = Seconds(0);
+  m_muDlModeEnd = Seconds(0);
   SetTypeOfStation (STA);
+  m_noSlots = 0;
+  m_firstTf = true;
+  m_bsrAckRecvd = true;
+  Ptr<UniformRandomVariable> rv = CreateObject<UniformRandomVariable> ();
+  for (uint32_t ru = 0; ru < 9; ru++)
+   {
+     m_lowMu[ru]->SetTfRespAccessGrantCallback (MakeCallback (&StaWifiMac::TriggerFrameRespAccess, this));
+     m_lowMu[ru]->SetKillTriggerFrameBeaconRetransmissionCallback (MakeCallback (&StaWifiMac::KillTriggerFrameBeaconRetransmission, this));
+   }
+  RegularWifiMac::RegisterTfListener (this);
 }
 
 StaWifiMac::~StaWifiMac ()
 {
   NS_LOG_FUNCTION (this);
 }
+
+void
+StaWifiMac::TriggerFrameRespAccess (void)
+{
+  RegularWifiMac::NotifyTfRespAccess (GetRuBits ());
+  Simulator::Schedule (MicroSeconds (1), &DcfManager::NotifyMaybeCcaBusyStartNow, m_dcfManagerMu[GetRuBits ()], Seconds(1)); //Hack
+}
+
+void
+StaWifiMac::UpdateSlots (uint32_t ru)
+{
+  Simulator::Schedule (MicroSeconds (1), &StaWifiMac::CancelTfRespIfNotSent, this);
+}
+
+void
+StaWifiMac::CancelTfRespIfNotSent (void)
+{
+  for (uint32_t i=0; i<9; i++)
+   {
+     m_edcaMu[i][AC_BE]->CancelTFRespIfNotSent (); 
+   }
+}
+
+void
+StaWifiMac::CheckAndCancel (void)
+{
+}
+
+void
+StaWifiMac::CancelExpiredEvents ()
+{
+}
+
+void
+StaWifiMac::KillTriggerFrameBeaconRetransmission (void)
+{
+}
+
 
 void
 StaWifiMac::SetMaxMissedBeacons (uint32_t missed)
@@ -164,7 +215,6 @@ StaWifiMac::SendProbeRequest (void)
   hdr.SetAddr3 (Mac48Address::GetBroadcast ());
   hdr.SetDsNotFrom ();
   hdr.SetDsNotTo ();
-  hdr.SetNoOrder ();
   Ptr<Packet> packet = Create<Packet> ();
   MgtProbeRequestHeader probe;
   probe.SetSsid (GetSsid ());
@@ -172,6 +222,7 @@ StaWifiMac::SendProbeRequest (void)
   if (m_htSupported || m_vhtSupported || m_heSupported)
     {
       probe.SetHtCapabilities (GetHtCapabilities ());
+      hdr.SetNoOrder ();
     }
   if (m_vhtSupported || m_heSupported)
     {
@@ -197,6 +248,51 @@ StaWifiMac::SendProbeRequest (void)
                                              &StaWifiMac::ProbeRequestTimeout, this);
 }
 
+uint32_t
+StaWifiMac::GetBSR (void)
+{
+  uint32_t bsr = 0;
+  uint32_t temp = 0;
+  for (uint32_t i = 0; i < 9; i++)
+   {
+     temp = m_lowMu[i]->CalculateStaPayloadDuration ();
+     if (temp > bsr)
+      {
+	bsr = temp;
+      }
+   }
+  return bsr;
+}
+
+void
+StaWifiMac::SendTriggerFrameResp (uint32_t ru)
+{
+  std::cout<<"Inside node "<<m_phy->GetDevice ()->GetNode ()->GetId () <<"\tru = "<<ru<<"\tSendTriggerFrameResp\n";
+  NS_LOG_FUNCTION (this);
+  WifiMacHeader hdr;
+  hdr.SetTriggerFrameResp ();
+  hdr.SetAddr1 (GetBssid ());
+  hdr.SetAddr2 (GetAddress ());
+  hdr.SetAddr3 (Mac48Address::GetBroadcast ());
+  hdr.SetDsNotFrom ();
+  hdr.SetDsNotTo ();
+  Ptr<Packet> packet = Create<Packet> ();
+
+  MgtTFRespHeader resp;
+  //Addsomething here
+  resp.SetData (GetBSR ());
+  resp.SetRu (ru);
+  packet->AddHeader (resp);
+
+  m_edcaMu[ru][AC_BE]->SetAifsn (0);
+  m_edcaMu[ru][AC_BE]->SetMinCw (0);
+  m_edcaMu[ru][AC_BE]->SetMaxCw (0);
+  m_edcaMu[ru][AC_BE]->QueueTFResp (packet, hdr); // Push TF Response at the front of the queue
+  m_dcfManagerMu[ru]->UpdateBusyDuration ();
+  m_edcaMu[ru][AC_BE]->StartAccessIfNeeded ();
+  m_dcfManagerMu[ru]->DoRestartAccessTimeoutIfNeeded ();
+}
+
 void
 StaWifiMac::SendAssociationRequest (void)
 {
@@ -208,7 +304,6 @@ StaWifiMac::SendAssociationRequest (void)
   hdr.SetAddr3 (GetBssid ());
   hdr.SetDsNotFrom ();
   hdr.SetDsNotTo ();
-  hdr.SetNoOrder ();
   Ptr<Packet> packet = Create<Packet> ();
   MgtAssocRequestHeader assoc;
   assoc.SetSsid (GetSsid ());
@@ -217,6 +312,7 @@ StaWifiMac::SendAssociationRequest (void)
   if (m_htSupported || m_vhtSupported || m_heSupported)
     {
       assoc.SetHtCapabilities (GetHtCapabilities ());
+      hdr.SetNoOrder ();
     }
   if (m_vhtSupported || m_heSupported)
     {
@@ -404,16 +500,62 @@ StaWifiMac::Enqueue (Ptr<const Packet> packet, Mac48Address to)
   hdr.SetDsNotFrom ();
   hdr.SetDsTo ();
 
-  if (m_qosSupported)
-    {
-      //Sanity check that the TID is valid
-      NS_ASSERT (tid < 8);
-      m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
-    }
-  else
-    {
-      m_dca->Queue (packet, hdr);
-    }
+
+  if (GetMuMode ())
+   {
+     if (m_qosSupported)
+      {
+        for (uint32_t i = 0; i < 9; i++)
+         {
+           m_edcaMu[i][AC_BE]->QueueButDontSend (packet, hdr);
+         }
+      }
+     else
+      {
+        for (uint32_t i = 0; i < 9; i++)
+         {
+           m_dcaMu[i]->QueueButDontSend (packet, hdr);
+         }
+      }
+   }
+  else if (m_muModeToStart)
+   {
+      if (m_qosSupported)
+       {
+	 for (uint32_t i = 0; i < 9; i++)
+          {
+	    /*
+	     * Send a copy of this packet to each of the queue
+	     * TODO: Need to fix this by maintaining ONE queue
+	     * for MU and non-MU mode
+	     */
+            m_edcaMu[i][AC_BE]->QueueButDontSend (packet, hdr);
+	  }
+       }
+      else
+       {
+	 for (uint32_t i = 0; i < 9; i++)
+	  {
+            m_dcaMu[i]->QueueButDontSend (packet, hdr);
+	  }
+       }
+   }
+  else 
+   {
+     if (m_qosSupported)
+      {
+	//m_dca->Queue (packet, hdr);
+        for (uint32_t i = 0; i < 9; i++)
+         {
+           m_edcaMu[i][AC_BE]->QueueButDontSend (packet, hdr);
+         }
+      }
+     else
+      {
+        //m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+      }
+   }
+  
 }
 
 void
@@ -478,6 +620,90 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
       //This is a frame aimed at an AP, so we can safely ignore it.
       NotifyRxDrop (packet);
       return;
+    }
+  else if (hdr->IsBsrAck ())
+    {
+        MgtBsrAckHeader bsrAck;
+        packet->RemoveHeader (bsrAck);
+
+        m_bsrAckRecvd = true;
+        SetMuMode (1);
+        SetTfCw (GetTfCwMin ());
+        SetRuBits (bsrAck.GetRu ());
+	PrepareForTx ();
+        Simulator::Schedule(MicroSeconds (17), &DcfManager::NotifyMaybeCcaBusyStartNow, m_dcfManagerMu[GetRuBits ()], Seconds (1)); 
+    }
+  else if (hdr->IsTF ())
+    {
+      m_lastTfTxStart = m_low->CalculateTfBeaconDuration (packet, *hdr); // hack
+      MgtTFHeader tf;
+      packet->RemoveHeader (tf);
+
+      RegularWifiMac::RUAllocations alloc = tf.GetRUAllocations ();
+      uint32_t ulFlag = tf.GetUplinkFlag ();
+      m_muUlFlag = ulFlag;
+      SetTfDuration(tf.GetTfDuration ());
+      m_muDlModeEnd = GetTfDuration () * GetSlot () - m_lastTfTxStart;  
+      m_dcfManager->NotifyMaybeCcaBusyStartNow (m_muDlModeEnd); 
+      m_muModeExpireEvent = Simulator::Schedule (m_muDlModeEnd, &StaWifiMac::StopMuMode, this); 
+      Ptr<UniformRandomVariable> rv = CreateObject<UniformRandomVariable> ();
+      Ptr<UniformRandomVariable> ruNum = CreateObject<UniformRandomVariable> ();
+
+      if (m_firstTf)
+       {
+         m_firstTf = false;
+         m_noSlots = rv->GetInteger (1, GetTfCw ());
+       }
+      else if (m_noSlots <= 0) 
+       {
+         if (!m_bsrAckRecvd)
+          {
+            SetTfCw (2 * GetTfCw ()); 
+	    if (GetTfCw () > GetTfCwMax ())
+             {
+               SetTfCw (GetTfCwMax ());
+             }
+          }
+         m_noSlots = rv->GetInteger (1, GetTfCw ());
+       }
+      if (m_bsrAckRecvd)
+       {
+         m_bsrAckRecvd = false;
+       }
+      
+      uint32_t ru;
+
+      for (RegularWifiMac::RUAllocations::const_iterator it = alloc.begin (); it != alloc.end (); it++)
+       {
+         if (it->first == GetAddress ())
+           {
+             if (ulFlag)
+               {
+                 SetMuMode (1);
+                 SetRuBits (it->second);
+		 PrepareForTx ();
+		 Simulator::Schedule(MicroSeconds (17), &DcfManager::NotifyMaybeCcaBusyStartNow, m_dcfManagerMu[GetRuBits ()], Seconds (1)); 
+		 return;
+               }
+             else
+               {
+                 NS_LOG_UNCOND("Received Trigger Frame for DL, time = "<<Simulator::Now ().GetMicroSeconds ());
+               }
+           }
+          if (it->first == Mac48Address::GetBroadcast ())
+           {
+	     ru = ruNum->GetInteger (9-it->second, 8);
+	     std::cout<<"STA "<<m_phy->GetDevice ()->GetNode ()->GetId ()<<"\tm_noSlots =  "<<m_noSlots << "\tSelected RU = "<<ru<<"\tTfCw = "<<GetTfCw ()<< "\ttime = "<< Simulator::Now ().GetMicroSeconds ()<<std::endl;
+	     m_noSlots -= it->second;
+             if (m_noSlots <= 0)
+	      {
+		SetRuBits (ru); 
+	        Simulator::ScheduleNow (&StaWifiMac::SendTriggerFrameResp, this, GetRuBits ());
+		Simulator::Schedule(MicroSeconds (17), &DcfManager::NotifyMaybeCcaBusyStartNow, m_dcfManagerMu[GetRuBits ()], Seconds (1)); 
+              }
+           }
+       }
+      
     }
   else if (hdr->IsBeacon ())
     {
@@ -967,6 +1193,60 @@ StaWifiMac::SetEdcaParameters (AcIndex ac, uint8_t cwMin, uint8_t cwMax, uint8_t
   edca->SetMaxCw (cwMax);
   edca->SetAifsn (aifsn);
   edca->SetTxopLimit (txopLimit);
+
+  for (uint32_t i = 0; i<9; i++)
+    {
+      Ptr<EdcaTxopN> edcaMu = m_edcaMu[i].find (ac)->second;
+      edcaMu->SetMinCw (0);
+      edcaMu->SetMaxCw (0);
+      edcaMu->SetAifsn (0);
+      edcaMu->SetTxopLimit (Seconds(0));
+      
+    }
 }
 
+void
+StaWifiMac::PrepareForTx (void)
+{
+  for (uint32_t ac = 0; ac < 8; ac++)
+   {
+     m_edcaMu[GetRuBits ()][QosUtilsMapTidToAc(ac)]->SetAifsn (0);
+     m_edcaMu[GetRuBits ()][QosUtilsMapTidToAc(ac)]->SetMinCw (0);
+     m_edcaMu[GetRuBits ()][QosUtilsMapTidToAc(ac)]->SetMaxCw (0);
+   }
+  m_dcfManagerMu[GetRuBits ()]->UpdateBusyDuration ();
+  for (uint32_t i = 0; i < 8; i++)
+   {
+     m_edcaMu[GetRuBits ()][QosUtilsMapTidToAc(i)]->StartAccessIfNeeded (); 
+   }
+}
+
+void 
+StaWifiMac::SetTfDuration (uint32_t tfDuration)
+{
+  m_tfDuration = tfDuration;
+}
+
+uint32_t 
+StaWifiMac::GetTfDuration (void) const
+{
+  return m_tfDuration;
+}
+
+void
+StaWifiMac::StopMuMode (void)
+{
+  NS_LOG_UNCOND ("Inside StaWifiMac:Stopping MuMode, time = "<<Simulator::Now ().GetMicroSeconds ());
+  SetMuMode (0);
+  for (uint32_t ru = 0; ru < 9; ru++)
+   {
+     m_dcaMu[ru]->StopMuMode ();
+     m_edcaMu[ru][AC_BE]->CancelTFRespIfNotSent (); 
+     m_dcfManagerMu[ru]->NotifyMaybeCcaBusyStartNow (Seconds(1));
+     for (uint32_t ac = 0; ac < 8; ac++)
+      {
+	m_edcaMu[ru][QosUtilsMapTidToAc(ac)]->StopMuMode ();
+      }
+   }
+}
 } //namespace ns3
