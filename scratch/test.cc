@@ -1,4 +1,5 @@
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 #include "ns3/core-module.h"
 #include "ns3/config-store-module.h"
@@ -17,13 +18,22 @@ bool use_ax = true;
 bool g_verbose = false;
 double total_bytes_received = 0;
 double per_sta_bytes_received[200];
-
+double total_latency=0;
+int total_packets_received=0;
+int n_tf_cycles=-1;
+int n_sa=0;
+void CountTfCycles (std::string context, Ptr<const Packet> p)
+{
+  bool isBsrReq=(p->GetSize()== (unsigned)50+10*n_sa || p->GetSize()== (unsigned)40+10*n_sa);
+  std::cout<<context<<"\t"<<" Packet length = "<<p->GetSize()<<" Is BSR Ruquest = "<<isBsrReq<<std::endl;
+  n_tf_cycles+=isBsrReq;
+}
 void PrintTrace (std::string context, Ptr<const Packet> p)
 {
   std::cout<<context<<"\t"<<" Packet length = "<<p->GetSize()<<" Time = "<<Simulator::Now ().GetMicroSeconds ()<<std::endl;
 }
 
-void PrintState (std::string context, const Time start, const Time duration, const WifiPhy::State state)
+void PrintState (std::string context, const Time start, const Time duration, const WifiPhyState state)
 {
   std::cout<<context<<" "<<state<<" Time = "<<Simulator::Now ().GetSeconds ()<<std::endl;
 }
@@ -193,16 +203,21 @@ bool wifiNodes::Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mod
 {
   SeqTsHeader seqTs;
   Ptr<Packet> p = pkt->Copy ();
-     NS_LOG_UNCOND("Packet Size = "<<p->GetSize());
+     //NS_LOG_UNCOND("Packet Size = "<<p->GetSize());
+  total_packets_received++;
   total_bytes_received += p->GetSize ();
   per_sta_bytes_received [dev->GetNode ()->GetId ()] += p->GetSize ();
 
   p->RemoveHeader (seqTs);
+  double latency=Simulator::Now().GetMicroSeconds();
+  latency/=1e6;
+  latency-= seqTs.GetTs().GetSeconds();
+  total_latency += latency;
   if (true)
    {
      NS_LOG_UNCOND("Packet Size = "<<p->GetSize());
      NS_LOG_UNCOND("####################################################################################");
-     NS_LOG_UNCOND("Wifi Sequence = "<<seqTs.GetSeq ()<<"\tSender = "<<sender<<"\tTx Time = "<<seqTs.GetTs ().GetSeconds ()<<"\tRx Time = "<<Simulator::Now ().GetMicroSeconds ());
+     NS_LOG_UNCOND("Wifi Sequence = "<<seqTs.GetSeq ()<<"\tSender = "<<sender<<"\tTx Time = "<<seqTs.GetTs ().GetSeconds ()<<"\tRx Time = "<<Simulator::Now ().GetMicroSeconds ()<<" latency = "<<latency);
      NS_LOG_UNCOND("####################################################################################");
    }
   return true;
@@ -212,9 +227,9 @@ int main (int argc, char *argv[])
 {
 //  Packet::EnablePrinting ();
 //  Packet::EnableChecking ();
-  uint32_t noNodes = 18;
+  uint32_t noNodes = 60;
   uint32_t wifiDistance = 1;
-  double simulationTime = 50; //seconds
+  double simulationTime = 10; //seconds
   uint32_t wifiFreq = 5180;
   uint32_t wifiBw = 20;
   std::string errorModelType = "ns3::NistErrorRateModel";
@@ -226,10 +241,10 @@ int main (int argc, char *argv[])
   uint32_t ulMode = 1;
   uint32_t tfDuration = 168;
   uint32_t maxTfSlots = 16;
-  uint32_t tfCw = 16;
-  uint32_t tfCwMin = 16;
-  uint32_t tfCwMax = 1024;
-  uint32_t nScheduled = 4;
+  uint32_t tfCw = 7;
+  uint32_t tfCwMin = 7;
+  uint32_t tfCwMax = 63;
+  uint32_t nScheduled = 0;
   double alpha = 0;
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
 
@@ -261,6 +276,8 @@ int main (int argc, char *argv[])
   cmd.AddValue ("alpha", "fraction of DL traffic", alpha);
   cmd.Parse (argc,argv);
 
+  n_packets = 10000 * simulationTime;
+  n_sa = nScheduled;
   ConfigStore config;
   config.ConfigureDefaults ();
   
@@ -287,16 +304,16 @@ int main (int argc, char *argv[])
   { 
     if (ulMode == 1)
      {
-       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (1.0 + interval * i, i, 0);
+       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i, 0);
      }
     else if (ulMode == 0)
      {
-       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (1.0 + interval * i, i, 0);
+       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i, 0);
      }
     else if (ulMode == 2)
     {
-       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (1.0 + interval * i, i, 0);
-       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (1.0 + interval * i, i, 0);
+       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i, 0);
+       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i, 0);
     }
   }
 
@@ -311,16 +328,17 @@ int main (int argc, char *argv[])
   mobility.Install (wifi.GetApNode());
   mobility.Install (wifi.GetStaNodes());
   
+  Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&CountTfCycles));
   if (g_verbose) {
   	Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&PrintTrace));
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxBegin",MakeCallback(&PrintTrace));
-  	Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd",MakeCallback(&PrintTrace));
-  	Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop",MakeCallback(&PrintTrace));
+  	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd",MakeCallback(&PrintTrace));
+  	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop",MakeCallback(&PrintTrace));
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx",MakeCallback(&PrintTrace));
         //Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/State/State",MakeCallback(&PrintState));
         Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxDrop",MakeCallback(&PrintTrace));
-  	Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop",MakeCallback(&PrintTrace));
-        //Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/State/Tx",MakeCallback(&PrintTx));
+  	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop",MakeCallback(&PrintTrace));
+        Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/State/Tx",MakeCallback(&PrintTx));
   }
 
   Simulator::Stop (Seconds (simulationTime ));
@@ -330,8 +348,23 @@ int main (int argc, char *argv[])
 
   Simulator::Destroy ();
 
+  std::cout<<"Total Packets Received = "<<total_packets_received<<std::endl;
+  std::cout<<"Total latency = "<<total_latency<<std::endl;
+  std::cout<<"Average latency = "<< total_latency/total_packets_received <<std::endl;
+  std::cout<<"Number of TF cycles = "<<n_tf_cycles<<std::endl;
+  int n_scheduled_packets = n_tf_cycles * nScheduled;
+  std::cout<<"Number of scheduled packets = "<<n_scheduled_packets<<std::endl;
+  int n_uora_packets = total_packets_received - n_scheduled_packets;
+  std::cout<<"Number of UORA packets = "<<n_uora_packets<<std::endl;
   std::cout<<"Printing Throughputs\n";
-  std::cout<<"Aggregate Throughput = "<<total_bytes_received * 8/(6000000 * (simulationTime - 1))<< " Mbps\n";
+  double total_throughput = total_bytes_received * 8/(6000000 * (simulationTime - 1));
+  std::cout<<"Aggregate Throughput = "<<total_throughput<< " Mbps\n";
+  double beta = (double)n_uora_packets/n_tf_cycles;
+  std::cout<<"BSR delivery rate = "<<beta<<std::endl;
+  std::cout<<"Efficiency = "<<beta/(9-nScheduled)<<std::endl;
+
+  std::ofstream outfile("../experiments-3.28.txt",std::ios::app);
+  outfile<<"cwmax:"<<tfCwMax<<", cwmin:"<<tfCwMin<<", noNodes:"<<noNodes<<", N_ra:"<<(9-nScheduled)<<", BSR_delivery_rate:"<<beta<<", Efficiency = "<<beta/(9-nScheduled)<<", average latency(seconds):"<<total_latency/total_packets_received<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets<<std::endl;
 
   return 0;
 }

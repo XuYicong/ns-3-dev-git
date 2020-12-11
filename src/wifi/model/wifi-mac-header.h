@@ -119,51 +119,10 @@ public:
   void Serialize (Buffer::Iterator start) const;
   uint32_t Deserialize (Buffer::Iterator start);
 
-  /**
-   * Set Type/Subtype values for an association request header.
-   */
-  void SetAssocReq (void);
-  /**
-   * Set Type/Subtype values for an association response header.
-   */
-  void SetAssocResp (void);
-  /**
-   * Set Type/Subtype values for a probe request header.
-   */
-  void SetProbeReq (void);
-  /**
-   * Set Type/Subtype values for a probe response header.
-   */
-  void SetProbeResp (void);
-  /**
-   * Set Type/Subtype values for a beacon header.
-   */
-  void SetBeacon (void);
-  /**
-   * Set Type/Subtype values for a data packet with
-   * no subtype equal to 0.
-   */
   void SetBsrAck (void); //infocom: TF definitions
   void SetTriggerFrameResp (void);
   void SetTriggerFrame (void);
 
-  void SetTypeData (void);
-  /**
-   * Set Type/Subtype values for an action header.
-   */
-  void SetAction ();
-  /**
-   * Set Type/Subtype values for a Block Ack Request header.
-   */
-  void SetBlockAckReq (void);
-  /**
-   * Set Type/Subtype values for a Block Ack header.
-   */
-  void SetBlockAck (void);
-  /**
-   * Set Type/Subtype values for a multihop action header.
-   */
-  void SetMultihopAction ();
   /**
    * Set the From DS bit in the Frame Control field.
    */
@@ -211,12 +170,6 @@ public:
    * \param type the WifiMacType for the header
    */
   void SetType (WifiMacType type);
-  /**
-   * Set the Duration/ID field with the given raw uint16_t value.
-   *
-   * \param duration the raw duration in uint16_t
-   */
-  void SetRawDuration (uint16_t duration);
   /**
    * Set the Duration/ID field with the given duration (Time object).
    * The method converts the given time to microseconds.
@@ -278,18 +231,6 @@ public:
    * \param policy
    */
   void SetQosAckPolicy (QosAckPolicy policy);
-  /**
-   * Set the QoS ACK policy in the QoS control field to normal ACK.
-   */
-  void SetQosNormalAck (void);
-  /**
-   * Set the QoS ACK policy in the QoS control field to block ACK.
-   */
-  void SetQosBlockAck (void);
-  /**
-   * Set the QoS ACK policy in the QoS control field to no ACK.
-   */
-  void SetQosNoAck (void);
   /**
    * Set that A-MSDU is present.
    */
@@ -495,17 +436,11 @@ public:
    *         false otherwise
    */
   bool IsMultihopAction () const;
-  /**
-   * Return the raw duration from the Duration/ID field.
-   *
-   * \return the raw duration from the Duration/ID field
-   */
 
   bool IsBsrAck (void) const; // infocom: Trigger Frame definitions
   bool IsTFResponse (void) const;
   bool IsTF (void) const;
 
-  uint16_t GetRawDuration (void) const;
   /**
    * Return the duration from the Duration/ID field (Time object).
    *
@@ -529,7 +464,7 @@ public:
    *
    * \return the fragment number of the header
    */
-  uint16_t GetFragmentNumber (void) const;
+  uint8_t GetFragmentNumber (void) const;
   /**
    * Return if the Retry bit is set.
    *
@@ -579,12 +514,6 @@ public:
    * \return the Traffic ID of a QoS header
    */
   uint8_t GetQosTid (void) const;
-  /**
-   * Return the QoS ACK Policy of a QoS header.
-   *
-   * \return the QoS ACK Policy of a QoS header
-   */
-  QosAckPolicy GetQosAckPolicy (void) const;
   /**
    * Return the TXOP limit.
    *
@@ -671,7 +600,7 @@ private:
   uint8_t m_qosEosp; ///< QOS EOSP
   uint8_t m_qosAckPolicy; ///< QOS ack policy
   uint8_t m_amsduPresent; ///< AMSDU present
-  uint16_t m_qosStuff; ///< QOS stuff
+  uint8_t m_qosStuff; ///< QOS stuff
 };
 
 } //namespace ns3

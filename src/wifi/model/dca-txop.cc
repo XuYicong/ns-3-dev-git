@@ -412,7 +412,7 @@ void
 DcaTxop::StopMuMode (void)
 {
   NS_LOG_FUNCTION (this);
-  m_queue->RemoveAll ();
+  m_queue->Flush ();
   if (m_currentPacket!=0)
    {
     m_currentPacket = 0;
@@ -438,13 +438,6 @@ DcaTxop::GetFragmentPacket (WifiMacHeader *hdr)
   fragment = m_currentPacket->CreateFragment (startOffset,
                                               GetFragmentSize ());
   return fragment;
-}
-
-bool
-DcaTxop::NeedsAccess (void) const
-{
-  NS_LOG_FUNCTION (this);
-  return !m_queue->IsEmpty () || m_currentPacket != 0;
 }
 
 void
@@ -474,7 +467,6 @@ DcaTxop::NotifyAccessGranted (void)
                     ", to=" << m_currentHdr.GetAddr1 () <<
                     ", seq=" << m_currentHdr.GetSequenceControl ());
     }
-  m_currentParams.DisableOverrideDurationId ();
   if (m_currentHdr.IsBsrAck ())
     {
       m_tfBeaconAccessGrantCallback (); //Gaurang: Here is where I called back to RegularWifiMac when TF Beacon got access to the channel
@@ -488,8 +480,8 @@ DcaTxop::NotifyAccessGranted (void)
       m_currentParams.DisableRts ();
       m_currentParams.DisableAck ();
       m_currentParams.DisableNextData ();
-      GetLow ()->StartTransmission (m_currentPacket, &m_currentHdr, m_currentParams, this);
       NS_LOG_DEBUG ("tx broadcast");
+      GetLow ()->StartTransmission (m_currentPacket, &m_currentHdr, m_currentParams, this);
     }
   else if (m_currentHdr.IsTFResponse () || m_currentHdr.IsBsrAck ()) 
     {
@@ -562,10 +554,25 @@ DcaTxop::NotifySleep (void)
 }
 
 void
+DcaTxop::NotifyOff (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_queue->Flush ();
+  m_currentPacket = 0;
+}
+
+void
 DcaTxop::NotifyWakeUp (void)
 {
   NS_LOG_FUNCTION (this);
   RestartAccessIfNeeded ();
+}
+
+void
+DcaTxop::NotifyOn (void)
+{
+  NS_LOG_FUNCTION (this);
+  StartAccessIfNeeded ();
 }
 
 void
@@ -658,7 +665,6 @@ DcaTxop::StartNextFragment (void)
   Ptr<Packet> fragment = GetFragmentPacket (&hdr);
   m_currentParams.EnableAck ();
   m_currentParams.DisableRts ();
-  m_currentParams.DisableOverrideDurationId ();
   if (IsLastFragment ())
     {
       m_currentParams.DisableNextData ();

@@ -48,7 +48,7 @@ WifiNetDevice::GetTypeId (void)
                    MakeUintegerChecker<uint16_t> (1,MAX_MSDU_SIZE - LLC_SNAP_HEADER_LENGTH))
     .AddAttribute ("Channel", "The channel attached to this device",
                    PointerValue (),
-                   MakePointerAccessor (&WifiNetDevice::DoGetChannel),
+                   MakePointerAccessor (&WifiNetDevice::GetChannel),
                    MakePointerChecker<Channel> ())
     .AddAttribute ("Phy", "The PHY layer attached to this device.",
                    PointerValue (),
@@ -103,6 +103,7 @@ WifiNetDevice::DoDispose (void)
 void
 WifiNetDevice::DoInitialize (void)
 {
+  NS_LOG_FUNCTION_NOARGS ();
   m_phy->Initialize ();
   m_mac->Initialize ();
   m_stationManager->Initialize ();
@@ -171,7 +172,7 @@ WifiNetDevice::NotifyNewAggregate (void)
           // register the select queue callback
           m_queueInterface->SetSelectQueueCallback (MakeCallback (&WifiNetDevice::SelectQueue, this));
           m_queueInterface->SetLateTxQueuesCreation (true);
-	  FlowControlConfig ();
+          FlowControlConfig ();
         }
     }
   NetDevice::NotifyNewAggregate ();
@@ -295,12 +296,6 @@ WifiNetDevice::GetIfIndex (void) const
 
 Ptr<Channel>
 WifiNetDevice::GetChannel (void) const
-{
-  return m_phy->GetChannel ();
-}
-
-Ptr<Channel>
-WifiNetDevice::DoGetChannel (void) const
 {
   return m_phy->GetChannel ();
 }

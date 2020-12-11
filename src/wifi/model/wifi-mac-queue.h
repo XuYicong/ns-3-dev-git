@@ -25,87 +25,12 @@
 #define WIFI_MAC_QUEUE_H
 
 #include "ns3/queue.h"
-#include "wifi-mac-header.h"
+#include "wifi-mac-queue-item.h"
+
 
 namespace ns3 {
+
 class QosBlockedDestinations;
-
-/**
- * \ingroup wifi
- *
- * WifiMacQueueItem stores (const) packets along with their Wifi MAC headers
- * and the time when they were enqueued.
- */
-class WifiMacQueueItem : public SimpleRefCount<WifiMacQueueItem>
-{
-public:
-  /**
-   * \brief Create a Wifi MAC queue item containing a packet and a Wifi MAC header.
-   * \param p the const packet included in the created item.
-   * \param header the Wifi Mac header included in the created item.
-   */
-  WifiMacQueueItem (Ptr<const Packet> p, const WifiMacHeader & header);
-
-  virtual ~WifiMacQueueItem ();
-
-  /**
-   * \brief Get the packet stored in this item
-   * \return the packet stored in this item.
-   */
-  Ptr<const Packet> GetPacket (void) const;
-
-  /**
-   * \brief Get the header stored in this item
-   * \return the header stored in this item.
-   */
-  const WifiMacHeader & GetHeader (void) const;
-
-  /**
-   * \brief Return the requested address present in the header
-   * \param type the type of the address to return
-   * \return the address
-   */
-  Mac48Address GetAddress (enum WifiMacHeader::AddressType type) const;
-
-  /**
-   * \brief Get the timestamp included in this item
-   * \return the timestamp included in this item.
-   */
-  Time GetTimeStamp (void) const;
-
-  /**
-   * \brief Return the size of the packet included in this item
-   *
-   * \return the size of the packet included in this item.
-   */
-  uint32_t GetSize (void) const;
-
-private:
-  /**
-   * \brief Default constructor
-   *
-   * Defined and unimplemented to avoid misuse
-   */
-  WifiMacQueueItem ();
-  /**
-   * \brief Copy constructor
-   *
-   * Defined and unimplemented to avoid misuse
-   */
-  WifiMacQueueItem (const WifiMacQueueItem &);
-  /**
-   * \brief Assignment operator
-   *
-   * Defined and unimplemented to avoid misuse
-   * \returns
-   */
-  WifiMacQueueItem &operator = (const WifiMacQueueItem &);
-
-  Ptr<const Packet> m_packet;  //!< The packet contained in this queue item
-  WifiMacHeader m_header;      //!< Wifi MAC header associated with the packet
-  Time m_tstamp;               //!< timestamp when the packet arrived at the queue
-};
-
 
 /**
  * \ingroup wifi
@@ -121,32 +46,8 @@ private:
  * to verify whether or not it should be dropped. If
  * dot11EDCATableMSDULifetime has elapsed, it is dropped.
  * Otherwise, it is returned to the caller.
- *
- * WifiMacQueue could have been declared as a subclass of Queue<WifiMacQueueItem>,
- * but this would have caused python examples using wifi to crash at runtime
- * with the following error message: "Trying to allocate twice the same uid:
- * ns3::Queue<WifiMacQueueItem>". Such an error wasn't fully debugged but it
- * may have been due to static initialization order issues.
- *
- * To avoid such an error, the template class WifiQueue<Item> is introduced
- * as a subclass of Queue<Item>. WifiMacQueue is then declared as a
- * specialization of WifiQueue<Item> with Item equal to WifiMacQueueItem.
- * The methods of the WifiQueue class are left unimplemented for Item other
- * than WifiMacQueueItem.
- *
- * Modules that need to forward declare WifiMacQueue have to include the
- * following:
- *
- * \code
- *   class WifiMacQueueItem;
- *   template <typename Item> class WifiQueue;
- *   typedef WifiQueue<WifiMacQueueItem> WifiMacQueue;
- * \endcode
- *
- * in their header file.
  */
-template <typename Item>
-class WifiQueue : public Queue<Item>
+class WifiMacQueue : public Queue<WifiMacQueueItem>
 {
 public:
   /**
@@ -154,8 +55,8 @@ public:
    * \return the object TypeId
    */
   static TypeId GetTypeId (void);
-  WifiQueue ();
-  ~WifiQueue ();
+  WifiMacQueue ();
+  ~WifiMacQueue ();
 
   /// drop policy
   enum DropPolicy
@@ -183,20 +84,20 @@ public:
    * \param item the Wifi MAC queue item to be enqueued at the end
    * \return true if success, false if the packet has been dropped
    */
-  bool Enqueue (Ptr<Item> item);
+  bool Enqueue (Ptr<WifiMacQueueItem> item);
   /**
    * Enqueue the given Wifi MAC queue item at the <i>front</i> of the queue.
    *
    * \param item the Wifi MAC queue item to be enqueued at the front
    * \return true if success, false if the packet has been dropped
    */
-  bool PushFront (Ptr<Item> item);
+  bool PushFront (Ptr<WifiMacQueueItem> item);
   /**
    * Dequeue the packet in the front of the queue.
    *
    * \return the packet
    */
-  Ptr<Item> Dequeue (void);
+  Ptr<WifiMacQueueItem> Dequeue (void);
   /**
    * Search and return, if present in the queue, the first packet having the
    * address indicated by <i>type</i> equal to <i>addr</i>, and tid
@@ -210,7 +111,7 @@ public:
    *
    * \return the packet
    */
-  Ptr<Item> DequeueByTidAndAddress (uint8_t tid,
+  Ptr<WifiMacQueueItem> DequeueByTidAndAddress (uint8_t tid,
                                                 WifiMacHeader::AddressType type,
                                                 Mac48Address addr);
   /**
@@ -224,13 +125,13 @@ public:
    *
    * \return packet
    */
-  Ptr<Item> DequeueFirstAvailable (const Ptr<QosBlockedDestinations> blockedPackets);
+  Ptr<WifiMacQueueItem> DequeueFirstAvailable (const Ptr<QosBlockedDestinations> blockedPackets);
   /**
    * Peek the packet in the front of the queue. The packet is not removed.
    *
    * \return the packet
    */
-  Ptr<const Item> Peek (void) const;
+  Ptr<const WifiMacQueueItem> Peek (void) const;
   /**
    * Search and return, if present in the queue, the first packet having the
    * address indicated by <i>type</i> equal to <i>addr</i>, and tid
@@ -244,7 +145,7 @@ public:
    *
    * \return packet
    */
-  Ptr<const Item> PeekByTidAndAddress (uint8_t tid,
+  Ptr<const WifiMacQueueItem> PeekByTidAndAddress (uint8_t tid,
                                                    WifiMacHeader::AddressType type,
                                                    Mac48Address addr);
   /**
@@ -254,14 +155,13 @@ public:
    *
    * \return packet
    */
-  Ptr<const Item> PeekFirstAvailable (const Ptr<QosBlockedDestinations> blockedPackets);
+  Ptr<const WifiMacQueueItem> PeekFirstAvailable (const Ptr<QosBlockedDestinations> blockedPackets);
   /**
    * Remove the packet in the front of the queue.
    *
    * \return the packet
    */
-  Ptr<Item> Remove (void);
-  void RemoveAll (void);
+  Ptr<WifiMacQueueItem> Remove (void);
   /**
    * If exists, removes <i>packet</i> from queue and returns true. Otherwise it
    * takes no effects and return false. Deletion of the packet is
@@ -316,21 +216,13 @@ private:
    * \param it an iterator pointing to the item
    * \return true if the item is removed, false otherwise
    */
-  bool TtlExceeded (typename Queue<Item>::ConstIterator &it);
+  bool TtlExceeded (ConstIterator &it);
 
   Time m_maxDelay;                          //!< Time to live for packets in the queue
   DropPolicy m_dropPolicy;                  //!< Drop behavior of queue
 
   NS_LOG_TEMPLATE_DECLARE;                  //!< redefinition of the log component
 };
-
-/// Forward declare overridden methods to avoid specializing after instantiation
-template<> bool WifiQueue<WifiMacQueueItem>::IsEmpty (void);
-template<> uint32_t WifiQueue<WifiMacQueueItem>::GetNPackets (void);
-template<> uint32_t WifiQueue<WifiMacQueueItem>::GetNBytes (void);
-
-/// Declare WifiMacQueue as a specialization of template class WifiQueue
-typedef WifiQueue<WifiMacQueueItem> WifiMacQueue;
 
 } //namespace ns3
 

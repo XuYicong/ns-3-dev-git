@@ -36,7 +36,6 @@ class OriginatorBlockAckAgreement : public BlockAckAgreement
 
 
 public:
-  OriginatorBlockAckAgreement ();
   /**
    * Constructor
    *

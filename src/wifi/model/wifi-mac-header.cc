@@ -106,76 +106,6 @@ WifiMacHeader::SetAddr4 (Mac48Address address)
 }
 
 void
-WifiMacHeader::SetAssocReq (void)
-{
-  m_ctrlType = TYPE_MGT;
-  m_ctrlSubtype = 0;
-}
-
-void
-WifiMacHeader::SetAssocResp (void)
-{
-  m_ctrlType = TYPE_MGT;
-  m_ctrlSubtype = 1;
-}
-
-void
-WifiMacHeader::SetProbeReq (void)
-{
-  m_ctrlType = TYPE_MGT;
-  m_ctrlSubtype = 4;
-}
-
-void
-WifiMacHeader::SetProbeResp (void)
-{
-  m_ctrlType = TYPE_MGT;
-  m_ctrlSubtype = 5;
-}
-
-void
-WifiMacHeader::SetBeacon (void)
-{
-  m_ctrlType = TYPE_MGT;
-  m_ctrlSubtype = 8;
-}
-
-void
-WifiMacHeader::SetBlockAckReq (void)
-{
-  m_ctrlType = TYPE_CTL;
-  m_ctrlSubtype = 8;
-}
-
-void
-WifiMacHeader::SetBlockAck (void)
-{
-  m_ctrlType = TYPE_CTL;
-  m_ctrlSubtype = 9;
-}
-
-void
-WifiMacHeader::SetTypeData (void)
-{
-  m_ctrlType = TYPE_DATA;
-  m_ctrlSubtype = 0;
-}
-
-void
-WifiMacHeader::SetAction (void)
-{
-  m_ctrlType = TYPE_MGT;
-  m_ctrlSubtype = 0x0D;
-}
-
-void
-WifiMacHeader::SetMultihopAction (void)
-{
-  m_ctrlType = TYPE_MGT;
-  m_ctrlSubtype = 0x0F;
-}
-
-void
 WifiMacHeader::SetType (WifiMacType type)
 {
   switch (type)
@@ -334,15 +264,9 @@ WifiMacHeader::SetType (WifiMacType type)
 }
 
 void
-WifiMacHeader::SetRawDuration (uint16_t duration)
-{
-  m_duration = duration;
-}
-
-void
 WifiMacHeader::SetDuration (Time duration)
 {
-  int64_t duration_us = ceil ((double)duration.GetNanoSeconds () / 1000);
+  int64_t duration_us = ceil (static_cast<double> (duration.GetNanoSeconds ()) / 1000);
   NS_ASSERT (duration_us >= 0 && duration_us <= 0x7fff);
   m_duration = static_cast<uint16_t> (duration_us);
 }
@@ -424,24 +348,6 @@ void WifiMacHeader::SetQosAckPolicy (QosAckPolicy policy)
       m_qosAckPolicy = 3;
       break;
     }
-}
-
-void
-WifiMacHeader::SetQosNormalAck ()
-{
-  m_qosAckPolicy = 0;
-}
-
-void
-WifiMacHeader::SetQosBlockAck ()
-{
-  m_qosAckPolicy = 3;
-}
-
-void
-WifiMacHeader::SetQosNoAck ()
-{
-  m_qosAckPolicy = 1;
 }
 
 void WifiMacHeader::SetQosAmsdu (void)
@@ -793,13 +699,6 @@ WifiMacHeader::IsTF (void) const //infocom: TF
   return (GetType () == WIFI_MAC_MGT_TF);
 }
 
-
-uint16_t
-WifiMacHeader::GetRawDuration (void) const
-{
-  return m_duration;
-}
-
 Time
 WifiMacHeader::GetDuration (void) const
 {
@@ -818,7 +717,7 @@ WifiMacHeader::GetSequenceNumber (void) const
   return m_seqSeq;
 }
 
-uint16_t
+uint8_t
 WifiMacHeader::GetFragmentNumber (void) const
 {
   return m_seqFrag;
@@ -876,25 +775,6 @@ WifiMacHeader::GetQosTid (void) const
 {
   NS_ASSERT (IsQosData ());
   return m_qosTid;
-}
-
-WifiMacHeader::QosAckPolicy
-WifiMacHeader::GetQosAckPolicy (void) const
-{
-  switch (m_qosAckPolicy)
-    {
-    case 0:
-      return NORMAL_ACK;
-    case 1:
-      return NO_ACK;
-    case 2:
-      return NO_EXPLICIT_ACK;
-    case 3:
-      return BLOCK_ACK;
-    }
-  // NOTREACHED
-  NS_ASSERT (false);
-  return (QosAckPolicy) - 1;
 }
 
 uint8_t
@@ -1102,9 +982,7 @@ WifiMacHeader::Print (std::ostream &os) const
          << ", RA=" << m_addr1;
       break;
     case WIFI_MAC_CTL_BACKREQ:
-      break;
     case WIFI_MAC_CTL_BACKRESP:
-      break;
     case WIFI_MAC_CTL_CTLWRAPPER:
       break;
     case WIFI_MAC_MGT_BEACON:
