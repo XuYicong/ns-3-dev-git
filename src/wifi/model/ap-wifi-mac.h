@@ -31,8 +31,19 @@
 #include "edca-parameter-set.h"
 #include "ns3/random-variable-stream.h"
 #include "mgt-headers.h"
+#include "infrastructure-wifi-mac.h"
 
 namespace ns3 {
+
+class SupportedRates;
+class CapabilityInformation;
+class DsssParameterSet;
+class ErpInformation;
+class EdcaParameterSet;
+class HtOperation;
+class VhtOperation;
+class HeOperation;
+class CfParameterSet;
 
 /**
  * \brief Wi-Fi AP state machine
@@ -41,7 +52,7 @@ namespace ns3 {
  * Handle association, dis-association and authentication,
  * of STAs within an infrastructure BSS.
  */
-class ApWifiMac : public RegularWifiMac
+class ApWifiMac : public InfrastructureWifiMac
 {
 public:
   /**
@@ -109,6 +120,14 @@ public:
    */
   Time GetBeaconInterval (void) const;
   /**
+   * \param duration the maximum duration for the CF period.
+   */
+  void SetCfpMaxDuration (Time duration);
+  /**
+   * \return the maximum duration for the CF period.
+   */
+  Time GetCfpMaxDuration (void) const;
+  /**
    * Determine whether short slot time should be enabled or not in the BSS.
    * Typically, true is returned only when there is no non-erp stations associated
    * to the AP, and that short slot time is supported by the AP and by all other
@@ -136,7 +155,7 @@ public:
    *
    * \returns the VHT operational channel width (in MHz).
    */
-  uint8_t GetVhtOperationalChannelWidth (void) const;
+  uint16_t GetVhtOperationalChannelWidth (void) const;
 
   /**
    * Assign a fixed random variable stream number to the random variables
@@ -229,6 +248,19 @@ private:
   void SendBsrAck (Mac48Address to, uint32_t ru);
   void SendTriggerFrame (bool flag);
   /**
+   * Determine what is the next PCF frame and trigger its transmission.
+   */
+  void SendNextCfFrame (void);
+  /**
+   * Send a CF-Poll packet to the next polling STA.
+   */
+  void SendCfPoll (void);
+  /**
+   * Send a CF-End packet.
+   */
+  void SendCfEnd (void);
+
+  /**
    * Return the Capability information of the current AP.
    *
    * \return the Capability information that we support
@@ -246,6 +278,12 @@ private:
    * \return the EDCA Parameter Set that we support
    */
   EdcaParameterSet GetEdcaParameterSet (void) const;
+  /**
+   * Return the CF parameter set of the current AP.
+   *
+   * \return the CF parameter set that we support
+   */
+  CfParameterSet GetCfParameterSet (void) const;
   /**
    * Return the HT operation of the current AP.
    *
@@ -284,12 +322,6 @@ private:
    */
   void SetBeaconGeneration (bool enable);
   /**
-   * Return whether the AP is generating beacons.
-   *
-   * \return true if beacons are periodically generated, false otherwise
-   */
-  bool GetBeaconGeneration (void) const;
-  /**
    * Return whether protection for non-ERP stations is used in the BSS.
    *
    * \return true if protection for non-ERP stations is used in the BSS,
@@ -303,6 +335,11 @@ private:
    *         false otherwise
    */
   bool GetRifsMode (void) const;
+  /**
+   * Increment the PCF polling list iterator to indicate
+   * that the next polling station can be polled.
+   */
+  void IncrementPollingListIterator (void);
 
   void DoDispose (void);
   void DoInitialize (void);
@@ -318,7 +355,7 @@ private:
    */
   uint16_t GetNextAssociationId (void);
 
-  Ptr<DcaTxop> m_beaconDca;                  //!< Dedicated DcaTxop for beacons
+  Ptr<Txop> m_beaconTxop;                    //!< Dedicated Txop for beacons
   Time m_beaconInterval;                     //!< Interval between beacons
   Time m_timeToTF;
   Time m_lastTfBeaconAccessStart; 
@@ -327,6 +364,7 @@ private:
   uint32_t m_tfPacketDuration;
   bool m_enableBeaconGeneration;             //!< Flag whether beacons are being generated
   EventId m_beaconEvent;                     //!< Event to generate one beacon
+  EventId m_cfpEvent;                        //!< Event to generate one PCF frame
   EventId m_triggerFrameUplinkEvent;               //!< Event to generate one TF beacon
   EventId m_triggerFrameDownlinkEvent;               //!< Event to generate one TF beacon
   EventId m_triggerFrameBeaconExpireEvent;   //!< infocom: expiry of m_maxTfSlots
@@ -338,6 +376,8 @@ private:
   std::map<uint16_t, Mac48Address> m_staList; //!< Map of all stations currently associated to the AP with their association ID
   std::list<Mac48Address> m_nonErpStations;  //!< List of all non-ERP stations currently associated to the AP
   std::list<Mac48Address> m_nonHtStations;   //!< List of all non-HT stations currently associated to the AP
+  std::list<Mac48Address> m_cfPollingList;   //!< List of all PCF stations currently associated to the AP
+  std::list<Mac48Address>::iterator m_itCfPollingList; //!< Iterator to the list of all PCF stations currently associated to the AP
   bool m_enableNonErpProtection;             //!< Flag whether protection mechanism is used or not when non-ERP STAs are present within the BSS
   bool m_disableRifs;                        //!< Flag whether to force RIFS to be disabled within the BSS If non-HT STAs are detected
 };

@@ -21,49 +21,54 @@
  */
 
 #include "ns3/log.h"
-#include "ns3/pointer.h"
-#include "edca-txop-n.h"
-#include "dcf-manager.h"
-#include "dcf-state.h"
+#include "ns3/simulator.h"
+#include "ns3/random-variable-stream.h"
+#include "qos-txop.h"
+#include "channel-access-manager.h"
 #include "mac-tx-middle.h"
+#include "mgt-headers.h"
 #include "wifi-mac-trailer.h"
 #include "wifi-mac-queue.h"
+#include "mac-low.h"
 #include "qos-blocked-destinations.h"
-#include "ns3/simulator.h"
+#include "wifi-remote-station-manager.h"
+#include "msdu-aggregator.h"
+#include "mpdu-aggregator.h"
+#include "ctrl-headers.h"
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT if (m_low != 0) { std::clog << "[mac=" << m_low->GetAddress () << "] "; }
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("EdcaTxopN");
+NS_LOG_COMPONENT_DEFINE ("QosTxop");
 
-NS_OBJECT_ENSURE_REGISTERED (EdcaTxopN);
+NS_OBJECT_ENSURE_REGISTERED (QosTxop);
 
 TypeId
-EdcaTxopN::GetTypeId (void)
+QosTxop::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::EdcaTxopN")
-    .SetParent<ns3::DcaTxop> ()
+  static TypeId tid = TypeId ("ns3::QosTxop")
+    .SetParent<ns3::Txop> ()
     .SetGroupName ("Wifi")
-    .AddConstructor<EdcaTxopN> ()
+    .AddConstructor<QosTxop> ()
     .AddTraceSource ("BackoffTrace",
                      "Trace source for backoff values",
-                     MakeTraceSourceAccessor (&EdcaTxopN::m_backoffTrace),
+                     MakeTraceSourceAccessor (&QosTxop::m_backoffTrace),
                      "ns3::TracedValueCallback::Uint32")
     .AddTraceSource ("CwTrace",
                      "Trace source for contention window values",
-                     MakeTraceSourceAccessor (&EdcaTxopN::m_cwTrace),
+                     MakeTraceSourceAccessor (&QosTxop::m_cwTrace),
                      "ns3::TracedValueCallback::Uint32")
     .AddTraceSource ("TxopTrace",
                      "Trace source for txop start and duration times",
-                     MakeTraceSourceAccessor (&EdcaTxopN::m_txopTrace),
+                     MakeTraceSourceAccessor (&QosTxop::m_txopTrace),
                      "ns3::TracedValueCallback::Time")
   ;
   return tid;
 }
 
-EdcaTxopN::EdcaTxopN ()
+QosTxop::QosTxop ()
   : m_msduAggregator (0),
     m_mpduAggregator (0),
     m_typeOfStation (STA),
@@ -82,86 +87,89 @@ EdcaTxopN::EdcaTxopN ()
   m_baManager->SetBlockDestinationCallback (MakeCallback (&QosBlockedDestinations::Block, m_qosBlockedDestinations));
   m_baManager->SetUnblockDestinationCallback (MakeCallback (&QosBlockedDestinations::Unblock, m_qosBlockedDestinations));
   m_baManager->SetMaxPacketDelay (m_queue->GetMaxDelay ());
-  m_baManager->SetTxOkCallback (MakeCallback (&EdcaTxopN::BaTxOk, this));
-  m_baManager->SetTxFailedCallback (MakeCallback (&EdcaTxopN::BaTxFailed, this));
+  m_baManager->SetTxOkCallback (MakeCallback (&QosTxop::BaTxOk, this));
+  m_baManager->SetTxFailedCallback (MakeCallback (&QosTxop::BaTxFailed, this));
 }
 
-EdcaTxopN::~EdcaTxopN ()
+QosTxop::~QosTxop ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-EdcaTxopN::DoDispose (void)
+QosTxop::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
   m_baManager = 0;
   m_qosBlockedDestinations = 0;
   m_msduAggregator = 0;
   m_mpduAggregator = 0;
-  DcaTxop::DoDispose ();
+  Txop::DoDispose ();
 }
 
 bool
-EdcaTxopN::GetBaAgreementExists (Mac48Address address, uint8_t tid) const
+QosTxop::GetBaAgreementExists (Mac48Address address, uint8_t tid) const
 {
   return m_baManager->ExistsAgreement (address, tid);
 }
 
 void
-EdcaTxopN::CompleteAmpduTransfer (Mac48Address recipient, uint8_t tid)
+QosTxop::CompleteAmpduTransfer (Mac48Address recipient, uint8_t tid)
 {
   m_baManager->CompleteAmpduExchange (recipient, tid);
 }
 
 void
-EdcaTxopN::SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> remoteManager)
+QosTxop::SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> remoteManager)
 {
-  DcaTxop::SetWifiRemoteStationManager (remoteManager);
+  Txop::SetWifiRemoteStationManager (remoteManager);
   NS_LOG_FUNCTION (this << remoteManager);
   m_baManager->SetWifiRemoteStationManager (m_stationManager);
 }
 
 void
-EdcaTxopN::SetTypeOfStation (TypeOfStation type)
+QosTxop::SetTypeOfStation (TypeOfStation type)
 {
   NS_LOG_FUNCTION (this << +type);
   m_typeOfStation = type;
 }
 
 TypeOfStation
-EdcaTxopN::GetTypeOfStation (void) const
+QosTxop::GetTypeOfStation (void) const
 {
-  NS_LOG_FUNCTION (this);
   return m_typeOfStation;
 }
 
-uint16_t EdcaTxopN::GetNextSequenceNumberFor (WifiMacHeader *hdr)
+uint16_t
+QosTxop::GetNextSequenceNumberFor (WifiMacHeader *hdr)
 {
   return m_txMiddle->GetNextSequenceNumberFor (hdr);
 }
 
-uint16_t EdcaTxopN::PeekNextSequenceNumberFor (WifiMacHeader *hdr)
+uint16_t
+QosTxop::PeekNextSequenceNumberFor (WifiMacHeader *hdr)
 {
   return m_txMiddle->PeekNextSequenceNumberFor (hdr);
 }
 
 Ptr<const Packet>
-EdcaTxopN::PeekNextRetransmitPacket (WifiMacHeader &header, Mac48Address recipient, uint8_t tid, Time *timestamp)
+QosTxop::PeekNextRetransmitPacket (WifiMacHeader &header, uint8_t tid, Time *timestamp)
 {
-  return m_baManager->PeekNextPacketByTidAndAddress (header, recipient, tid, timestamp);
+  return m_baManager->PeekNextPacketByTidAndAddress (header, tid, timestamp);
 }
 
 void
-EdcaTxopN::RemoveRetransmitPacket (uint8_t tid, Mac48Address recipient, uint16_t seqnumber)
+QosTxop::RemoveRetransmitPacket (uint8_t tid, Mac48Address recipient, uint16_t seqnumber)
 {
   m_baManager->RemovePacket (tid, recipient, seqnumber);
 }
 
 void
-EdcaTxopN::NotifyAccessGranted (void)
+QosTxop::NotifyAccessGranted (void)
 {
   NS_LOG_FUNCTION (this);
+  NS_ASSERT (m_accessRequested);
+  m_accessRequested = false;
   m_isAccessRequestedForRts = false;
   m_startTxop = Simulator::Now ();
   if (m_currentPacket == 0)
@@ -243,7 +251,7 @@ EdcaTxopN::NotifyAccessGranted (void)
       //With COMPRESSED_BLOCK_ACK fragmentation must be avoided.
       if (((m_currentHdr.IsQosData () && !m_currentHdr.IsQosAmsdu ())
            || (m_currentHdr.IsData () && !m_currentHdr.IsQosData ()))
-          && (m_blockAckThreshold == 0 || m_blockAckType == BASIC_BLOCK_ACK)
+          && (GetBlockAckThreshold () == 0 || m_blockAckType == BASIC_BLOCK_ACK)
           && NeedFragmentation ())
         {
           m_currentIsFragmented = true;
@@ -269,7 +277,7 @@ EdcaTxopN::NotifyAccessGranted (void)
           Ptr<const WifiMacQueueItem> item;
           if (m_currentHdr.IsQosData ()
               && (item = m_queue->PeekByTidAndAddress (m_currentHdr.GetQosTid (),
-                                                       WifiMacHeader::ADDR1, m_currentHdr.GetAddr1 ()))
+                                                       m_currentHdr.GetAddr1 ()))
               && !m_currentHdr.GetAddr1 ().IsBroadcast ()
               && m_msduAggregator != 0 && !m_currentHdr.IsRetry ())
             {
@@ -282,7 +290,6 @@ EdcaTxopN::NotifyAccessGranted (void)
               bool aggregated = false;
               bool isAmsdu = false;
               Ptr<const WifiMacQueueItem> peekedItem = m_queue->PeekByTidAndAddress (m_currentHdr.GetQosTid (),
-                                                                                     WifiMacHeader::ADDR1,
                                                                                      m_currentHdr.GetAddr1 ());
               while (peekedItem != 0)
                 {
@@ -300,7 +307,7 @@ EdcaTxopN::NotifyAccessGranted (void)
                       break;
                     }
                   peekedItem = m_queue->PeekByTidAndAddress (m_currentHdr.GetQosTid (),
-                                                             WifiMacHeader::ADDR1, m_currentHdr.GetAddr1 ());
+                                                             m_currentHdr.GetAddr1 ());
                 }
               if (isAmsdu)
                 {
@@ -328,7 +335,7 @@ EdcaTxopN::NotifyAccessGranted (void)
     }
 }
 
-void EdcaTxopN::NotifyInternalCollision (void)
+void QosTxop::NotifyInternalCollision (void)
 {
   NS_LOG_FUNCTION (this);
   bool resetDcf = false;
@@ -380,11 +387,11 @@ void EdcaTxopN::NotifyInternalCollision (void)
           if (!NeedDataRetransmission (packet, header))
             {
               resetDcf = true;
-              m_stationManager->ReportFinalDataFailed (header.GetAddr1 (), &header);
+              m_stationManager->ReportFinalDataFailed (header.GetAddr1 (), &header, packet->GetSize ());
             }
           else
             {
-              m_stationManager->ReportDataFailed (header.GetAddr1 (), &header);
+              m_stationManager->ReportDataFailed (header.GetAddr1 (), &header, packet->GetSize ());
             }
         }
       if (resetDcf)
@@ -405,43 +412,43 @@ void EdcaTxopN::NotifyInternalCollision (void)
               NS_LOG_DEBUG ("Dequeueing and discarding head of queue");
               m_queue->Remove ();
             }
-          m_dcf->ResetCw ();
+          ResetCw ();
         }
       else
         {
-          m_dcf->UpdateFailedCw ();
+          UpdateFailedCw ();
         }
     }
-  m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+  m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
   RestartAccessIfNeeded ();
 }
 
 void
-EdcaTxopN::NotifyCollision (void)
+QosTxop::NotifyCollision (void)
 {
   NS_LOG_FUNCTION (this);
-  m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+  m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
   RestartAccessIfNeeded ();
 }
 
 void
-EdcaTxopN::MissedCts (void)
+QosTxop::MissedCts (void)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("missed cts");
@@ -490,28 +497,28 @@ EdcaTxopN::MissedCts (void)
         {
           m_currentPacket = 0;
         }
-      m_dcf->ResetCw ();
-      m_cwTrace = m_dcf->GetCw ();
+      ResetCw ();
+      m_cwTrace = GetCw ();
     }
   else
     {
-      m_dcf->UpdateFailedCw ();
-      m_cwTrace = m_dcf->GetCw ();
+      UpdateFailedCw ();
+      m_cwTrace = GetCw ();
     }
-  m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+  m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
   RestartAccessIfNeeded ();
 }
 
 void
-EdcaTxopN::GotAck (void)
+QosTxop::GotAck (void)
 {
   NS_LOG_FUNCTION (this);
   if (!m_currentIsFragmented
@@ -545,22 +552,22 @@ EdcaTxopN::GotAck (void)
             }
         }
       m_currentPacket = 0;
-      m_dcf->ResetCw ();
+      ResetCw ();
       if (!HasTxop ())
         {
           if (m_currentHdr.IsQosData () && GetTxopLimit ().IsStrictlyPositive ())
             {
               m_txopTrace (m_startTxop, Simulator::Now () - m_startTxop);
             }
-          m_cwTrace = m_dcf->GetCw ();
-          m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+          m_cwTrace = GetCw ();
+          m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
           RestartAccessIfNeeded ();
         }
@@ -573,15 +580,15 @@ EdcaTxopN::GotAck (void)
           if (m_currentHdr.IsQosData () && GetTxopLimit ().IsStrictlyPositive ())
             {
               m_txopTrace (m_startTxop, Simulator::Now () - m_startTxop);
-              m_cwTrace = m_dcf->GetCw ();
-              m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+              m_cwTrace = GetCw ();
+              m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
               m_fragmentNumber++;
               RestartAccessIfNeeded ();
@@ -591,14 +598,15 @@ EdcaTxopN::GotAck (void)
 }
 
 void
-EdcaTxopN::MissedAck (void)
+QosTxop::MissedAck (void)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("missed ack");
   if (!NeedDataRetransmission (m_currentPacket, m_currentHdr))
     {
       NS_LOG_DEBUG ("Ack Fail");
-      m_stationManager->ReportFinalDataFailed (m_currentHdr.GetAddr1 (), &m_currentHdr);
+      m_stationManager->ReportFinalDataFailed (m_currentHdr.GetAddr1 (), &m_currentHdr,
+                                               m_currentPacket->GetSize ());
       bool resetCurrentPacket = true;
       if (!m_txFailedCallback.IsNull ())
         {
@@ -640,30 +648,30 @@ EdcaTxopN::MissedAck (void)
         {
           m_currentPacket = 0;
         }
-      m_dcf->ResetCw ();
-      m_cwTrace = m_dcf->GetCw ();
+      ResetCw ();
+      m_cwTrace = GetCw ();
     }
   else
     {
       NS_LOG_DEBUG ("Retransmit");
       m_currentHdr.SetRetry ();
-      m_dcf->UpdateFailedCw ();
-      m_cwTrace = m_dcf->GetCw ();
+      UpdateFailedCw ();
+      m_cwTrace = GetCw ();
     }
-  m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+  m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
   RestartAccessIfNeeded ();
 }
 
 void
-EdcaTxopN::MissedBlockAck (uint8_t nMpdus)
+QosTxop::MissedBlockAck (uint8_t nMpdus)
 {
   NS_LOG_FUNCTION (this << +nMpdus);
   uint8_t tid = GetTid (m_currentPacket, m_currentHdr);
@@ -681,7 +689,7 @@ EdcaTxopN::MissedBlockAck (uint8_t nMpdus)
         }
       else
         {
-          //standard says when loosing a BlockAck originator may send a BAR page 139
+          //standard says when losing a BlockAck originator may send a BAR page 139
           NS_LOG_DEBUG ("Transmit Block Ack Request");
           CtrlBAckRequestHeader reqHdr;
           reqHdr.SetType (COMPRESSED_BLOCK_ACK);
@@ -720,48 +728,48 @@ EdcaTxopN::MissedBlockAck (uint8_t nMpdus)
           m_currentPacket = request.bar;
           m_currentHdr = hdr;
         }
-      m_dcf->UpdateFailedCw ();
-      m_cwTrace = m_dcf->GetCw ();
+      UpdateFailedCw ();
+      m_cwTrace = GetCw ();
     }
   else
     {
       NS_LOG_DEBUG ("Block Ack Request Fail");
       //to reset the dcf.
       m_currentPacket = 0;
-      m_dcf->ResetCw ();
-      m_cwTrace = m_dcf->GetCw ();
+      ResetCw ();
+      m_cwTrace = GetCw ();
     }
-  m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+  m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
   RestartAccessIfNeeded ();
 }
 
 Ptr<MsduAggregator>
-EdcaTxopN::GetMsduAggregator (void) const
+QosTxop::GetMsduAggregator (void) const
 {
   return m_msduAggregator;
 }
 
 Ptr<MpduAggregator>
-EdcaTxopN::GetMpduAggregator (void) const
+QosTxop::GetMpduAggregator (void) const
 {
   return m_mpduAggregator;
 }
 
 void
-EdcaTxopN::RestartAccessIfNeeded (void)
+QosTxop::RestartAccessIfNeeded (void)
 {
   NS_LOG_FUNCTION (this);
   if ((m_currentPacket != 0
        || !m_queue->IsEmpty () || m_baManager->HasPackets ())
-      && !m_dcf->IsAccessRequested ())
+      && !IsAccessRequested ())
     {
       Ptr<const Packet> packet;
       WifiMacHeader hdr;
@@ -792,17 +800,17 @@ EdcaTxopN::RestartAccessIfNeeded (void)
         {
           m_isAccessRequestedForRts = false;
         }
-      m_manager->RequestAccess (m_dcf);
+      m_channelAccessManager->RequestAccess (this);
     }
 }
 
 void
-EdcaTxopN::StartAccessIfNeeded (void)
+QosTxop::StartAccessIfNeeded (void)
 {
   //NS_LOG_FUNCTION (this);
   if (m_currentPacket == 0
       && (!m_queue->IsEmpty () || m_baManager->HasPackets ())
-      && !m_dcf->IsAccessRequested ())
+      && !IsAccessRequested ())
     {
       Ptr<const Packet> packet;
       WifiMacHeader hdr;
@@ -828,12 +836,12 @@ EdcaTxopN::StartAccessIfNeeded (void)
         {
           m_isAccessRequestedForRts = false;
         }
-      m_manager->RequestAccess (m_dcf);
+      m_channelAccessManager->RequestAccess (this);
     }
 }
 
 bool
-EdcaTxopN::NeedBarRetransmission (void)
+QosTxop::NeedBarRetransmission (void)
 {
   uint8_t tid = 0;
   uint16_t seqNumber = 0;
@@ -860,7 +868,7 @@ EdcaTxopN::NeedBarRetransmission (void)
 }
 
 void
-EdcaTxopN::StartNextPacket (void)
+QosTxop::StartNextPacket (void)
 {
   NS_LOG_FUNCTION (this);
   Time txopLimit = GetTxopLimit ();
@@ -870,7 +878,6 @@ EdcaTxopN::StartNextPacket (void)
   if (peekedPacket == 0)
     {
       Ptr<const WifiMacQueueItem> peekedItem = m_queue->PeekByTidAndAddress (m_currentHdr.GetQosTid (),
-                                                                             WifiMacHeader::ADDR1,
                                                                              m_currentHdr.GetAddr1 ());
       if (peekedItem)
         {
@@ -905,7 +912,6 @@ EdcaTxopN::StartNextPacket (void)
     {
       NS_LOG_DEBUG ("start next packet");
       Ptr<WifiMacQueueItem> item = m_queue->DequeueByTidAndAddress (m_currentHdr.GetQosTid (),
-                                                                    WifiMacHeader::ADDR1,
                                                                     m_currentHdr.GetAddr1 ());
       NS_ASSERT (item != 0);
       m_currentPacket = item->GetPacket ();
@@ -932,7 +938,7 @@ EdcaTxopN::StartNextPacket (void)
 }
 
 Time
-EdcaTxopN::GetTxopRemaining (void) const
+QosTxop::GetTxopRemaining (void) const
 {
   Time remainingTxop = GetTxopLimit ();
   remainingTxop -= (Simulator::Now () - m_startTxop);
@@ -945,7 +951,7 @@ EdcaTxopN::GetTxopRemaining (void) const
 }
 
 bool
-EdcaTxopN::HasTxop (void) const
+QosTxop::HasTxop (void) const
 {
   NS_LOG_FUNCTION (this);
   WifiMacHeader hdr;
@@ -955,7 +961,6 @@ EdcaTxopN::HasTxop (void) const
     }
 
   Ptr<const WifiMacQueueItem> peekedItem = m_queue->PeekByTidAndAddress (m_currentHdr.GetQosTid (),
-                                                                         WifiMacHeader::ADDR1,
                                                                          m_currentHdr.GetAddr1 ());
   if (peekedItem == 0)
     {
@@ -984,7 +989,7 @@ EdcaTxopN::HasTxop (void) const
 }
 
 void
-EdcaTxopN::EndTxNoAck (void)
+QosTxop::EndTxNoAck (void)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("a transmission that did not require an ACK just finished");
@@ -993,22 +998,22 @@ EdcaTxopN::EndTxNoAck (void)
       m_txopTrace (m_startTxop, Simulator::Now () - m_startTxop);
     }
   m_currentPacket = 0;
-  m_dcf->ResetCw ();
-  m_cwTrace = m_dcf->GetCw ();
-  m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+  ResetCw ();
+  m_cwTrace = GetCw ();
+  m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+    StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
   StartAccessIfNeeded ();
 }
 
 bool
-EdcaTxopN::NeedFragmentation (void) const
+QosTxop::NeedFragmentation (void) const
 {
   NS_LOG_FUNCTION (this);
   if (m_stationManager->HasVhtSupported ()
@@ -1032,7 +1037,7 @@ EdcaTxopN::NeedFragmentation (void) const
 }
 
 bool
-EdcaTxopN::IsTxopFragmentation () const
+QosTxop::IsTxopFragmentation () const
 {
   if (GetTxopLimit ().IsZero ())
     {
@@ -1047,7 +1052,7 @@ EdcaTxopN::IsTxopFragmentation () const
 }
 
 uint32_t
-EdcaTxopN::GetTxopFragmentSize () const
+QosTxop::GetTxopFragmentSize () const
 {
   Time txopDuration = GetTxopLimit ();
   if (txopDuration.IsZero ())
@@ -1080,7 +1085,7 @@ EdcaTxopN::GetTxopFragmentSize () const
 }
 
 uint32_t
-EdcaTxopN::GetNTxopFragment () const
+QosTxop::GetNTxopFragment () const
 {
   uint32_t fragmentSize = GetTxopFragmentSize ();
   uint32_t nFragments = (m_currentPacket->GetSize () / fragmentSize);
@@ -1093,7 +1098,7 @@ EdcaTxopN::GetNTxopFragment () const
 }
 
 uint32_t
-EdcaTxopN::GetTxopFragmentOffset (uint32_t fragmentNumber) const
+QosTxop::GetTxopFragmentOffset (uint32_t fragmentNumber) const
 {
   if (fragmentNumber == 0)
     {
@@ -1119,7 +1124,7 @@ EdcaTxopN::GetTxopFragmentOffset (uint32_t fragmentNumber) const
 }
 
 uint32_t
-EdcaTxopN::GetNextTxopFragmentSize (uint32_t fragmentNumber) const
+QosTxop::GetNextTxopFragmentSize (uint32_t fragmentNumber) const
 {
   NS_LOG_FUNCTION (this << fragmentNumber);
   uint32_t fragmentSize = GetTxopFragmentSize ();
@@ -1138,7 +1143,7 @@ EdcaTxopN::GetNextTxopFragmentSize (uint32_t fragmentNumber) const
 }
 
 uint32_t
-EdcaTxopN::GetFragmentSize (void) const
+QosTxop::GetFragmentSize (void) const
 {
   uint32_t size;
   if (IsTxopFragmentation ())
@@ -1153,7 +1158,7 @@ EdcaTxopN::GetFragmentSize (void) const
 }
 
 uint32_t
-EdcaTxopN::GetNextFragmentSize (void) const
+QosTxop::GetNextFragmentSize (void) const
 {
   uint32_t size;
   if (IsTxopFragmentation ())
@@ -1168,7 +1173,7 @@ EdcaTxopN::GetNextFragmentSize (void) const
 }
 
 uint32_t
-EdcaTxopN::GetFragmentOffset (void) const
+QosTxop::GetFragmentOffset (void) const
 {
   uint32_t offset;
   if (IsTxopFragmentation ())
@@ -1184,7 +1189,7 @@ EdcaTxopN::GetFragmentOffset (void) const
 }
 
 bool
-EdcaTxopN::IsLastFragment (void) const
+QosTxop::IsLastFragment (void) const
 {
   bool isLastFragment;
   if (IsTxopFragmentation ())
@@ -1200,7 +1205,7 @@ EdcaTxopN::IsLastFragment (void) const
 }
 
 Ptr<Packet>
-EdcaTxopN::GetFragmentPacket (WifiMacHeader *hdr)
+QosTxop::GetFragmentPacket (WifiMacHeader *hdr)
 {
   NS_LOG_FUNCTION (this << hdr);
   *hdr = m_currentHdr;
@@ -1221,18 +1226,18 @@ EdcaTxopN::GetFragmentPacket (WifiMacHeader *hdr)
 }
 
 void
-EdcaTxopN::SetAccessCategory (AcIndex ac)
+QosTxop::SetAccessCategory (AcIndex ac)
 {
   NS_LOG_FUNCTION (this << +ac);
   m_ac = ac;
 }
 
 Mac48Address
-EdcaTxopN::MapSrcAddressForAggregation (const WifiMacHeader &hdr)
+QosTxop::MapSrcAddressForAggregation (const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << &hdr);
   Mac48Address retval;
-  if (m_typeOfStation == STA || m_typeOfStation == ADHOC_STA)
+  if (GetTypeOfStation () == STA || GetTypeOfStation () == ADHOC_STA)
     {
       retval = hdr.GetAddr2 ();
     }
@@ -1244,11 +1249,11 @@ EdcaTxopN::MapSrcAddressForAggregation (const WifiMacHeader &hdr)
 }
 
 Mac48Address
-EdcaTxopN::MapDestAddressForAggregation (const WifiMacHeader &hdr)
+QosTxop::MapDestAddressForAggregation (const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << &hdr);
   Mac48Address retval;
-  if (m_typeOfStation == AP || m_typeOfStation == ADHOC_STA)
+  if (GetTypeOfStation () == AP || GetTypeOfStation () == ADHOC_STA)
     {
       retval = hdr.GetAddr1 ();
     }
@@ -1260,21 +1265,21 @@ EdcaTxopN::MapDestAddressForAggregation (const WifiMacHeader &hdr)
 }
 
 void
-EdcaTxopN::SetMsduAggregator (const Ptr<MsduAggregator> aggr)
+QosTxop::SetMsduAggregator (const Ptr<MsduAggregator> aggr)
 {
   NS_LOG_FUNCTION (this << aggr);
   m_msduAggregator = aggr;
 }
 
 void
-EdcaTxopN::SetMpduAggregator (const Ptr<MpduAggregator> aggr)
+QosTxop::SetMpduAggregator (const Ptr<MpduAggregator> aggr)
 {
   NS_LOG_FUNCTION (this << aggr);
   m_mpduAggregator = aggr;
 }
 
 void
-EdcaTxopN::PushFront (Ptr<const Packet> packet, const WifiMacHeader &hdr)
+QosTxop::PushFront (Ptr<const Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
   WifiMacTrailer fcs;
@@ -1284,7 +1289,7 @@ EdcaTxopN::PushFront (Ptr<const Packet> packet, const WifiMacHeader &hdr)
 }
 
 void
-EdcaTxopN::GotAddBaResponse (const MgtAddBaResponseHeader *respHdr, Mac48Address recipient)
+QosTxop::GotAddBaResponse (const MgtAddBaResponseHeader *respHdr, Mac48Address recipient)
 {
   NS_LOG_FUNCTION (this << respHdr << recipient);
   NS_LOG_DEBUG ("received ADDBA response from " << recipient);
@@ -1306,7 +1311,7 @@ EdcaTxopN::GotAddBaResponse (const MgtAddBaResponseHeader *respHdr, Mac48Address
 }
 
 void
-EdcaTxopN::GotDelBaFrame (const MgtDelBaHeader *delBaHdr, Mac48Address recipient)
+QosTxop::GotDelBaFrame (const MgtDelBaHeader *delBaHdr, Mac48Address recipient)
 {
   NS_LOG_FUNCTION (this << delBaHdr << recipient);
   NS_LOG_DEBUG ("received DELBA frame from=" << recipient);
@@ -1314,7 +1319,7 @@ EdcaTxopN::GotDelBaFrame (const MgtDelBaHeader *delBaHdr, Mac48Address recipient
 }
 
 void
-EdcaTxopN::GotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac48Address recipient, double rxSnr, WifiMode txMode, double dataSnr)
+QosTxop::GotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac48Address recipient, double rxSnr, WifiMode txMode, double dataSnr)
 {
   NS_LOG_FUNCTION (this << blockAck << recipient << rxSnr << txMode.GetUniqueName () << dataSnr);
   NS_LOG_DEBUG ("got block ack from=" << recipient);
@@ -1324,29 +1329,30 @@ EdcaTxopN::GotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac48Address rec
       m_txOkCallback (m_currentHdr);
     }
   m_currentPacket = 0;
-  m_dcf->ResetCw ();
+  ResetCw ();
   if (!HasTxop ())
     {
       if (m_currentHdr.IsQosData () && GetTxopLimit ().IsStrictlyPositive ())
         {
           m_txopTrace (m_startTxop, Simulator::Now () - m_startTxop);
         }
-      m_cwTrace = m_dcf->GetCw ();
-      m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+      m_cwTrace = GetCw ();
+      m_backoffTrace = m_rng->GetInteger (0, GetCw ());
+      m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
       RestartAccessIfNeeded ();
     }
 }
 
 void
-EdcaTxopN::VerifyBlockAck (void)
+QosTxop::VerifyBlockAck (void)
 {
   NS_LOG_FUNCTION (this);
   uint8_t tid = m_currentHdr.GetQosTid ();
@@ -1363,31 +1369,25 @@ EdcaTxopN::VerifyBlockAck (void)
     }
 }
 
-bool EdcaTxopN::GetAmpduExist (Mac48Address dest) const
+bool QosTxop::GetAmpduExist (Mac48Address dest) const
 {
   NS_LOG_FUNCTION (this << dest);
-  if (m_aMpduEnabled.find (dest) != m_aMpduEnabled.end ())
+  auto it = m_aMpduEnabled.find (dest);
+  if (it != m_aMpduEnabled.end ())
     {
-      return m_aMpduEnabled.find (dest)->second;
+      return it->second;
     }
   return false;
 }
 
-void EdcaTxopN::SetAmpduExist (Mac48Address dest, bool enableAmpdu)
+void QosTxop::SetAmpduExist (Mac48Address dest, bool enableAmpdu)
 {
   NS_LOG_FUNCTION (this << dest << enableAmpdu);
-  if (m_aMpduEnabled.find (dest) != m_aMpduEnabled.end () && m_aMpduEnabled.find (dest)->second != enableAmpdu)
-    {
-      m_aMpduEnabled.erase (m_aMpduEnabled.find (dest));
-    }
-  if (m_aMpduEnabled.find (dest) == m_aMpduEnabled.end ())
-    {
-      m_aMpduEnabled.insert (std::make_pair (dest, enableAmpdu));
-    }
+  m_aMpduEnabled[dest] = enableAmpdu;
 }
 
 void
-EdcaTxopN::CompleteTx (void)
+QosTxop::CompleteTx (void)
 {
   NS_LOG_FUNCTION (this);
   if (m_currentHdr.IsQosData () && m_currentHdr.IsQosBlockAck ())
@@ -1403,7 +1403,7 @@ EdcaTxopN::CompleteTx (void)
 }
 
 void
-EdcaTxopN::CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp)
+QosTxop::CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp)
 {
   NS_ASSERT (hdr.IsQosData ());
   m_baManager->StorePacket (packet, hdr, tstamp);
@@ -1413,13 +1413,13 @@ EdcaTxopN::CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tst
 }
 
 bool
-EdcaTxopN::SetupBlockAckIfNeeded ()
+QosTxop::SetupBlockAckIfNeeded ()
 {
   NS_LOG_FUNCTION (this);
   uint8_t tid = m_currentHdr.GetQosTid ();
   Mac48Address recipient = m_currentHdr.GetAddr1 ();
-  uint32_t packets = m_queue->GetNPacketsByTidAndAddress (tid, WifiMacHeader::ADDR1, recipient);
-  if ((m_blockAckThreshold > 0 && packets >= m_blockAckThreshold)
+  uint32_t packets = m_queue->GetNPacketsByTidAndAddress (tid, recipient);
+  if ((GetBlockAckThreshold () > 0 && packets >= GetBlockAckThreshold ())
       || (m_mpduAggregator != 0 && m_mpduAggregator->GetMaxAmpduSize () > 0 && packets > 1)
       || m_stationManager->HasVhtSupported ()
       || m_stationManager->HasHeSupported ())
@@ -1433,7 +1433,7 @@ EdcaTxopN::SetupBlockAckIfNeeded ()
 }
 
 void
-EdcaTxopN::SendBlockAckRequest (const Bar &bar)
+QosTxop::SendBlockAckRequest (const Bar &bar)
 {
   NS_LOG_FUNCTION (this << &bar);
   WifiMacHeader hdr;
@@ -1475,16 +1475,16 @@ EdcaTxopN::SendBlockAckRequest (const Bar &bar)
 }
 
 void
-EdcaTxopN::CompleteConfig (void)
+QosTxop::CompleteConfig (void)
 {
   NS_LOG_FUNCTION (this);
   m_baManager->SetTxMiddle (m_txMiddle);
   m_low->RegisterEdcaForAc (m_ac, this);
-  m_baManager->SetBlockAckInactivityCallback (MakeCallback (&EdcaTxopN::SendDelbaFrame, this));
+  m_baManager->SetBlockAckInactivityCallback (MakeCallback (&QosTxop::SendDelbaFrame, this));
 }
 
 void
-EdcaTxopN::SetBlockAckThreshold (uint8_t threshold)
+QosTxop::SetBlockAckThreshold (uint8_t threshold)
 {
   NS_LOG_FUNCTION (this << +threshold);
   m_blockAckThreshold = threshold;
@@ -1492,22 +1492,22 @@ EdcaTxopN::SetBlockAckThreshold (uint8_t threshold)
 }
 
 void
-EdcaTxopN::SetBlockAckInactivityTimeout (uint16_t timeout)
+QosTxop::SetBlockAckInactivityTimeout (uint16_t timeout)
 {
   NS_LOG_FUNCTION (this << timeout);
   m_blockAckInactivityTimeout = timeout;
 }
 
 uint8_t
-EdcaTxopN::GetBlockAckThreshold (void) const
+QosTxop::GetBlockAckThreshold (void) const
 {
   NS_LOG_FUNCTION (this);
   return m_blockAckThreshold;
 }
 
 void
-EdcaTxopN::SendAddBaRequest (Mac48Address dest, uint8_t tid, uint16_t startSeq,
-                             uint16_t timeout, bool immediateBAck)
+QosTxop::SendAddBaRequest (Mac48Address dest, uint8_t tid, uint16_t startSeq,
+                           uint16_t timeout, bool immediateBAck)
 {
   NS_LOG_FUNCTION (this << dest << +tid << startSeq << timeout << immediateBAck);
   NS_LOG_DEBUG ("sent ADDBA request to " << dest);
@@ -1567,7 +1567,7 @@ EdcaTxopN::SendAddBaRequest (Mac48Address dest, uint8_t tid, uint16_t startSeq,
 }
 
 void
-EdcaTxopN::SendDelbaFrame (Mac48Address addr, uint8_t tid, bool byOriginator)
+QosTxop::SendDelbaFrame (Mac48Address addr, uint8_t tid, bool byOriginator)
 {
   NS_LOG_FUNCTION (this << addr << +tid << byOriginator);
   WifiMacHeader hdr;
@@ -1604,24 +1604,24 @@ EdcaTxopN::SendDelbaFrame (Mac48Address addr, uint8_t tid, bool byOriginator)
 }
 
 void
-EdcaTxopN::DoInitialize ()
+QosTxop::DoInitialize ()
 {
   NS_LOG_FUNCTION (this);
-  m_dcf->ResetCw ();
-  m_cwTrace = m_dcf->GetCw ();
-  m_backoffTrace = m_rng->GetInteger (0, m_dcf->GetCw ());
+  ResetCw ();
+  m_cwTrace = GetCw ();
+  m_backoffTrace = m_rng->GetInteger (0, GetCw ());
   if (!GetMuMode ())
    {
-     m_dcf->StartBackoffNow (m_backoffTrace);
+     StartBackoffNow (m_backoffTrace);
    }
   else
    {
-     m_dcf->StartBackoffNow (0);
+     StartBackoffNow (0);
    }
 }
 
 void
-EdcaTxopN::BaTxOk (const WifiMacHeader &hdr)
+QosTxop::BaTxOk (const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << hdr);
   if (!m_txOkCallback.IsNull ())
@@ -1631,7 +1631,7 @@ EdcaTxopN::BaTxOk (const WifiMacHeader &hdr)
 }
 
 void
-EdcaTxopN::BaTxFailed (const WifiMacHeader &hdr)
+QosTxop::BaTxFailed (const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << hdr);
   if (!m_txFailedCallback.IsNull ())
@@ -1641,9 +1641,10 @@ EdcaTxopN::BaTxFailed (const WifiMacHeader &hdr)
 }
 
 bool
-EdcaTxopN::IsEdca ()
+QosTxop::IsQosTxop () const
 {
   return true;
 }
 
 } //namespace ns3
+
