@@ -33,6 +33,8 @@
 #include "wifi-spectrum-phy-interface.h"
 #include "wifi-utils.h"
 #include "ns3/simulator.h"
+#include "wifi-ppdu.h"
+#include "wifi-psdu.h"
 
 namespace ns3 {
 
@@ -202,41 +204,14 @@ SpectrumWifiPhy::SetChannelWidth (uint16_t channelwidth)
 }
 
 void
-SpectrumWifiPhy::ConfigureStandard (WifiPhyStandard standard)
+SpectrumWifiPhy::ConfigureStandardAndBand (WifiPhyStandard standard, WifiPhyBand band)
 {
-  NS_LOG_FUNCTION (this << standard);
-  WifiPhy::ConfigureStandard (standard);
+  NS_LOG_FUNCTION (this << standard << band);
+  WifiPhy::ConfigureStandardAndBand (standard, band);
   if (IsInitialized ())
     {
       ResetSpectrumModel ();
     }
-}
-
-void
-SpectrumWifiPhy::AddOperationalChannel (uint8_t channelNumber)
-{
-  m_operationalChannelList.push_back (channelNumber);
-}
-
-std::vector<uint8_t>
-SpectrumWifiPhy::GetOperationalChannelList () const
-{
-  std::vector<uint8_t> channelList;
-  channelList.push_back (GetChannelNumber ());  // first channel of list
-  for (std::vector<uint8_t>::size_type i = 0; i != m_operationalChannelList.size (); i++)
-    {
-      if (m_operationalChannelList[i] != GetChannelNumber ())
-        {
-          channelList.push_back (m_operationalChannelList[i]);
-        }
-    }
-  return channelList;
-}
-
-void
-SpectrumWifiPhy::ClearOperationalChannelList ()
-{
-  m_operationalChannelList.clear ();
 }
 
 void
@@ -280,6 +255,14 @@ SpectrumWifiPhy::StartRx (Ptr<SpectrumSignalParameters> rxParams)
 
   // Log the signal arrival to the trace source
   m_signalCb (wifiRxParams ? true : false, senderNodeId, WToDbm (rxPowerW), rxDuration);
+
+  // Do no further processing if signal is too weak
+  // Current implementation assumes constant RX power over the PPDU duration
+  if (WToDbm (rxPowerW) < GetRxSensitivity ())
+    {
+      NS_LOG_INFO ("Received signal too weak to process: " << WToDbm (rxPowerW) << " dBm");
+      return;
+    }
   if (wifiRxParams == 0)
     {
       NS_LOG_INFO ("Received non Wi-Fi signal");
@@ -296,8 +279,8 @@ SpectrumWifiPhy::StartRx (Ptr<SpectrumSignalParameters> rxParams)
     }
 
   NS_LOG_INFO ("Received Wi-Fi signal");
-  Ptr<Packet> packet = wifiRxParams->packet->Copy ();
-  StartReceivePreambleAndHeader (packet, rxPowerW, rxDuration);
+  Ptr<WifiPpdu> ppdu = Copy (wifiRxParams->ppdu);
+  StartReceivePreamble (ppdu, rxPowerW);
 }
 
 Ptr<AntennaModel>
@@ -372,59 +355,64 @@ SpectrumWifiPhy::GetCenterFrequencyForChannelWidth (WifiTxVector txVector) const
 }
 
 void
-SpectrumWifiPhy::StartTx (Ptr<Packet> packet, WifiTxVector txVector, Time txDuration)
+SpectrumWifiPhy::StartTx (Ptr<WifiPpdu> ppdu)
 {
-  NS_LOG_DEBUG ("Start transmission: signal power before antenna gain=" << GetPowerDbm (txVector.GetTxPowerLevel ()) << "dBm");
-  double txPowerWatts = DbmToW (GetPowerDbm (txVector.GetTxPowerLevel ()) + GetTxGain ());
-  std::cout<<"transmitting node = "<< this->GetDevice()->GetNode()->GetId () << " muMode = "<< m_muMode <<" ruBits = " << m_currentRu << " packet size = "<< packet->GetSize () <<" time = " << Simulator::Now ().GetMicroSeconds ()<< std::endl;
-  packet->Print(std::cout);
-  std::cout<<"\n\n\n";
+  //std::cout<<"transmitting node = "<< this->GetDevice()->GetNode()->GetId () << " muMode = "<< m_muMode <<" ruBits = " << m_currentRu << " packet size = "<< packet->GetSize () <<" time = " << Simulator::Now ().GetMicroSeconds ()<< std::endl;//Xyct: verbose and annoying
+  //packet->Print(std::cout);
+  //std::cout<<"\n\n\n";
+  NS_LOG_FUNCTION (this << ppdu);
+  WifiTxVector txVector = ppdu->GetTxVector ();
+  double txPowerDbm = GetTxPowerForTransmission (txVector) + GetTxGain ();
+  NS_LOG_DEBUG ("Start transmission: signal power before antenna gain=" << txPowerDbm << "dBm");
+  double txPowerWatts = DbmToW (txPowerDbm);
   Ptr<SpectrumValue> txPowerSpectrum = GetTxPowerSpectralDensity (GetCenterFrequencyForChannelWidth (txVector), txVector.GetChannelWidth (), txPowerWatts, txVector.GetMode ().GetModulationClass (), GetRuBits (), GetMuMode ());
   Ptr<WifiSpectrumSignalParameters> txParams = Create<WifiSpectrumSignalParameters> ();
-  txParams->duration = txDuration;
+  txParams->duration = ppdu->GetTxDuration ();
   txParams->psd = txPowerSpectrum;
   NS_ASSERT_MSG (m_wifiSpectrumPhyInterface, "SpectrumPhy() is not set; maybe forgot to call CreateWifiSpectrumPhyInterface?");
   txParams->txPhy = m_wifiSpectrumPhyInterface->GetObject<SpectrumPhy> ();
   txParams->txAntenna = m_antenna;
-  txParams->packet = packet;
+  txParams->ppdu = ppdu;
   txParams->ruBits = GetRuBits ();
   txParams->muMode = GetMuMode ();
-  NS_LOG_DEBUG ("Starting transmission with power " << WToDbm (txPowerWatts) << " dBm on channel " << (uint16_t) GetChannelNumber ());
+  NS_LOG_DEBUG ("Starting transmission with power " << WToDbm (txPowerWatts) << " dBm on channel " << +GetChannelNumber ());
   NS_LOG_DEBUG ("Starting transmission with integrated spectrum power " << WToDbm (Integral (*txPowerSpectrum)) << " dBm; spectrum model Uid: " << txPowerSpectrum->GetSpectrumModel ()->GetUid ());
   m_channel->StartTx (txParams);
 }
 
-double
+uint32_t
 SpectrumWifiPhy::GetBandBandwidth (void) const
 {
-  double bandBandwidth = 0;
-  switch (GetStandard ())
+  uint32_t bandBandwidth = 0;
+  switch (GetPhyStandard ())
     {
     case WIFI_PHY_STANDARD_80211a:
     case WIFI_PHY_STANDARD_80211g:
     case WIFI_PHY_STANDARD_holland:
     case WIFI_PHY_STANDARD_80211b:
-    case WIFI_PHY_STANDARD_80211n_2_4GHZ:
-    case WIFI_PHY_STANDARD_80211n_5GHZ:
+    case WIFI_PHY_STANDARD_80211n:
     case WIFI_PHY_STANDARD_80211ac:
       // Use OFDM subcarrier width of 312.5 KHz as band granularity
       bandBandwidth = 312500;
       break;
-    case WIFI_PHY_STANDARD_80211_10MHZ:
-      // Use OFDM subcarrier width of 156.25 KHz as band granularity
-      bandBandwidth = 156250;
+    case WIFI_PHY_STANDARD_80211p:
+      if (GetChannelWidth () == 5)
+        {
+          // Use OFDM subcarrier width of 78.125 KHz as band granularity
+          bandBandwidth = 78125;
+        }
+      else
+        {
+          // Use OFDM subcarrier width of 156.25 KHz as band granularity
+          bandBandwidth = 156250;
+        }
       break;
-    case WIFI_PHY_STANDARD_80211_5MHZ:
-      // Use OFDM subcarrier width of 78.125 KHz as band granularity
-      bandBandwidth = 78125;
-      break;
-    case WIFI_PHY_STANDARD_80211ax_2_4GHZ:
-    case WIFI_PHY_STANDARD_80211ax_5GHZ:
+    case WIFI_PHY_STANDARD_80211ax:
       // Use OFDM subcarrier width of 78.125 KHz as band granularity
       bandBandwidth = 78125;
       break;
     default:
-      NS_FATAL_ERROR ("Standard unknown: " << GetStandard ());
+      NS_FATAL_ERROR ("Standard unknown: " << GetPhyStandard ());
       break;
     }
   return bandBandwidth;
@@ -436,7 +424,7 @@ SpectrumWifiPhy::GetGuardBandwidth (uint16_t currentChannelWidth) const
   uint16_t guardBandwidth = 0;
   if (currentChannelWidth == 22)
     {
-      //handle case of use of legacy DSSS transmission
+      //handle case of DSSS transmission
       guardBandwidth = 10;
     }
   else

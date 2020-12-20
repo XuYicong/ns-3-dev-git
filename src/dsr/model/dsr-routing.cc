@@ -429,7 +429,7 @@ void DsrRouting::Start ()
   for (uint32_t i = 0; i < m_numPriorityQueues; i++)
     {
       // Set the network queue max size and the delay
-      NS_LOG_INFO ("The network queue size " << m_maxNetworkSize << " and the queue delay " << m_maxNetworkDelay.GetSeconds ());
+      NS_LOG_INFO ("The network queue size " << m_maxNetworkSize << " and the queue delay " << m_maxNetworkDelay.As (Time::S));
       Ptr<dsr::DsrNetworkQueue> queue_i = CreateObject<dsr::DsrNetworkQueue> (m_maxNetworkSize,m_maxNetworkDelay);
       std::pair<std::map<uint32_t, Ptr<dsr::DsrNetworkQueue> >::iterator, bool> result_i = m_priorityQueue.insert (std::make_pair (i, queue_i));
       NS_ASSERT_MSG (result_i.second, "Error in creating queues");
@@ -830,7 +830,7 @@ void DsrRouting::SendBuffTimerExpire ()
 
 void DsrRouting::CheckSendBuffer ()
 {
-  NS_LOG_INFO (Simulator::Now ().GetSeconds ()
+  NS_LOG_INFO (Simulator::Now ().As (Time::S)
                << " Checking send buffer at " << m_mainAddress << " with size " << m_sendBuffer.GetSize ());
 
   for (std::vector<DsrSendBuffEntry>::iterator i = m_sendBuffer.GetBuffer ().begin (); i != m_sendBuffer.GetBuffer ().end (); )
@@ -1123,7 +1123,7 @@ bool DsrRouting::PromiscReceive (Ptr<NetDevice> device, Ptr<const Packet> packet
         {
           Ipv4Address promiscSource = GetIPfromMAC (Mac48Address::ConvertFrom (from));
           dsrOption = GetOption (optionType);       // Get the relative DSR option and demux to the process function
-          NS_LOG_DEBUG (Simulator::Now ().GetSeconds () <<
+          NS_LOG_DEBUG (Simulator::Now ().As (Time::S) <<
                         " DSR node " << m_mainAddress <<
                         " overhearing packet PID: " << pktMinusIpHdr->GetUid () <<
                         " from " << promiscSource <<
@@ -1154,16 +1154,16 @@ DsrRouting::PacketNewRoute (Ptr<Packet> packet,
   // Queue the packet if there is no route pre-existing
   if (!findRoute)
     {
-      NS_LOG_INFO (Simulator::Now ().GetSeconds ()
-                   << "s " << m_mainAddress << " there is no route for this packet, queue the packet");
+      NS_LOG_INFO (Simulator::Now ().As (Time::S)
+                   << " " << m_mainAddress << " there is no route for this packet, queue the packet");
 
       Ptr<Packet> p = packet->Copy ();
       DsrSendBuffEntry newEntry (p, destination, m_sendBufferTimeout, protocol);     // Create a new entry for send buffer
       bool result = m_sendBuffer.Enqueue (newEntry);     // Enqueue the packet in send buffer
       if (result)
         {
-          NS_LOG_INFO (Simulator::Now ().GetSeconds ()
-                       << "s Add packet PID: " << packet->GetUid () << " to queue. Packet: " << *packet);
+          NS_LOG_INFO (Simulator::Now ().As (Time::S)
+                       << " Add packet PID: " << packet->GetUid () << " to queue. Packet: " << *packet);
 
           NS_LOG_LOGIC ("Send RREQ to" << destination);
           if ((m_addressReqTimer.find (destination) == m_addressReqTimer.end ()) && (m_nonPropReqTimer.find (destination) == m_nonPropReqTimer.end ()))
@@ -1294,8 +1294,8 @@ DsrRouting::SendUnreachError (Ipv4Address unreachNode, Ipv4Address destination, 
         }
       else
         {
-          NS_LOG_INFO (Simulator::Now ().GetSeconds ()
-                       << "s " << m_mainAddress << " there is no route for this packet, queue the packet");
+          NS_LOG_INFO (Simulator::Now ().As (Time::S)
+                       << " " << m_mainAddress << " there is no route for this packet, queue the packet");
 
           dsrRoutingHeader.SetPayloadLength (rerrLength + 2);
           dsrRoutingHeader.AddDsrOption (rerrUnreachHeader);
@@ -1306,8 +1306,8 @@ DsrRouting::SendUnreachError (Ipv4Address unreachNode, Ipv4Address destination, 
           bool result = m_errorBuffer.Enqueue (newEntry);                  // Enqueue the packet in send buffer
           if (result)
             {
-              NS_LOG_INFO (Simulator::Now ().GetSeconds ()
-                           << "s Add packet PID: " << p->GetUid () << " to queue. Packet: " << *p);
+              NS_LOG_INFO (Simulator::Now ().As (Time::S)
+                           << " Add packet PID: " << p->GetUid () << " to queue. Packet: " << *p);
               NS_LOG_LOGIC ("Send RREQ to" << destination);
               if ((m_addressReqTimer.find (destination) == m_addressReqTimer.end ()) && (m_nonPropReqTimer.find (destination) == m_nonPropReqTimer.end ()))
                 {
@@ -1438,16 +1438,16 @@ DsrRouting::Send (Ptr<Packet> packet,
       // Queue the packet if there is no route pre-existing
       if (!findRoute)
         {
-          NS_LOG_INFO (Simulator::Now ().GetSeconds ()
-                       << "s " << m_mainAddress << " there is no route for this packet, queue the packet");
+          NS_LOG_INFO (Simulator::Now ().As (Time::S)
+                       << " " << m_mainAddress << " there is no route for this packet, queue the packet");
 
           Ptr<Packet> p = packet->Copy ();
           DsrSendBuffEntry newEntry (p, destination, m_sendBufferTimeout, protocol);     // Create a new entry for send buffer
           bool result = m_sendBuffer.Enqueue (newEntry);     // Enqueue the packet in send buffer
           if (result)
             {
-              NS_LOG_INFO (Simulator::Now ().GetSeconds ()
-                           << "s Add packet PID: " << packet->GetUid () << " to send buffer. Packet: " << *packet);
+              NS_LOG_INFO (Simulator::Now ().As (Time::S)
+                           << " Add packet PID: " << packet->GetUid () << " to send buffer. Packet: " << *packet);
               // Only when there is no existing route request timer when new route request is scheduled
               if ((m_addressReqTimer.find (destination) == m_addressReqTimer.end ()) && (m_nonPropReqTimer.find (destination) == m_nonPropReqTimer.end ()))
                 {
@@ -2084,7 +2084,6 @@ DsrRouting::CancelLinkPacketTimer (DsrMaintainBuffEntry & mb)
        * Push back the nextHop, source, destination address
        */
       m_linkAckTimer[linkKey].Cancel ();
-      m_linkAckTimer[linkKey].Remove ();
       if (m_linkAckTimer[linkKey].IsRunning ())
         {
           NS_LOG_INFO ("Timer not canceled");
@@ -2136,7 +2135,6 @@ DsrRouting::CancelNetworkPacketTimer (DsrMaintainBuffEntry & mb)
        * Push back the nextHop, source, destination address
        */
       m_addressForwardTimer[networkKey].Cancel ();
-      m_addressForwardTimer[networkKey].Remove ();
       if (m_addressForwardTimer[networkKey].IsRunning ())
         {
           NS_LOG_INFO ("Timer not canceled");
@@ -2178,7 +2176,6 @@ DsrRouting::CancelPassivePacketTimer (DsrMaintainBuffEntry & mb)
        * Cancel passive acknowledgment timer
        */
       m_passiveAckTimer[passiveKey].Cancel ();
-      m_passiveAckTimer[passiveKey].Remove ();
       if (m_passiveAckTimer[passiveKey].IsRunning ())
         {
           NS_LOG_INFO ("Timer not canceled");
@@ -2384,7 +2381,7 @@ DsrRouting::ScheduleLinkPacketRetry (DsrMaintainBuffEntry & mb,
       m_linkAckTimer[linkKey] = timer;
     }
   m_linkAckTimer[linkKey].SetFunction (&DsrRouting::LinkScheduleTimerExpire, this);
-  m_linkAckTimer[linkKey].Remove ();
+  m_linkAckTimer[linkKey].Cancel ();
   m_linkAckTimer[linkKey].SetArguments (mb, protocol);
   m_linkAckTimer[linkKey].Schedule (m_linkAckTimeout);
 }
@@ -2415,7 +2412,7 @@ DsrRouting::SchedulePassivePacketRetry (DsrMaintainBuffEntry & mb,
     }
   NS_LOG_DEBUG ("The passive acknowledgment option for data packet");
   m_passiveAckTimer[passiveKey].SetFunction (&DsrRouting::PassiveScheduleTimerExpire, this);
-  m_passiveAckTimer[passiveKey].Remove ();
+  m_passiveAckTimer[passiveKey].Cancel ();
   m_passiveAckTimer[passiveKey].SetArguments (mb, protocol);
   m_passiveAckTimer[passiveKey].Schedule (m_passiveAckTimeout);
 }
@@ -2471,10 +2468,10 @@ DsrRouting::ScheduleNetworkPacketRetry (DsrMaintainBuffEntry & mb,
 
       // After m_tryPassiveAcks, schedule the packet retransmission using network acknowledgment option
       m_addressForwardTimer[networkKey].SetFunction (&DsrRouting::NetworkScheduleTimerExpire, this);
-      m_addressForwardTimer[networkKey].Remove ();
+      m_addressForwardTimer[networkKey].Cancel ();
       m_addressForwardTimer[networkKey].SetArguments (newEntry, protocol);
       NS_LOG_DEBUG ("The packet retries time for " << newEntry.GetAckId () << " is " << m_sendRetries
-                                                   << " and the delay time is " << Time (2 * m_nodeTraversalTime).GetSeconds ());
+                                                   << " and the delay time is " << Time (2 * m_nodeTraversalTime).As (Time::S));
       // Back-off mechanism
       m_addressForwardTimer[networkKey].Schedule (Time (2 * m_nodeTraversalTime));
     }
@@ -2519,10 +2516,10 @@ DsrRouting::ScheduleNetworkPacketRetry (DsrMaintainBuffEntry & mb,
 
       // After m_tryPassiveAcks, schedule the packet retransmission using network acknowledgment option
       m_addressForwardTimer[networkKey].SetFunction (&DsrRouting::NetworkScheduleTimerExpire, this);
-      m_addressForwardTimer[networkKey].Remove ();
+      m_addressForwardTimer[networkKey].Cancel ();
       m_addressForwardTimer[networkKey].SetArguments (mb, protocol);
       NS_LOG_DEBUG ("The packet retries time for " << mb.GetAckId () << " is " << m_sendRetries
-                                                   << " and the delay time is " << Time (2 * m_sendRetries *  m_nodeTraversalTime).GetSeconds ());
+                                                   << " and the delay time is " << Time (2 * m_sendRetries *  m_nodeTraversalTime).As (Time::S));
       // Back-off mechanism
       m_addressForwardTimer[networkKey].Schedule (Time (2 * m_sendRetries * m_nodeTraversalTime));
     }
@@ -2546,7 +2543,6 @@ DsrRouting::LinkScheduleTimerExpire  (DsrMaintainBuffEntry & mb,
 
   // Cancel passive ack timer
   m_linkAckTimer[lk].Cancel ();
-  m_linkAckTimer[lk].Remove ();
   if (m_linkAckTimer[lk].IsRunning ())
     {
       NS_LOG_DEBUG ("Timer not canceled");
@@ -2593,7 +2589,6 @@ DsrRouting::PassiveScheduleTimerExpire  (DsrMaintainBuffEntry & mb,
 
   // Cancel passive ack timer
   m_passiveAckTimer[pk].Cancel ();
-  m_passiveAckTimer[pk].Remove ();
   if (m_passiveAckTimer[pk].IsRunning ())
     {
       NS_LOG_DEBUG ("Timer not canceled");
@@ -2906,7 +2901,6 @@ DsrRouting::CancelRreqTimer (Ipv4Address dst, bool isRemove)
       NS_LOG_DEBUG ("did find the non-propagation timer");
     }
   m_nonPropReqTimer[dst].Cancel ();
-  m_nonPropReqTimer[dst].Remove ();
 
   if (m_nonPropReqTimer[dst].IsRunning ())
     {
@@ -2924,7 +2918,6 @@ DsrRouting::CancelRreqTimer (Ipv4Address dst, bool isRemove)
       NS_LOG_DEBUG ("did find the propagation timer");
     }
   m_addressReqTimer[dst].Cancel ();
-  m_addressReqTimer[dst].Remove ();
   if (m_addressReqTimer[dst].IsRunning ())
     {
       NS_LOG_DEBUG ("Timer not canceled");
@@ -2959,7 +2952,7 @@ DsrRouting::ScheduleRreqRetry (Ptr<Packet> packet, std::vector<Ipv4Address> addr
       address.push_back (source);
       address.push_back (dst);
       m_nonPropReqTimer[dst].SetFunction (&DsrRouting::RouteRequestTimerExpire, this);
-      m_nonPropReqTimer[dst].Remove ();
+      m_nonPropReqTimer[dst].Cancel ();
       m_nonPropReqTimer[dst].SetArguments (packet, address, requestId, protocol);
       m_nonPropReqTimer[dst].Schedule (m_nonpropRequestTimeout);
     }
@@ -2967,7 +2960,6 @@ DsrRouting::ScheduleRreqRetry (Ptr<Packet> packet, std::vector<Ipv4Address> addr
     {
       // Cancel the non propagation request timer if found
       m_nonPropReqTimer[dst].Cancel ();
-      m_nonPropReqTimer[dst].Remove ();
       if (m_nonPropReqTimer[dst].IsRunning ())
         {
           NS_LOG_DEBUG ("Timer not canceled");
@@ -2983,7 +2975,7 @@ DsrRouting::ScheduleRreqRetry (Ptr<Packet> packet, std::vector<Ipv4Address> addr
       address.push_back (source);
       address.push_back (dst);
       m_addressReqTimer[dst].SetFunction (&DsrRouting::RouteRequestTimerExpire, this);
-      m_addressReqTimer[dst].Remove ();
+      m_addressReqTimer[dst].Cancel ();
       m_addressReqTimer[dst].SetArguments (packet, address, requestId, protocol);
       Time rreqDelay;
       // back off mechanism for sending route requests
@@ -2998,16 +2990,16 @@ DsrRouting::ScheduleRreqRetry (Ptr<Packet> packet, std::vector<Ipv4Address> addr
           // This is the first route request retry
           rreqDelay = m_requestPeriod;
         }
-      NS_LOG_LOGIC ("Request count for " << dst << " " << m_rreqTable->GetRreqCnt (dst) << " with delay time " << rreqDelay.GetSeconds () << " second");
+      NS_LOG_LOGIC ("Request count for " << dst << " " << m_rreqTable->GetRreqCnt (dst) << " with delay time " << rreqDelay.As (Time::S));
       if (rreqDelay > m_maxRequestPeriod)
         {
           // use the max request period
-          NS_LOG_LOGIC ("The max request delay time " << m_maxRequestPeriod.GetSeconds ());
+          NS_LOG_LOGIC ("The max request delay time " << m_maxRequestPeriod.As (Time::S));
           m_addressReqTimer[dst].Schedule (m_maxRequestPeriod);
         }
       else
         {
-          NS_LOG_LOGIC ("The request delay time " << rreqDelay.GetSeconds () << " second");
+          NS_LOG_LOGIC ("The request delay time " << rreqDelay.As (Time::S));
           m_addressReqTimer[dst].Schedule (rreqDelay);
         }
     }

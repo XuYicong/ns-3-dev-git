@@ -24,7 +24,7 @@
 namespace ns3 {
 
 WifiTxVector::WifiTxVector ()
-  : m_preamble (WIFI_PREAMBLE_NONE),
+  : m_preamble (WIFI_PREAMBLE_LONG),
     m_channelWidth (20),
     m_guardInterval (800),
     m_nTx (1),
@@ -32,8 +32,8 @@ WifiTxVector::WifiTxVector ()
     m_ness (0),
     m_aggregation (false),
     m_stbc (false),
+    m_bssColor (0),
     m_modeInitialized (false),
-    m_txPowerLevelInitialized (false),
     m_muMode (0),
     m_ruBits (1)
 {
@@ -48,7 +48,8 @@ WifiTxVector::WifiTxVector (WifiMode mode,
                             uint8_t ness,
                             uint16_t channelWidth,
                             bool aggregation,
-                            bool stbc)
+                            bool stbc,
+                            uint8_t bssColor)
   : m_mode (mode),
     m_txPowerLevel (powerLevel),
     m_preamble (preamble),
@@ -59,9 +60,15 @@ WifiTxVector::WifiTxVector (WifiMode mode,
     m_ness (ness),
     m_aggregation (aggregation),
     m_stbc (stbc),
-    m_modeInitialized (true),
-    m_txPowerLevelInitialized (true)
+    m_bssColor (bssColor),
+    m_modeInitialized (true)
 {
+}
+
+bool
+WifiTxVector::GetModeInitialized (void) const
+{
+  return m_modeInitialized;
 }
 
 WifiMode
@@ -77,10 +84,6 @@ WifiTxVector::GetMode (void) const
 uint8_t
 WifiTxVector::GetTxPowerLevel (void) const
 {
-  if (!m_txPowerLevelInitialized)
-    {
-      NS_FATAL_ERROR ("WifiTxVector txPowerLevel must be set before using");
-    }
   return m_txPowerLevel;
 }
 
@@ -143,7 +146,6 @@ void
 WifiTxVector::SetTxPowerLevel (uint8_t powerlevel)
 {
   m_txPowerLevel = powerlevel;
-  m_txPowerLevelInitialized = true;
 }
 
 void
@@ -217,9 +219,25 @@ WifiTxVector::GetRuBits (void) const
 {
   return m_ruBits;
 }
+void
+WifiTxVector::SetBssColor (uint8_t color)
+{
+  m_bssColor = color;
+}
+
+uint8_t
+WifiTxVector::GetBssColor (void) const
+{
+  return m_bssColor;
+}
+
 bool
 WifiTxVector::IsValid (void) const
 {
+  if (!GetModeInitialized ())
+    {
+      return false;
+    }
   std::string modeName = m_mode.GetUniqueName ();
   if (m_channelWidth == 20)
     {

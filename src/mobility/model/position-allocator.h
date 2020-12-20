@@ -140,6 +140,10 @@ public:
    */
   void SetMinY (double yMin);
   /**
+   * \param z   the Z coordinate of all the positions allocated 
+   */
+  void SetZ (double z);
+  /**
    * \param deltaX the x interval between two x-consecutive positions.
    */
   void SetDeltaX (double deltaX);
@@ -190,6 +194,7 @@ private:
   enum LayoutType m_layoutType;  //!< currently selected layout type
   double m_xMin; //!< minimum boundary on x positions
   double m_yMin; //!< minimum boundary on y positions
+  double m_z; //!< z coordinate of all the positions generated
   uint32_t m_n;  //!< number of positions to allocate on each row or column
   double m_deltaX; //!< x interval between two consecutive x positions
   double m_deltaY; //!< y interval between two consecutive y positions
@@ -220,12 +225,17 @@ public:
    * \param y pointer to a RandomVariableStream object
    */
   void SetY (Ptr<RandomVariableStream> y);
+  /** 
+   * \param z   the Z coordinate of all the positions allocated 
+   */
+  void SetZ (double z);
 
   virtual Vector GetNext (void) const;
   virtual int64_t AssignStreams (int64_t stream);
 private:
   Ptr<RandomVariableStream> m_x; //!< pointer to x's random variable stream
   Ptr<RandomVariableStream> m_y; //!< pointer to y's random variable stream
+  double m_z; //!< z coordinate of all the positions generated
 };
 
 /**
@@ -269,8 +279,16 @@ private:
 
 /**
  * \ingroup mobility
- * \brief Allocate random positions within a disc according to a given distribution for the polar coordinates of each node 
-          with respect to the provided center of the disc 
+ * \brief Allocate random positions within a disc according to
+ * a given distribution for the polar coordinates of each node 
+ * with respect to the provided center of the disc.
+ *
+ * \note With the default uniform distribution over \f$2 \pi\f$ in \c theta and a
+ * uniform distribution for \c rho this position allocator will *not*
+ * uniformly populate the disc.  The radial distribution will be proportional
+ * to \f$\frac{1}{r^2}\f$.
+ *
+ * To get a uniform distribution over a circle use the UniformDiscPositionAllocator.
  */
 class RandomDiscPositionAllocator : public PositionAllocator
 {
@@ -284,13 +302,13 @@ public:
   virtual ~RandomDiscPositionAllocator ();
 
   /**
-   * \brief Set the random variable that generates position radius
-   * \param theta random variable that represents the radius of a position in a random disc.
+   * \brief Set the random variable that generates position angle, in radians.
+   * \param theta Random variable that represents the angle in radians of a position in a random disc.
    */
   void SetTheta (Ptr<RandomVariableStream> theta);
   /**
-   * \brief Set the random variable that generates position angle
-   * \param rho random variable that represents the angle (gradients) of a position in a random disc.
+   * \brief Set the random variable that generates position radius, in meters
+   * \param rho Random variable that represents the radius of a position, in meters, in a random disc.
    */
   void SetRho (Ptr<RandomVariableStream> rho);
   /** 
@@ -301,6 +319,10 @@ public:
    * \param y   the Y coordinate of the center of the disc 
    */
   void SetY (double y);
+  /** 
+   * \param z   the Z coordinate of all the positions allocated 
+   */
+  void SetZ (double z);
 
   virtual Vector GetNext (void) const;
   virtual int64_t AssignStreams (int64_t stream);
@@ -309,15 +331,16 @@ private:
   Ptr<RandomVariableStream> m_rho; //!< pointer to rho's random variable stream
   double m_x; //!< x coordinate of center of disc
   double m_y; //!< y coordinate of center of disc
+  double m_z;  //!< z coordinate of the disc
 };
 
 
 /**
  * \ingroup mobility
- * \brief Allocate the positions uniformely (with constant density) randomly within a disc.
+ * \brief Allocate the positions uniformly (with constant density) randomly within a disc.
  *
  * UniformDiscPositionAllocator allocates the positions randomly within a disc \f$ D \f$ lying on the
- * plane \f$ z=0 \f$ and having center at coordinates \f$ (x,y,0) \f$
+ * plane \f$ z\f$ and having center at coordinates \f$ (x,y,z) \f$
  * and radius \f$ \rho \f$. The random positions are chosen such that,
  * for any subset \f$ S \subset D \f$, the expected value of the
  * fraction of points which fall into \f$ S \subset D \f$ corresponds
@@ -355,6 +378,11 @@ public:
    */
   void SetY (double y);
 
+  /** 
+   * \param z   the Z coordinate of all the positions allocated 
+   */
+  void SetZ (double z);
+
   virtual Vector GetNext (void) const;
   virtual int64_t AssignStreams (int64_t stream);
 private:
@@ -362,6 +390,7 @@ private:
   double m_rho; //!< value of the radius of the disc
   double m_x;  //!< x coordinate of center of disc
   double m_y;  //!< y coordinate of center of disc
+  double m_z;  //!< z coordinate of the disc
 };
 
 } // namespace ns3

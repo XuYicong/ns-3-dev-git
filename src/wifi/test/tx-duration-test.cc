@@ -27,9 +27,6 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("InterferenceHelperTxDurationTest");
 
-static const uint16_t CHANNEL_1_MHZ  = 2412; // a 2.4 GHz center frequency (MHz)
-static const uint16_t CHANNEL_36_MHZ = 5180; // a 5 GHz center frequency (MHz)
-
 /**
  * \ingroup wifi-test
  * \ingroup tests
@@ -49,7 +46,7 @@ private:
    * Check if the payload tx duration returned by InterferenceHelper
    * corresponds to a known value of the pay
    *
-   * @param size size of payload in octets (includes everything after the PLCP header)
+   * @param size size of payload in octets (includes everything after the PHY header)
    * @param payloadMode the WifiMode used for the transmission
    * @param channelWidth the channel width used for the transmission (in MHz)
    * @param guardInterval the guard interval duration used for the transmission (in nanoseconds)
@@ -64,7 +61,7 @@ private:
    * Check if the overall tx duration returned by InterferenceHelper
    * corresponds to a known value of the pay
    *
-   * @param size size of payload in octets (includes everything after the PLCP header)
+   * @param size size of payload in octets (includes everything after the PHY header)
    * @param payloadMode the WifiMode used for the transmission
    * @param channelWidth the channel width used for the transmission (in MHz)
    * @param guardInterval the guard interval duration used for the transmission (in nanoseconds)
@@ -97,16 +94,16 @@ TxDurationTest::CheckPayloadDuration (uint32_t size, WifiMode payloadMode, uint1
   txVector.SetNss (1);
   txVector.SetStbc (0);
   txVector.SetNess (0);
-  uint16_t testedFrequency = CHANNEL_1_MHZ;
+  WifiPhyBand band = WIFI_PHY_BAND_2_4GHZ;
   Ptr<YansWifiPhy> phy = CreateObject<YansWifiPhy> ();
   if (payloadMode.GetModulationClass () == WIFI_MOD_CLASS_OFDM
       || payloadMode.GetModulationClass () == WIFI_MOD_CLASS_HT
       || payloadMode.GetModulationClass () == WIFI_MOD_CLASS_VHT
       || payloadMode.GetModulationClass () == WIFI_MOD_CLASS_HE)
     {
-      testedFrequency = CHANNEL_36_MHZ;
+      band = WIFI_PHY_BAND_5GHZ;
     }
-  Time calculatedDuration = phy->GetPayloadDuration (size, txVector, testedFrequency);
+  Time calculatedDuration = phy->GetPayloadDuration (size, txVector, band);
   if (calculatedDuration != knownDuration)
     {
       std::cerr << "size=" << size
@@ -122,8 +119,8 @@ TxDurationTest::CheckPayloadDuration (uint32_t size, WifiMode payloadMode, uint1
   if (payloadMode.GetModulationClass () == WIFI_MOD_CLASS_HT || payloadMode.GetModulationClass () == WIFI_MOD_CLASS_HE)
     {
       //Durations vary depending on frequency; test also 2.4 GHz (bug 1971)
-      testedFrequency = CHANNEL_1_MHZ;
-      calculatedDuration = phy->GetPayloadDuration (size, txVector, testedFrequency);
+      band = WIFI_PHY_BAND_2_4GHZ;
+      calculatedDuration = phy->GetPayloadDuration (size, txVector, band);
       knownDuration += MicroSeconds (6);
       if (calculatedDuration != knownDuration)
         {
@@ -152,16 +149,16 @@ TxDurationTest::CheckTxDuration (uint32_t size, WifiMode payloadMode, uint16_t c
   txVector.SetNss (1);
   txVector.SetStbc (0);
   txVector.SetNess (0);
-  uint16_t testedFrequency = CHANNEL_1_MHZ;
+  WifiPhyBand band = WIFI_PHY_BAND_2_4GHZ;
   Ptr<YansWifiPhy> phy = CreateObject<YansWifiPhy> ();
   if (payloadMode.GetModulationClass () == WIFI_MOD_CLASS_OFDM
       || payloadMode.GetModulationClass () == WIFI_MOD_CLASS_HT
       || payloadMode.GetModulationClass () == WIFI_MOD_CLASS_VHT
       || payloadMode.GetModulationClass () == WIFI_MOD_CLASS_HE)
     {
-      testedFrequency = CHANNEL_36_MHZ;
+      band = WIFI_PHY_BAND_5GHZ;
     }
-  Time calculatedDuration = phy->CalculateTxDuration (size, txVector, testedFrequency);
+  Time calculatedDuration = phy->CalculateTxDuration (size, txVector, band);
   if (calculatedDuration != knownDuration)
     {
       std::cerr << "size=" << size
@@ -178,8 +175,8 @@ TxDurationTest::CheckTxDuration (uint32_t size, WifiMode payloadMode, uint16_t c
   if (payloadMode.GetModulationClass () == WIFI_MOD_CLASS_HT || payloadMode.GetModulationClass () == WIFI_MOD_CLASS_HE)
     {
       //Durations vary depending on frequency; test also 2.4 GHz (bug 1971)
-      testedFrequency = CHANNEL_1_MHZ;
-      calculatedDuration = phy->CalculateTxDuration (size, txVector, testedFrequency);
+      band = WIFI_PHY_BAND_2_4GHZ;
+      calculatedDuration = phy->CalculateTxDuration (size, txVector, band);
       knownDuration += MicroSeconds (6);
       if (calculatedDuration != knownDuration)
         {
@@ -212,7 +209,7 @@ TxDurationTest::DoRun (void)
 
   NS_TEST_EXPECT_MSG_EQ (retval, true, "an 802.11b CCK duration failed");
 
-  //Similar, but we add PLCP preamble and header durations
+  //Similar, but we add PHY preamble and header durations
   //and we test different rates.
   //The payload durations for modes other than 11mbb have been
   //calculated by hand according to  IEEE Std 802.11-2007 18.2.3.5
@@ -315,36 +312,36 @@ TxDurationTest::DoRun (void)
 
   //802.11ac durations
   retval = retval
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs8 (), 20, 800, WIFI_PREAMBLE_VHT, MicroSeconds (200))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs8 (), 20, 800, WIFI_PREAMBLE_VHT, MicroSeconds (52))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs8 (), 20, 800, WIFI_PREAMBLE_VHT, MicroSeconds (44))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs8 (), 20, 400, WIFI_PREAMBLE_VHT, MicroSeconds (184))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs8 (), 20, 400, WIFI_PREAMBLE_VHT, NanoSeconds (50800))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs8 (), 20, 400, WIFI_PREAMBLE_VHT, NanoSeconds (43600))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs9 (), 40, 800, WIFI_PREAMBLE_VHT, MicroSeconds (112))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs9 (), 40, 800, WIFI_PREAMBLE_VHT, MicroSeconds (44))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs9 (), 40, 800, WIFI_PREAMBLE_VHT, MicroSeconds (44))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs9 (), 40, 400, WIFI_PREAMBLE_VHT, NanoSeconds (104800))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs9 (), 40, 400, WIFI_PREAMBLE_VHT, NanoSeconds (43600))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs9 (), 40, 400, WIFI_PREAMBLE_VHT, NanoSeconds (43600))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs0 (), 80, 800, WIFI_PREAMBLE_VHT, MicroSeconds (464))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs0 (), 80, 800, WIFI_PREAMBLE_VHT, MicroSeconds (64))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs0 (), 80, 800, WIFI_PREAMBLE_VHT, MicroSeconds (48))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs0 (), 80, 400, WIFI_PREAMBLE_VHT, NanoSeconds (421600))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs0 (), 80, 400, WIFI_PREAMBLE_VHT, NanoSeconds (61600))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs0 (), 80, 400, WIFI_PREAMBLE_VHT, NanoSeconds (47200))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs9 (), 80, 800, WIFI_PREAMBLE_VHT, MicroSeconds (72))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs9 (), 80, 800, WIFI_PREAMBLE_VHT, MicroSeconds (44))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs9 (), 80, 800, WIFI_PREAMBLE_VHT, MicroSeconds (44))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs9 (), 80, 400, WIFI_PREAMBLE_VHT, NanoSeconds (68800))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs9 (), 80, 400, WIFI_PREAMBLE_VHT, NanoSeconds (43600))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs9 (), 80, 400, WIFI_PREAMBLE_VHT, NanoSeconds (43600))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs8 (), 160, 800, WIFI_PREAMBLE_VHT, MicroSeconds (60))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs8 (), 160, 800, WIFI_PREAMBLE_VHT, MicroSeconds (44))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs8 (), 160, 800, WIFI_PREAMBLE_VHT, MicroSeconds (44))
-    && CheckTxDuration (1536, WifiPhy::GetVhtMcs8 (), 160, 400, WIFI_PREAMBLE_VHT, MicroSeconds (58))
-    && CheckTxDuration (76, WifiPhy::GetVhtMcs8 (), 160, 400, WIFI_PREAMBLE_VHT, NanoSeconds (43600))
-    && CheckTxDuration (14, WifiPhy::GetVhtMcs8 (), 160, 400, WIFI_PREAMBLE_VHT, NanoSeconds (43600));
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs8 (), 20, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (196))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs8 (), 20, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (48))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs8 (), 20, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (40))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs8 (), 20, 400, WIFI_PREAMBLE_VHT_SU, MicroSeconds (180))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs8 (), 20, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (46800))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs8 (), 20, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (39600))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs9 (), 40, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (108))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs9 (), 40, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (40))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs9 (), 40, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (40))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs9 (), 40, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (100800))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs9 (), 40, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (39600))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs9 (), 40, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (39600))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs0 (), 80, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (460))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs0 (), 80, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (60))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs0 (), 80, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (44))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs0 (), 80, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (417600))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs0 (), 80, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (57600))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs0 (), 80, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (43200))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs9 (), 80, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (68))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs9 (), 80, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (40))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs9 (), 80, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (40))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs9 (), 80, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (64800))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs9 (), 80, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (39600))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs9 (), 80, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (39600))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs8 (), 160, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (56))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs8 (), 160, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (40))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs8 (), 160, 800, WIFI_PREAMBLE_VHT_SU, MicroSeconds (40))
+    && CheckTxDuration (1536, WifiPhy::GetVhtMcs8 (), 160, 400, WIFI_PREAMBLE_VHT_SU, MicroSeconds (54))
+    && CheckTxDuration (76, WifiPhy::GetVhtMcs8 (), 160, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (39600))
+    && CheckTxDuration (14, WifiPhy::GetVhtMcs8 (), 160, 400, WIFI_PREAMBLE_VHT_SU, NanoSeconds (39600));
 
   NS_TEST_EXPECT_MSG_EQ (retval, true, "an 802.11ac duration failed");
 
@@ -439,7 +436,7 @@ public:
 };
 
 TxDurationTestSuite::TxDurationTestSuite ()
-  : TestSuite ("devices-wifi-tx-duration", UNIT)
+  : TestSuite ("wifi-devices-tx-duration", UNIT)
 {
   AddTestCase (new TxDurationTest, TestCase::QUICK);
 }

@@ -152,7 +152,7 @@ int main (int argc, char **argv)
   bool printRoutingTable = true;
   std::string CSVfileName = "DsdvManetExample.csv";
 
-  CommandLine cmd;
+  CommandLine cmd (__FILE__);
   cmd.AddValue ("nWifis", "Number of wifi nodes[Default:30]", nWifis);
   cmd.AddValue ("nSinks", "Number of wifi sink nodes[Default:10]", nSinks);
   cmd.AddValue ("totalTime", "Total Simulation time[Default:100]", totalTime);
@@ -197,7 +197,7 @@ DsdvManetExample::DsdvManetExample ()
 void
 DsdvManetExample::ReceivePacket (Ptr <Socket> socket)
 {
-  NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " Received one packet!");
+  NS_LOG_UNCOND (Simulator::Now ().As (Time::S) << " Received one packet!");
   Ptr <Packet> packet;
   while ((packet = socket->Recv ()))
     {
@@ -317,7 +317,7 @@ DsdvManetExample::CreateDevices (std::string tr_name)
   wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
   wifiPhy.SetChannel (wifiChannel.Create ());
   WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+  wifi.SetStandard (WIFI_STANDARD_80211b);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode", StringValue (m_phyMode), "ControlMode",
                                 StringValue (m_phyMode));
   devices = wifi.Install (wifiPhy, wifiMac, nodes);

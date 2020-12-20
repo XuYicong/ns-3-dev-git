@@ -26,7 +26,7 @@
 
 namespace ns3 {
 
-class Packet;
+class WifiPpdu;
 
 /**
  * \ingroup wifi
@@ -49,10 +49,7 @@ struct WifiSpectrumSignalParameters : public SpectrumSignalParameters
    */
   WifiSpectrumSignalParameters (const WifiSpectrumSignalParameters& p);
 
-  /**
-   * The packet being transmitted with this signal
-   */
-  Ptr<Packet> packet;
+  Ptr<WifiPpdu> ppdu; ///< The PPDU being transmitted
 
   uint32_t ruBits;
 

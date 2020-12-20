@@ -22,8 +22,13 @@
 #ifndef INET_TOPOLOGY_READER_H
 #define INET_TOPOLOGY_READER_H
 
-#include "ns3/nstime.h"
 #include "topology-reader.h"
+
+/**
+ * \file
+ * \ingroup topology
+ * ns3::InetTopologyReader declaration.
+ */
 
 namespace ns3 {
 

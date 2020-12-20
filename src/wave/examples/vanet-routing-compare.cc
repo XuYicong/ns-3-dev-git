@@ -399,7 +399,7 @@ public:
   virtual ~RoutingHelper ();
 
   /**
-   * \brief Installs routing funcationality on nodes and their
+   * \brief Installs routing functionality on nodes and their
    * devices and interfaces.
    * \param c node container
    * \param d net device container
@@ -2005,7 +2005,7 @@ VanetRoutingExperiment::SetGlobalsFromConfig ()
 void
 VanetRoutingExperiment::CommandSetup (int argc, char **argv)
 {
-  CommandLine cmd;
+  CommandLine cmd (__FILE__);
   double txDist1 = 50.0;
   double txDist2 = 100.0;
   double txDist3 = 150.0;
@@ -2262,7 +2262,7 @@ VanetRoutingExperiment::SetupAdhocDevices ()
   WifiHelper wifi;
 
   // Setup 802.11b stuff
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+  wifi.SetStandard (WIFI_STANDARD_80211b);
 
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (m_phyModeB),

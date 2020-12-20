@@ -27,13 +27,10 @@
 #include "ns3/unused.h"
 #include "ns3/simulator.h"
 #include "queue-disc.h"
-#include <ns3/drop-tail-queue.h>
 #include "ns3/net-device-queue-interface.h"
+#include "ns3/queue.h"
 
 namespace ns3 {
-
-NS_OBJECT_TEMPLATE_CLASS_DEFINE (Queue,QueueDiscItem);
-NS_OBJECT_TEMPLATE_CLASS_DEFINE (DropTailQueue,QueueDiscItem);
 
 NS_LOG_COMPONENT_DEFINE ("QueueDisc");
 
@@ -363,6 +360,11 @@ QueueDisc::QueueDisc (QueueDiscSizePolicy policy)
       return DropAfterDequeue (item,
                                m_childQueueDiscDropMsg.assign (CHILD_QUEUE_DISC_DROP).append (r).data ());
     };
+  m_childQueueDiscMarkFunctor = [this] (Ptr<const QueueDiscItem> item, const char* r)
+    {
+      return Mark (const_cast<QueueDiscItem *> (PeekPointer (item)),
+                   m_childQueueDiscMarkMsg.assign (CHILD_QUEUE_DISC_MARK).append (r).data ());
+    };
 }
 
 QueueDisc::QueueDisc (QueueDiscSizePolicy policy, QueueSizeUnit unit)
@@ -384,9 +386,13 @@ QueueDisc::DoDispose (void)
   m_queues.clear ();
   m_filters.clear ();
   m_classes.clear ();
-  m_device = 0;
   m_devQueueIface = 0;
+  m_send = nullptr;
   m_requeued = 0;
+  m_internalQueueDbeFunctor = nullptr;
+  m_internalQueueDadFunctor = nullptr;
+  m_childQueueDiscDbeFunctor = nullptr;
+  m_childQueueDiscDadFunctor = nullptr;
   Object::DoDispose ();
 }
 
@@ -394,12 +400,6 @@ void
 QueueDisc::DoInitialize (void)
 {
   NS_LOG_FUNCTION (this);
-  // When adding a new interface, the traffic control aggregates
-  // a NetDeviceQueueInterface object to the netdevice
-  if (m_device)
-    {
-      m_devQueueIface = m_device->GetObject<NetDeviceQueueInterface> ();
-    }
 
   // Check the configuration and initialize the parameters of this queue disc
   bool ok = CheckConfig ();
@@ -536,17 +536,31 @@ QueueDisc::GetCurrentSize (void)
 }
 
 void
-QueueDisc::SetNetDevice (Ptr<NetDevice> device)
+QueueDisc::SetNetDeviceQueueInterface (Ptr<NetDeviceQueueInterface> ndqi)
 {
-  NS_LOG_FUNCTION (this << device);
-  m_device = device;
+  NS_LOG_FUNCTION (this << ndqi);
+  m_devQueueIface = ndqi;
 }
 
-Ptr<NetDevice>
-QueueDisc::GetNetDevice (void) const
+Ptr<NetDeviceQueueInterface>
+QueueDisc::GetNetDeviceQueueInterface (void) const
 {
   NS_LOG_FUNCTION (this);
-  return m_device;
+  return m_devQueueIface;
+}
+
+void
+QueueDisc::SetSendCallback (SendCallback func)
+{
+  NS_LOG_FUNCTION (this);
+  m_send = func;
+}
+
+QueueDisc::SendCallback
+QueueDisc::GetSendCallback (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_send;
 }
 
 void
@@ -627,7 +641,7 @@ QueueDisc::AddQueueDiscClass (Ptr<QueueDiscClass> qdClass)
                    "A queue disc with WAKE_CHILD as wake mode can only be a root queue disc");
 
   // set the parent callbacks on the child queue disc, so that it can notify
-  // the parent queue disc of packets enqueued, dequeued or dropped
+  // the parent queue disc of packets enqueued, dequeued, dropped, or marked
   qdClass->GetQueueDisc ()->TraceConnectWithoutContext ("Enqueue",
                                      MakeCallback (&QueueDisc::PacketEnqueued, this));
   qdClass->GetQueueDisc ()->TraceConnectWithoutContext ("Dequeue",
@@ -638,6 +652,9 @@ QueueDisc::AddQueueDiscClass (Ptr<QueueDiscClass> qdClass)
   qdClass->GetQueueDisc ()->TraceConnectWithoutContext ("DropAfterDequeue",
                                      MakeCallback (&ChildQueueDiscDropFunctor::operator(),
                                                    &m_childQueueDiscDadFunctor));
+  qdClass->GetQueueDisc ()->TraceConnectWithoutContext ("Mark",
+                                     MakeCallback (&ChildQueueDiscMarkFunctor::operator(),
+                                                   &m_childQueueDiscMarkFunctor));
   m_classes.push_back (qdClass);
 }
 
@@ -993,7 +1010,7 @@ Ptr<QueueDiscItem>
 QueueDisc::DequeuePacket ()
 {
   NS_LOG_FUNCTION (this);
-  NS_ASSERT (m_devQueueIface);
+
   Ptr<QueueDiscItem> item;
 
   // First check if there is a requeued packet
@@ -1002,7 +1019,7 @@ QueueDisc::DequeuePacket ()
         // If the queue where the requeued packet is destined to is not stopped, return
         // the requeued packet; otherwise, return an empty packet.
         // If the device does not support flow control, the device queue is never stopped
-        if (!m_devQueueIface->GetTxQueue (m_requeued->GetTxQueueIndex ())->IsStopped ())
+        if (!m_devQueueIface || !m_devQueueIface->GetTxQueue (m_requeued->GetTxQueueIndex ())->IsStopped ())
           {
             item = m_requeued;
             m_requeued = 0;
@@ -1023,7 +1040,8 @@ QueueDisc::DequeuePacket ()
       // queue disc should try not to dequeue a packet destined to a stopped queue).
       // Otherwise, ask the queue disc to dequeue a packet only if the (unique) queue
       // is not stopped.
-      if (m_devQueueIface->GetNTxQueues ()>1 || !m_devQueueIface->GetTxQueue (0)->IsStopped ())
+      if (!m_devQueueIface ||
+          m_devQueueIface->GetNTxQueues ()>1 || !m_devQueueIface->GetTxQueue (0)->IsStopped ())
         {
           item = Dequeue ();
           // If the item is not null, add the header to the packet.
@@ -1055,24 +1073,25 @@ bool
 QueueDisc::Transmit (Ptr<QueueDiscItem> item)
 {
   NS_LOG_FUNCTION (this << item);
-  NS_ASSERT (m_devQueueIface);
 
   // if the device queue is stopped, requeue the packet and return false.
   // Note that if the underlying device is tc-unaware, packets are never
   // requeued because the queues of tc-unaware devices are never stopped
-  if (m_devQueueIface->GetTxQueue (item->GetTxQueueIndex ())->IsStopped ())
+  if (m_devQueueIface && m_devQueueIface->GetTxQueue (item->GetTxQueueIndex ())->IsStopped ())
     {
       Requeue (item);
       return false;
     }
 
   // a single queue device makes no use of the priority tag
-  if (m_devQueueIface->GetNTxQueues () == 1)
+  // a device that does not install a device queue interface likely makes no use of it as well
+  if (!m_devQueueIface || m_devQueueIface->GetNTxQueues () == 1)
     {
       SocketPriorityTag priorityTag;
       item->GetPacket ()->RemovePacketTag (priorityTag);
     }
-  m_device->Send (item->GetPacket (), item->GetAddress (), item->GetProtocol ());
+  NS_ASSERT_MSG (m_send, "Send callback not set");
+  m_send (item);
 
   // the behavior here slightly diverges from Linux. In Linux, it is advised that
   // the function called when a packet needs to be transmitted (ndo_start_xmit)
@@ -1090,7 +1109,8 @@ QueueDisc::Transmit (Ptr<QueueDiscItem> item)
 
   // if the queue disc is empty or the device queue is now stopped, return false so
   // that the Run method does not attempt to dequeue other packets and exits
-  if (GetNPackets () == 0 || m_devQueueIface->GetTxQueue (item->GetTxQueueIndex ())->IsStopped ())
+  if (GetNPackets () == 0 ||
+      (m_devQueueIface && m_devQueueIface->GetTxQueue (item->GetTxQueueIndex ())->IsStopped ()))
     {
       return false;
     }

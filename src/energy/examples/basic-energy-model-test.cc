@@ -74,7 +74,7 @@ private:
 BasicEnergyUpdateTest::BasicEnergyUpdateTest ()
 {
   m_timeS = 15.5; // idle for 15 seconds before changing state
-  m_tolerance = 1.0e-13;  //
+  m_tolerance = 1.0e-5;  //
 }
 
 BasicEnergyUpdateTest::~BasicEnergyUpdateTest ()
@@ -355,7 +355,7 @@ BasicEnergyDepletionTest::DepletionTestCase (double simTimeS,
 
   // install YansWifiPhy
   WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+  wifi.SetStandard (WIFI_STANDARD_80211b);
 
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
   /*

@@ -83,27 +83,27 @@ public:
   /**
    * Set the Extended Capabilities.
    *
-   * \param extendedcapabilities the Extended Capabilities
+   * \param extendedCapabilities the Extended Capabilities
    */
-  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
+  void SetExtendedCapabilities (ExtendedCapabilities extendedCapabilities);
   /**
    * Set the HT capabilities.
    *
-   * \param htcapabilities HT capabilities
+   * \param htCapabilities HT capabilities
    */
-  void SetHtCapabilities (HtCapabilities htcapabilities);
+  void SetHtCapabilities (HtCapabilities htCapabilities);
   /**
    * Set the VHT capabilities.
    *
-   * \param vhtcapabilities VHT capabilities
+   * \param vhtCapabilities VHT capabilities
    */
-  void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
+  void SetVhtCapabilities (VhtCapabilities vhtCapabilities);
   /**
    * Set the HE capabilities.
    *
-   * \param hecapabilities HE capabilities
+   * \param heCapabilities HE capabilities
    */
-  void SetHeCapabilities (HeCapabilities hecapabilities);
+  void SetHeCapabilities (HeCapabilities heCapabilities);
   /**
    * Return the Capability information.
    *
@@ -214,27 +214,27 @@ public:
   /**
    * Set the Extended Capabilities.
    *
-   * \param extendedcapabilities the Extended Capabilities
+   * \param extendedCapabilities the Extended Capabilities
    */
-  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
+  void SetExtendedCapabilities (ExtendedCapabilities extendedCapabilities);
   /**
    * Set the HT capabilities.
    *
-   * \param htcapabilities HT capabilities
+   * \param htCapabilities HT capabilities
    */
-  void SetHtCapabilities (HtCapabilities htcapabilities);
+  void SetHtCapabilities (HtCapabilities htCapabilities);
   /**
    * Set the VHT capabilities.
    *
-   * \param vhtcapabilities VHT capabilities
+   * \param vhtCapabilities VHT capabilities
    */
-  void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
+  void SetVhtCapabilities (VhtCapabilities vhtCapabilities);
   /**
    * Set the HE capabilities.
    *
-   * \param hecapabilities HE capabilities
+   * \param heCapabilities HE capabilities
    */
-  void SetHeCapabilities (HeCapabilities hecapabilities);
+  void SetHeCapabilities (HeCapabilities heCapabilities);
   /**
    * Return the Capability information.
    *
@@ -386,6 +386,12 @@ public:
    */
   HeOperation GetHeOperation (void) const;
   /**
+   * Return the association ID.
+   *
+   * \return the association ID
+   */
+  uint16_t GetAssociationId (void) const;
+  /**
    * Return the ERP information.
    *
    * \return the ERP information
@@ -406,33 +412,33 @@ public:
   /**
    * Set the extended capabilities.
    *
-   * \param extendedcapabilities the extended capabilities
+   * \param extendedCapabilities the extended capabilities
    */
-  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
+  void SetExtendedCapabilities (ExtendedCapabilities extendedCapabilities);
   /**
    * Set the VHT operation.
    *
-   * \param vhtoperation VHT operation
+   * \param vhtOperation VHT operation
    */
-  void SetVhtOperation (VhtOperation vhtoperation);
+  void SetVhtOperation (VhtOperation vhtOperation);
   /**
    * Set the VHT capabilities.
    *
-   * \param vhtcapabilities VHT capabilities
+   * \param vhtCapabilities VHT capabilities
    */
-  void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
+  void SetVhtCapabilities (VhtCapabilities vhtCapabilities);
   /**
    * Set the HT capabilities.
    *
-   * \param htcapabilities HT capabilities
+   * \param htCapabilities HT capabilities
    */
-  void SetHtCapabilities (HtCapabilities htcapabilities);
+  void SetHtCapabilities (HtCapabilities htCapabilities);
   /**
    * Set the HT operation.
    *
-   * \param htoperation HT operation
+   * \param htOperation HT operation
    */
-  void SetHtOperation (HtOperation htoperation);
+  void SetHtOperation (HtOperation htOperation);
   /**
    * Set the supported rates.
    *
@@ -466,15 +472,15 @@ public:
   /**
    * Set the HE capabilities.
    *
-   * \param hecapabilities HE capabilities
+   * \param heCapabilities HE capabilities
    */
-  void SetHeCapabilities (HeCapabilities hecapabilities);
+  void SetHeCapabilities (HeCapabilities heCapabilities);
   /**
    * Set the HE operation.
    *
-   * \param heoperation HE operation
+   * \param heOperation HE operation
    */
-  void SetHeOperation (HeOperation heoperation);
+  void SetHeOperation (HeOperation heOperation);
 
   /**
    * Register this type.
@@ -492,7 +498,7 @@ private:
   SupportedRates m_rates; //!< List of supported rates
   CapabilityInformation m_capability; //!< Capability information
   StatusCode m_code; //!< Status code
-  uint16_t m_aid; //!< aid
+  uint16_t m_aid; //!< AID
   ExtendedCapabilities m_extendedCapability; //!< extended capabilities
   HtCapabilities m_htCapability; //!< HT capabilities
   HtOperation m_htOperation; //!< HT operation
@@ -529,27 +535,27 @@ public:
   /**
    * Set the extended capabilities.
    *
-   * \param extendedcapabilities the extended capabilities
+   * \param extendedCapabilities the extended capabilities
    */
-  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
+  void SetExtendedCapabilities (ExtendedCapabilities extendedCapabilities);
   /**
    * Set the HT capabilities.
    *
-   * \param htcapabilities HT capabilities
+   * \param htCapabilities HT capabilities
    */
-  void SetHtCapabilities (HtCapabilities htcapabilities);
+  void SetHtCapabilities (HtCapabilities htCapabilities);
   /**
    * Set the VHT capabilities.
    *
-   * \param vhtcapabilities VHT capabilities
+   * \param vhtCapabilities VHT capabilities
    */
-  void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
+  void SetVhtCapabilities (VhtCapabilities vhtCapabilities);
   /**
    * Set the HE capabilities.
    *
-   * \param hecapabilities HE capabilities
+   * \param heCapabilities HE capabilities
    */
-  void SetHeCapabilities (HeCapabilities hecapabilities);
+  void SetHeCapabilities (HeCapabilities heCapabilities);
   /**
    * Return the Service Set Identifier (SSID).
    *
@@ -718,45 +724,45 @@ public:
   /**
    * Set the extended capabilities.
    *
-   * \param extendedcapabilities the extended capabilities
+   * \param extendedCapabilities the extended capabilities
    */
-  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
+  void SetExtendedCapabilities (ExtendedCapabilities extendedCapabilities);
   /**
    * Set the HT capabilities.
    *
-   * \param htcapabilities HT capabilities
+   * \param htCapabilities HT capabilities
    */
-  void SetHtCapabilities (HtCapabilities htcapabilities);
+  void SetHtCapabilities (HtCapabilities htCapabilities);
   /**
    * Set the HT operation.
    *
-   * \param htoperation HT operation
+   * \param htOperation HT operation
    */
-  void SetHtOperation (HtOperation htoperation);
+  void SetHtOperation (HtOperation htOperation);
   /**
    * Set the VHT capabilities.
    *
-   * \param vhtcapabilities VHT capabilities
+   * \param vhtCapabilities VHT capabilities
    */
-  void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
+  void SetVhtCapabilities (VhtCapabilities vhtCapabilities);
   /**
    * Set the VHT operation.
    *
-   * \param vhtoperation VHT operation
+   * \param vhtOperation VHT operation
    */
-  void SetVhtOperation (VhtOperation vhtoperation);
+  void SetVhtOperation (VhtOperation vhtOperation);
   /**
    * Set the HE capabilities.
    *
-   * \param hecapabilities HE capabilities
+   * \param heCapabilities HE capabilities
    */
-  void SetHeCapabilities (HeCapabilities hecapabilities);
+  void SetHeCapabilities (HeCapabilities heCapabilities);
   /**
    * Set the HE operation.
    *
-   * \param heoperation HE operation
+   * \param heOperation HE operation
    */
-  void SetHeOperation (HeOperation heoperation);
+  void SetHeOperation (HeOperation heOperation);
   /**
    * Set the Service Set Identifier (SSID).
    *
@@ -796,9 +802,9 @@ public:
   /**
    * Set the CF parameter set.
    *
-   * \param cfparameterset CF parameter set
+   * \param cfParameterSet CF parameter set
    */
-  void SetCfParameterSet (CfParameterSet cfparameterset);
+  void SetCfParameterSet (CfParameterSet cfParameterSet);
   /**
    * Return the time stamp.
    *
@@ -990,7 +996,7 @@ public:
   };
 
   /**
-   * Block ACK action field values
+   * Block Ack Action field values
    * See 802.11 Table 8-202
    */
   enum BlockAckActionValue
@@ -1048,7 +1054,7 @@ private:
   /**
    * Category value to string function
    * \param value the category value
-   * \returns the categoty value string
+   * \returns the category value string
    */
   std::string CategoryValueToString (CategoryValue value) const;
   /**
@@ -1064,7 +1070,7 @@ private:
 
 /**
  * \ingroup wifi
- * Implement the header for management frames of type add block ack request.
+ * Implement the header for management frames of type Add Block Ack request.
  */
 class MgtAddBaRequestHeader : public Header
 {
@@ -1083,11 +1089,11 @@ public:
   uint32_t Deserialize (Buffer::Iterator start);
 
   /**
-   * Enable delayed Block ACK.
+   * Enable delayed BlockAck.
    */
   void SetDelayedBlockAck ();
   /**
-   * Enable immediate Block ACK
+   * Enable immediate BlockAck
    */
   void SetImmediateBlockAck ();
   /**
@@ -1134,9 +1140,9 @@ public:
    */
   uint8_t GetTid (void) const;
   /**
-   * Return whether the Block ACK policy is immediate Block ACK.
+   * Return whether the Block Ack policy is immediate Block Ack.
    *
-   * \return true if immediate Block ACK is being used, false otherwise
+   * \return true if immediate Block Ack is being used, false otherwise
    */
   bool IsImmediateBlockAck (void) const;
   /**
@@ -1180,13 +1186,13 @@ private:
   /**
    * Set sequence control with the given raw value.
    *
-   * \param seqControl
+   * \param seqControl the raw sequence control
    */
   void SetStartingSequenceControl (uint16_t seqControl);
 
   uint8_t m_dialogToken;   //!< Not used for now
   uint8_t m_amsduSupport;  //!< Flag if A-MSDU is supported
-  uint8_t m_policy;        //!< Block ACK policy
+  uint8_t m_policy;        //!< Block Ack policy
   uint8_t m_tid;           //!< Traffic ID
   uint16_t m_bufferSize;   //!< Buffer size
   uint16_t m_timeoutValue; //!< Timeout
@@ -1196,7 +1202,7 @@ private:
 
 /**
  * \ingroup wifi
- * Implement the header for management frames of type add block ack response.
+ * Implement the header for management frames of type Add Block Ack response.
  */
 class MgtAddBaResponseHeader : public Header
 {
@@ -1215,11 +1221,11 @@ public:
   uint32_t Deserialize (Buffer::Iterator start);
 
   /**
-   * Enable delayed Block ACK.
+   * Enable delayed BlockAck.
    */
   void SetDelayedBlockAck ();
   /**
-   * Enable immediate Block ACK
+   * Enable immediate BlockAck.
    */
   void SetImmediateBlockAck ();
   /**
@@ -1266,9 +1272,9 @@ public:
    */
   uint8_t GetTid (void) const;
   /**
-   * Return whether the Block ACK policy is immediate Block ACK.
+   * Return whether the Block Ack policy is immediate Block Ack.
    *
-   * \return true if immediate Block ACK is being used, false otherwise
+   * \return true if immediate Block Ack is being used, false otherwise
    */
   bool IsImmediateBlockAck (void) const;
   /**
@@ -1317,7 +1323,7 @@ private:
 
 /**
  * \ingroup wifi
- * Implement the header for management frames of type del block ack.
+ * Implement the header for management frames of type Delete Block Ack.
  */
 class MgtDelBaHeader : public Header
 {

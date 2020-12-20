@@ -100,7 +100,7 @@ int main (int argc, char *argv[])
   bool assocMethod1 = false;
   bool assocMethod2 = false;
 
-  CommandLine cmd;
+  CommandLine cmd (__FILE__);
 
   cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
   cmd.AddValue ("rss", "received signal strength", rss);
@@ -135,7 +135,7 @@ int main (int argc, char *argv[])
     {
       wifi.EnableLogComponents ();  // Turn on all Wifi logging
     }
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+  wifi.SetStandard (WIFI_STANDARD_80211b);
 
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
   // This is one parameter that matters when using FixedRssLossModel

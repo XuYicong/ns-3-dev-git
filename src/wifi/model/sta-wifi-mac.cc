@@ -28,6 +28,9 @@
 #include "mac-low.h"
 #include "mgt-headers.h"
 #include "snr-tag.h"
+#include "wifi-net-device.h"
+#include "ht-configuration.h"
+#include "he-configuration.h"
 
 namespace ns3 {
 
@@ -85,6 +88,7 @@ StaWifiMac::GetTypeId (void)
 
 StaWifiMac::StaWifiMac ()
   : m_state (UNASSOCIATED),
+    m_aid (0),
     m_waitBeaconEvent (),
     m_probeRequestEvent (),
     m_assocRequestEvent (),
@@ -120,6 +124,13 @@ StaWifiMac::DoInitialize (void)
 StaWifiMac::~StaWifiMac ()
 {
   NS_LOG_FUNCTION (this);
+}
+
+uint16_t
+StaWifiMac::GetAssociationId (void) const
+{
+  NS_ASSERT_MSG (IsAssociated (), "This station is not associated to any AP");
+  return m_aid;
 }
 
 void
@@ -208,13 +219,13 @@ StaWifiMac::SendProbeRequest (void)
   MgtProbeRequestHeader probe;
   probe.SetSsid (GetSsid ());
   probe.SetSupportedRates (GetSupportedRates ());
-  if (GetHtSupported () || GetVhtSupported () || GetHeSupported ())
+  if (GetHtSupported ())
     {
       probe.SetExtendedCapabilities (GetExtendedCapabilities ());
       probe.SetHtCapabilities (GetHtCapabilities ());
       hdr.SetNoOrder ();
     }
-  if (GetVhtSupported () || GetHeSupported ())
+  if (GetVhtSupported ())
     {
       probe.SetVhtCapabilities (GetVhtCapabilities ());
     }
@@ -295,12 +306,12 @@ StaWifiMac::SendAssociationRequest (bool isReassoc)
       assoc.SetSupportedRates (GetSupportedRates ());
       assoc.SetCapabilities (GetCapabilities ());
       assoc.SetListenInterval (0);
-      if (GetHtSupported () || GetVhtSupported () || GetHeSupported ())
+      if (GetHtSupported ())
         {
           assoc.SetExtendedCapabilities (GetExtendedCapabilities ());
           assoc.SetHtCapabilities (GetHtCapabilities ());
         }
-      if (GetVhtSupported () || GetHeSupported ())
+      if (GetVhtSupported ())
         {
           assoc.SetVhtCapabilities (GetVhtCapabilities ());
         }
@@ -318,12 +329,12 @@ StaWifiMac::SendAssociationRequest (bool isReassoc)
       reassoc.SetSupportedRates (GetSupportedRates ());
       reassoc.SetCapabilities (GetCapabilities ());
       reassoc.SetListenInterval (0);
-      if (GetHtSupported () || GetVhtSupported () || GetHeSupported ())
+      if (GetHtSupported ())
         {
           reassoc.SetExtendedCapabilities (GetExtendedCapabilities ());
           reassoc.SetHtCapabilities (GetHtCapabilities ());
         }
-      if (GetVhtSupported () || GetHeSupported ())
+      if (GetVhtSupported ())
         {
           reassoc.SetVhtCapabilities (GetVhtCapabilities ());
         }
@@ -395,7 +406,7 @@ StaWifiMac::TryToEnsureAssociated (void)
     case REFUSED:
       /* we have sent an association request and received a negative
          association response. We wait until someone restarts an
-         association with a given ssid.
+         association with a given SSID.
        */
       break;
     }
@@ -517,7 +528,7 @@ StaWifiMac::IsWaitAssocResp (void) const
 }
 
 void
-StaWifiMac::Enqueue (Ptr<const Packet> packet, Mac48Address to)
+StaWifiMac::Enqueue (Ptr<Packet> packet, Mac48Address to)
 {
   NS_LOG_FUNCTION (this << packet << to);
   if (!IsAssociated ())
@@ -563,9 +574,9 @@ StaWifiMac::Enqueue (Ptr<const Packet> packet, Mac48Address to)
     {
       hdr.SetType (WIFI_MAC_DATA);
     }
-  if (GetQosSupported () || GetHtSupported () || GetVhtSupported () || GetHeSupported ())
+  if (GetQosSupported ())
     {
-      hdr.SetNoOrder (); // explicitly set to 0 for the time being since HT/VHT/HE control field is not yet implemented (set it to 1 when implemented)
+      hdr.SetNoOrder (); // explicitly set to 0 for the time being since HT control field is not yet implemented (set it to 1 when implemented)
     }
 
   hdr.SetAddr1 (GetBssid ());
@@ -635,9 +646,11 @@ StaWifiMac::Enqueue (Ptr<const Packet> packet, Mac48Address to)
 }
 
 void
-StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
+StaWifiMac::Receive (Ptr<WifiMacQueueItem> mpdu)
 {
-  NS_LOG_FUNCTION (this << packet << hdr);
+  NS_LOG_FUNCTION (this << *mpdu);
+  const WifiMacHeader* hdr = &mpdu->GetHeader ();
+  Ptr<const Packet> packet = mpdu->GetPacket ();
   NS_ASSERT (!hdr->IsCtl ());
   if (hdr->GetAddr3 () == GetAddress ())
     {
@@ -680,7 +693,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
           if (hdr->IsQosAmsdu ())
             {
               NS_ASSERT (hdr->GetAddr3 () == GetBssid ());
-              DeaggregateAmsduAndForward (packet, hdr);
+              DeaggregateAmsduAndForward (mpdu);
               packet = 0;
             }
           else
@@ -790,7 +803,8 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
     {
       NS_LOG_DEBUG ("Beacon received");
       MgtBeaconHeader beacon;
-      packet->RemoveHeader (beacon);
+      Ptr<Packet> copy = packet->Copy ();
+      copy->RemoveHeader (beacon);
       CapabilityInformation capabilities = beacon.GetCapabilities ();
       NS_ASSERT (capabilities.IsEss ());
       bool goodBeacon = false;
@@ -845,7 +859,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
         {
           NS_LOG_DEBUG ("Beacon received while scanning from " << hdr->GetAddr2 ());
           SnrTag snrTag;
-          bool removed = packet->RemovePacketTag (snrTag);
+          bool removed = copy->RemovePacketTag (snrTag);
           NS_ASSERT (removed);
           ApInfo apInfo;
           apInfo.m_apAddr = hdr->GetAddr2 ();
@@ -863,14 +877,15 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
         {
           NS_LOG_DEBUG ("Probe response received while scanning from " << hdr->GetAddr2 ());
           MgtProbeResponseHeader probeResp;
-          packet->RemoveHeader (probeResp);
+          Ptr<Packet> copy = packet->Copy ();
+          copy->RemoveHeader (probeResp);
           if (!probeResp.GetSsid ().IsEqual (GetSsid ()))
             {
               NS_LOG_DEBUG ("Probe response is not for our SSID");
               return;
             }
           SnrTag snrTag;
-          bool removed = packet->RemovePacketTag (snrTag);
+          bool removed = copy->RemovePacketTag (snrTag);
           NS_ASSERT (removed);
           ApInfo apInfo;
           apInfo.m_apAddr = hdr->GetAddr2 ();
@@ -887,7 +902,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
       if (m_state == WAIT_ASSOC_RESP)
         {
           MgtAssocResponseHeader assocResp;
-          packet->RemoveHeader (assocResp);
+          packet->PeekHeader (assocResp);
           if (m_assocRequestEvent.IsRunning ())
             {
               m_assocRequestEvent.Cancel ();
@@ -895,6 +910,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
           if (assocResp.GetStatusCode ().IsSuccess ())
             {
               SetState (ASSOCIATED);
+              m_aid = assocResp.GetAssociationId ();
               if (hdr->IsReassocResp ())
                 {
                   NS_LOG_DEBUG ("reassociation done");
@@ -928,7 +944,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
   //Invoke the receive handler of our parent class to deal with any
   //other frames. Specifically, this will handle Block Ack-related
   //Management Action frames.
-  RegularWifiMac::Receive (packet, hdr);
+  RegularWifiMac::Receive (Create<WifiMacQueueItem> (packet, *hdr));
 }
 
 void
@@ -988,12 +1004,12 @@ StaWifiMac::UpdateApInfoFromBeacon (MgtBeaconHeader beacon, Mac48Address apAddr,
       if (capabilities.IsShortSlotTime () == true)
         {
           //enable short slot time
-          SetSlot (MicroSeconds (9));
+          m_phy->SetSlot (MicroSeconds (9));
         }
       else
         {
           //disable short slot time
-          SetSlot (MicroSeconds (20));
+          m_phy->SetSlot (MicroSeconds (20));
         }
     }
   if (GetQosSupported ())
@@ -1030,14 +1046,6 @@ StaWifiMac::UpdateApInfoFromBeacon (MgtBeaconHeader beacon, Mac48Address apAddr,
             {
               m_stationManager->SetUseGreenfieldProtection (false);
             }
-          if (!GetVhtSupported () && GetRifsSupported () && htOperation.GetRifsMode ())
-            {
-              m_stationManager->SetRifsPermitted (true);
-            }
-          else
-            {
-              m_stationManager->SetRifsPermitted (false);
-            }
         }
     }
   if (GetVhtSupported ())
@@ -1058,7 +1066,7 @@ StaWifiMac::UpdateApInfoFromBeacon (MgtBeaconHeader beacon, Mac48Address apAddr,
             }
         }
     }
-  if (GetHtSupported () || GetVhtSupported ())
+  if (GetHtSupported ())
     {
       ExtendedCapabilities extendedCapabilities = beacon.GetExtendedCapabilities ();
       //TODO: to be completed
@@ -1066,15 +1074,17 @@ StaWifiMac::UpdateApInfoFromBeacon (MgtBeaconHeader beacon, Mac48Address apAddr,
   if (GetHeSupported ())
     {
       HeCapabilities heCapabilities = beacon.GetHeCapabilities ();
-      //todo: once we support non constant rate managers, we should add checks here whether HE is supported by the peer
-      m_stationManager->AddStationHeCapabilities (apAddr, heCapabilities);
-      HeOperation heOperation = beacon.GetHeOperation ();
-      for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
+      if (heCapabilities.GetSupportedMcsAndNss () != 0)
         {
-          WifiMode mcs = m_phy->GetMcs (i);
-          if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HE && heCapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
+          m_stationManager->AddStationHeCapabilities (apAddr, heCapabilities);
+          HeOperation heOperation = beacon.GetHeOperation ();
+          for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
             {
-              m_stationManager->AddSupportedMcs (apAddr, mcs);
+              WifiMode mcs = m_phy->GetMcs (i);
+              if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HE && heCapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
+                {
+                  m_stationManager->AddSupportedMcs (apAddr, mcs);
+                }
             }
         }
     }
@@ -1126,7 +1136,7 @@ StaWifiMac::UpdateApInfoFromProbeResp (MgtProbeResponseHeader probeResp, Mac48Ad
       if (!isErpAllowed)
         {
           //disable short slot time and set cwMin to 31
-          SetSlot (MicroSeconds (20));
+          m_phy->SetSlot (MicroSeconds (20));
           ConfigureContentionWindow (31, 1023);
         }
       else
@@ -1136,12 +1146,12 @@ StaWifiMac::UpdateApInfoFromProbeResp (MgtProbeResponseHeader probeResp, Mac48Ad
           if (m_stationManager->GetShortSlotTimeEnabled ())
             {
               //enable short slot time
-              SetSlot (MicroSeconds (9));
+              m_phy->SetSlot (MicroSeconds (9));
             }
           else
             {
               //disable short slot time
-              SetSlot (MicroSeconds (20));
+              m_phy->SetSlot (MicroSeconds (20));
             }
           ConfigureContentionWindow (15, 1023);
         }
@@ -1173,7 +1183,7 @@ StaWifiMac::UpdateApInfoFromAssocResp (MgtAssocResponseHeader assocResp, Mac48Ad
       if (!isErpAllowed)
         {
           //disable short slot time and set cwMin to 31
-          SetSlot (MicroSeconds (20));
+          m_phy->SetSlot (MicroSeconds (20));
           ConfigureContentionWindow (31, 1023);
         }
       else
@@ -1183,12 +1193,12 @@ StaWifiMac::UpdateApInfoFromAssocResp (MgtAssocResponseHeader assocResp, Mac48Ad
           if (m_stationManager->GetShortSlotTimeEnabled ())
             {
               //enable short slot time
-              SetSlot (MicroSeconds (9));
+              m_phy->SetSlot (MicroSeconds (9));
             }
           else
             {
               //disable short slot time
-              SetSlot (MicroSeconds (20));
+              m_phy->SetSlot (MicroSeconds (20));
             }
           ConfigureContentionWindow (15, 1023);
         }
@@ -1229,14 +1239,6 @@ StaWifiMac::UpdateApInfoFromAssocResp (MgtAssocResponseHeader assocResp, Mac48Ad
             {
               m_stationManager->SetUseGreenfieldProtection (false);
             }
-          if (!GetVhtSupported () && GetRifsSupported () && htOperation.GetRifsMode ())
-            {
-              m_stationManager->SetRifsPermitted (true);
-            }
-          else
-            {
-              m_stationManager->SetRifsPermitted (false);
-            }
         }
     }
   if (GetVhtSupported ())
@@ -1252,9 +1254,12 @@ StaWifiMac::UpdateApInfoFromAssocResp (MgtAssocResponseHeader assocResp, Mac48Ad
   if (GetHeSupported ())
     {
       HeCapabilities hecapabilities = assocResp.GetHeCapabilities ();
-      //todo: once we support non constant rate managers, we should add checks here whether HE is supported by the peer
-      m_stationManager->AddStationHeCapabilities (apAddr, hecapabilities);
-      HeOperation heOperation = assocResp.GetHeOperation ();
+      if (hecapabilities.GetSupportedMcsAndNss () != 0)
+        {
+          m_stationManager->AddStationHeCapabilities (apAddr, hecapabilities);
+          HeOperation heOperation = assocResp.GetHeOperation ();
+          GetHeConfiguration ()->SetAttribute ("BssColor", UintegerValue (heOperation.GetBssColor ()));
+        }
     }
   for (uint8_t i = 0; i < m_phy->GetNModes (); i++)
     {
@@ -1294,7 +1299,7 @@ StaWifiMac::UpdateApInfoFromAssocResp (MgtAssocResponseHeader assocResp, Mac48Ad
             }
         }
     }
-  if (GetHtSupported () || GetVhtSupported ())
+  if (GetHtSupported ())
     {
       ExtendedCapabilities extendedCapabilities = assocResp.GetExtendedCapabilities ();
       //TODO: to be completed
@@ -1325,7 +1330,7 @@ StaWifiMac::GetSupportedRates (void) const
       NS_LOG_DEBUG ("Adding supported rate of " << modeDataRate);
       rates.AddSupportedRate (modeDataRate);
     }
-  if (GetHtSupported () || GetVhtSupported () || GetHeSupported ())
+  if (GetHtSupported ())
     {
       for (uint8_t i = 0; i < m_phy->GetNBssMembershipSelectors (); i++)
         {
@@ -1339,7 +1344,7 @@ CapabilityInformation
 StaWifiMac::GetCapabilities (void) const
 {
   CapabilityInformation capabilities;
-  capabilities.SetShortPreamble (m_phy->GetShortPlcpPreambleSupported () || GetErpSupported ());
+  capabilities.SetShortPreamble (m_phy->GetShortPhyPreambleSupported () || GetErpSupported ());
   capabilities.SetShortSlotTime (GetShortSlotTimeSupported () && GetErpSupported ());
   if (GetPcfSupported ())
     {

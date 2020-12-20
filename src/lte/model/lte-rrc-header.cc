@@ -74,7 +74,7 @@ RrcAsn1Header::GetMessageType ()
 }
 
 int
-RrcAsn1Header::BandwidthToEnum (uint8_t bandwidth) const
+RrcAsn1Header::BandwidthToEnum (uint16_t bandwidth) const
 {
   int n;
   switch (bandwidth)
@@ -86,15 +86,15 @@ RrcAsn1Header::BandwidthToEnum (uint8_t bandwidth) const
       case 75: n = 4; break;
       case 100: n = 5; break;
       default:
-        NS_FATAL_ERROR ("Wrong bandwidth: " << (uint16_t) bandwidth);
+        NS_FATAL_ERROR ("Wrong bandwidth: " << bandwidth);
     }
   return n;
 }
 
-uint8_t
+uint16_t
 RrcAsn1Header::EnumToBandwidth (int n) const
 {
-  uint8_t bw;
+  uint16_t bw;
   switch (n)
     {
       case 0: bw = 6; break;
@@ -927,6 +927,25 @@ RrcAsn1Header::SerializeRachConfigCommon (LteRrcSap::RachConfigCommon rachConfig
 
   SerializeEnum (8,0); // mac-ContentionResolutionTimer
   SerializeInteger (1,1,8); // maxHARQ-Msg3Tx
+
+  // connEstFailCount
+  switch (rachConfigCommon.txFailParam.connEstFailCount)
+    {
+    case 1:
+      SerializeEnum (8,1);
+      break;
+    case 2:
+      SerializeEnum (8,2);
+      break;
+    case 3:
+      SerializeEnum (8,3);
+      break;
+    case 4:
+      SerializeEnum (8,4);
+      break;
+    default:
+      SerializeEnum (8,1);
+    }
 }
 
 void
@@ -3384,6 +3403,26 @@ RrcAsn1Header::DeserializeRachConfigCommon (LteRrcSap::RachConfigCommon * rachCo
 
   bIterator = DeserializeEnum (8,&n,bIterator); // mac-ContentionResolutionTimer
   bIterator = DeserializeInteger (&n,1,8,bIterator); //maxHARQ-Msg3Tx
+
+  // connEstFailCount
+  bIterator = DeserializeEnum (8,&n,bIterator);
+  switch (n)
+    {
+    case 1:
+      rachConfigCommon->txFailParam.connEstFailCount = 1;
+      break;
+    case 2:
+      rachConfigCommon->txFailParam.connEstFailCount = 2;
+      break;
+    case 3:
+      rachConfigCommon->txFailParam.connEstFailCount = 3;
+      break;
+    case 4:
+      rachConfigCommon->txFailParam.connEstFailCount = 4;
+      break;
+    default:
+      rachConfigCommon->txFailParam.connEstFailCount = 1;
+    }
   return bIterator;
 }
 

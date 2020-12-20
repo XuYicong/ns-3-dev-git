@@ -11,7 +11,7 @@ Using the WifiNetDevice
 The modularity provided by the implementation makes low-level configuration of
 the WifiNetDevice powerful but complex. For this reason, we provide some helper
 classes to perform common operations in a simple matter, and leverage the |ns3|
-attribute system to allow users to control the parametrization of the underlying
+attribute system to allow users to control the parameterization of the underlying
 models.
 
 Users who use the low-level |ns3| API and who wish to add a WifiNetDevice to
@@ -43,11 +43,11 @@ To create a WifiNetDevice, users need to follow these steps:
   decoded or not depending on the received signal strength and noise.  Thus, the main
   configuration of WifiPhy is the error rate model, which is the one that actually 
   calculates the probability of successfully decoding the frame based on the signal.
-* Configure WifiMac: this step is more on related to the architecture and device level.
+* Configure WifiMac: this step is more related to the architecture and device level.
   The users configure the wifi architecture (i.e. ad-hoc or ap-sta) and whether QoS (802.11e),
   HT (802.11n) and/or VHT (802.11ac) and/or HE (802.11ax) features are supported or not.
 * Create WifiDevice: at this step, users configure the desired wifi standard
-  (e.g. **802.11b**, **802.11g**, **802.11a**, **802.11n**, **802.11ac** or **802.11ax**) and rate control algorithm
+  (e.g. **802.11b**, **802.11g**, **802.11a**, **802.11n**, **802.11ac** or **802.11ax**) and rate control algorithm.
 * Configure mobility: finally, mobility model is (usually) required before WifiNetDevice
   can be used.
 
@@ -71,7 +71,7 @@ default values in the simulator, and infrastructure mode::
   // and install Wifi devices.  Configure a Wifi standard to use, which
   // will align various parameters in the Phy and Mac to standard defaults.
   WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+  wifi.SetStandard (WIFI_STANDARD_80211n_5GHZ);
   // Declare NetDeviceContainers to hold the container returned by the helper
   NetDeviceContainer wifiStaDevices;
   NetDeviceContainer wifiApDevice;
@@ -91,7 +91,7 @@ YansWifiChannelHelper
 
 The YansWifiChannelHelper has an unusual name. Readers may wonder why it is
 named this way. The reference is to the `yans simulator
-<http://cutebugs.net/files/wns2-yans.pdf>`_ from which this model is taken. The
+<https://dl.acm.org/doi/pdf/10.1145/1190455.1190467?download=true>`_ from which this model is taken. The
 helper can be used to create a YansWifiChannel with a default PropagationLoss and
 PropagationDelay model.
 
@@ -102,7 +102,7 @@ Users will typically type code such as::
 
 to get the defaults.  Specifically, the default is a channel model with a
 propagation delay equal to a constant, the speed of light (``ns3::ConstantSpeedPropagationDelayModel``),
-and a propagation loss based on a default log distance model (``ns3::LogDistancePropagationLossModel``)), using a default exponent of 3.
+and a propagation loss based on a default log distance model (``ns3::LogDistancePropagationLossModel``), using a default exponent of 3.
 Please note that the default log distance model is configured with a reference
 loss of 46.6777 dB at reference distance of 1m.  The reference loss of 46.6777 dB
 was calculated using Friis propagation loss model at 5.15 GHz.  The reference loss
@@ -151,14 +151,6 @@ Note that we haven't actually created any WifiPhy objects yet; we've just
 prepared the YansWifiPhyHelper by telling it which channel it is connected to.
 The Phy objects are created in the next step.
 
-802.11n/ac PHY layer can use either either long (800 ns) or short (400 ns) OFDM guard intervals. To configure this parameter, the following line of code could be used (in this example, it enables the support of a short guard interval)::
-
- wifiPhyHelper.Set ("ShortGuardEnabled", BooleanValue(true));
-
-802.11ax PHY layer can use either either 3200 ns, 1600 ns or 800 ns OFDM guard intervals. To configure this parameter, the following line of code could be used (in this example, it enables the support of 1600 ns guard interval)::
-
- wifiPhyHelper.Set ("GuardInterval", TimeValue(NanoSeconds (1600)));
-
 In order to enable 802.11n/ac/ax MIMO, the number of antennas as well as the number of supported spatial streams need to be configured.
 For example, this code enables MIMO with 2 antennas and 2 spatial streams::
 
@@ -173,18 +165,14 @@ For example, this code configures a node with 3 antennas that supports 2 spatial
  wifiPhyHelper.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
  wifiPhyHelper.Set ("MaxSupportedRxSpatialStreams", UintegerValue (1));
 
-Furthermore, 802.11n provides an optional mode (GreenField mode) to reduce preamble durations and which is only compatible with 802.11n devices. This mode is enabled as follows::
-
- wifiPhyHelper.Set ("GreenfieldEnabled",BooleanValue(true));
-
 802.11n PHY layer can support both 20 (default) or 40 MHz channel width, and 802.11ac/ax PHY layer can use either 20, 40, 80 (default) or 160 MHz channel width.  See below for further documentation on setting the frequency, channel width, and channel number.
 
 ::
 
   WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211ac);
-  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", 
-                                "DataMode", StringValue ("VhtMcs9"), 
+  wifi.SetStandard (WIFI_STANDARD_80211ac);
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                "DataMode", StringValue ("VhtMcs9"),
                                 "ControlMode", StringValue ("VhtMcs0"));
 
   //Install PHY and MAC
@@ -192,14 +180,14 @@ Furthermore, 802.11n provides an optional mode (GreenField mode) to reduce pream
   WifiMacHelper mac;
 
   mac.SetType ("ns3::StaWifiMac",
-  "Ssid", SsidValue (ssid),
-  "ActiveProbing", BooleanValue (false));
+	       "Ssid", SsidValue (ssid),
+	       "ActiveProbing", BooleanValue (false));
 
   NetDeviceContainer staDevice;
   staDevice = wifi.Install (phy, mac, wifiStaNode);
 
   mac.SetType ("ns3::ApWifiMac",
-  "Ssid", SsidValue (ssid));
+	       "Ssid", SsidValue (ssid));
 
   NetDeviceContainer apDevice;
   apDevice = wifi.Install (phy, mac, wifiApNode);
@@ -235,7 +223,7 @@ in a number of ways:
   wifiPhyHelper.Set ("ChannelNumber", UintegerValue (3));
 
 
-* by setting the WifiHelper::SetStandard (enum WifiPhyStandard) method; and
+* by setting the WifiHelper::SetStandard (enum WifiStandard) method; and
 
 * by performing post-installation configuration of the option, either
   via a Ptr to the WifiPhy object, or through the Config namespace; e.g.:
@@ -253,8 +241,9 @@ WifiHelper::SetStandard()
 
 ``WifiHelper::SetStandard ()`` is a method to set various parameters
 in the Mac and Phy to standard values and some reasonable defaults.
-For example, ``SetStandard (WIFI_PHY_STANDARD_80211a)`` will set the
-WifiPhy to Channel 36 in the 5 GHz band, among other settings.
+For example, ``SetStandard (WIFI_STANDARD_80211a)`` will set the
+WifiPhy to Channel 36 in the 5 GHz band, among other settings appropriate
+for 802.11a.
 
 The following values for WifiPhyStandard are defined in 
 ``src/wifi/model/wifi-phy-standard.h``:
@@ -411,7 +400,7 @@ such as:
 ::
 
   WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+  wifi.SetStandard (WIFI_STANDARD_80211n_5GHZ);
   ...
   Ptr<WifiPhy> wifiPhy = ...;
   wifiPhy->SetAttribute ("ChannelNumber", UintegerValue (14));
@@ -436,7 +425,7 @@ arguments:
 The pair of (channelNumber, standard) are used as an index to a map that
 returns a Frequency and ChannelWidth.  By calling this method, one can
 dynamically add members to the map.  For instance, let's suppose that you
-previously configured WIFI_PHY_STANDARD_80211a, and wanted to deine a new
+previously configured WIFI_PHY_STANDARD_80211a, and wanted to define a new
 channel number '34' of width 20 MHz and at center frequency 5160 MHz.
 
 If you try to simply configure ChannelNumber to the value 34, it will fail,
@@ -496,7 +485,7 @@ different configurations can be obtained.   Below are some common use cases.
   all of the other configuration details.
 
 * **(interaction between channel number and frequency):**  If the user 
-  the user sets Frequency to a different value than the currently configured
+  sets Frequency to a different value than the currently configured
   ChannelNumber (or if ChannelNumber is zero), then the ChannelNumber is 
   set to a new channel number if known, or to zero if unknown. 
 
@@ -602,7 +591,7 @@ For example the following user code configures a MAC that will be a non-AP STA w
 in an infrastructure network where the AP has SSID ``ns-3-ssid``::
 
     WifiHelper wifi;
-    wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+    wifi.SetStandard (WIFI_STANDARD_80211n_5GHZ);
 
     WifiMacHelper wifiMacHelper;
     Ssid ssid = Ssid ("ns-3-ssid");
@@ -689,7 +678,7 @@ priority to the user priority, thus overwriting the value determined by the
 socket priority (users can read :ref:`Socket-options` for details on how to
 set the packet priority). Also, given that the Traffic Control layer calls
 :cpp:func:`ns3::WifiNetDevice::SelectQueue()` before enqueuing the packet
-into a queue disc, it turns out that queuing disciplines (such as the default
+into a queue disc, it turns out that queuing disciplines (such as
 PfifoFastQueueDisc) that classifies packets based on their priority will
 use the user priority instead of the socket priority.
 
@@ -714,11 +703,11 @@ on a set of nodes in a NodeContainer "c"::
 This creates the WifiNetDevice which includes also a WifiRemoteStationManager, a
 WifiMac, and a WifiPhy (connected to the matching Channel).
 
-The ``WifiHelper::SetStandard`` method set various default timing parameters as defined in the selected standard version, overwriting values that may exist or have been previously configured.
+The ``WifiHelper::SetStandard`` method sets various default timing parameters as defined in the selected standard version, overwriting values that may exist or have been previously configured.
 In order to change parameters that are overwritten by ``WifiHelper::SetStandard``, this should be done post-install using ``Config::Set``::
 
   WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_2_4GHZ);
+  wifi.SetStandard (WIFI_STANDARD_80211n_2_4GHZ);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode", StringValue("HtMcs7"), "ControlMode", StringValue("HtMcs0"));
 
   //Install PHY and MAC
@@ -739,17 +728,88 @@ In order to change parameters that are overwritten by ``WifiHelper::SetStandard`
   apDevice = wifi.Install (phy, mac, wifiApNode);
 
   //Once install is done, we overwrite the standard timing values
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Slot", TimeValue (MicroSeconds (slot)));
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Sifs", TimeValue (MicroSeconds (sifs)));
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/AckTimeout", TimeValue (MicroSeconds (ackTimeout)));
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/CtsTimeout", TimeValue (MicroSeconds (ctsTimeout)));
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Rifs", TimeValue (MicroSeconds (rifs)));
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BasicBlockAckTimeout", TimeValue (MicroSeconds (basicBlockAckTimeout)));
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/CompressedBlockAckTimeout", TimeValue (MicroSeconds (compressedBlockAckTimeout)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/Slot", TimeValue (MicroSeconds (slot)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/Sifs", TimeValue (MicroSeconds (sifs)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/Pifs", TimeValue (MicroSeconds (pifs)));
 
-There are many |ns3| attributes that can be set on the above helpers to
+The WifiHelper can be used to set the attributes of the default ack policy selector
+(``ConstantWifiAckPolicySelector``) or to select a different (user provided) ack
+policy selector, for each of the available Access Categories. As an example, the
+following code can be used to set the BaThreshold attribute of the default ack
+policy selector associated with BE AC to 0.5::
+
+  WifiHelper wifi;
+  wifi.SetAckPolicySelectorForAc (AC_BE, "ns3::ConstantWifiAckPolicySelector",
+                                  "BaThreshold", DoubleValue (0.5));
+
+The WifiHelper is also used to configure OBSS PD spatial reuse for 802.11ax.
+The following lines configure a WifiHelper to support OBSS PD spatial reuse
+using the ``ConstantObssPdAlgorithm`` with a threshold set to -72 dBm::
+
+  WifiHelper wifi;
+  wifi.SetObssPdAlgorithm ("ns3::ConstantObssPdAlgorithm",
+                           "ObssPdLevel", DoubleValue (-72.0));
+
+There are many other |ns3| attributes that can be set on the above helpers to
 deviate from the default behavior; the example scripts show how to do some of
 this reconfiguration.
+
+HT configuration
+================
+
+HT is an acronym for High Throughput, a term synonymous with the IEEE 802.11n
+standard.  Once the ``ns3::WifiHelper::Install`` has been called and the
+user sets the standard to a variant that supports HT capabilities (802.11n,
+802.11ac, or 802.11ax), an HT configuration object will automatically be
+created for the device.  The configuration object is used to store and 
+manage HT-specific attributes.
+
+802.11n/ac PHY layer can use either long (800 ns) or short (400 ns) OFDM guard intervals. To configure this parameter for a given device, the following lines of code could be used (in this example, it enables the support of a short guard interval for the first station)::
+
+ Ptr<NetDevice> nd = wifiStaDevices.Get (0);
+ Ptr<WifiNetDevice> wnd = nd->GetObject<WifiNetDevice> ();
+ Ptr<HtConfiguration> htConfiguration = wnd->GetHtConfiguration ();
+ htConfiguration->SetShortGuardIntervalSupported (true);
+
+It is also possible to configure HT-specific attributes using ``Config::Set``.
+The following line of code enables the support of a short guard interval for all stations:
+
+ Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/HtConfiguration/ShortGuardIntervalSupported", BooleanValue (true));
+
+Furthermore, 802.11n provides an optional mode (Greenfield mode) to reduce preamble durations and which is only compatible with 802.11n devices. This mode is enabled as follows::
+
+ htConfiguration->SetGreenfieldSupported (true);
+
+VHT configuration
+=================
+
+IEEE 802.11ac devices are also known as supporting Very High Throughput (VHT).  Once the ``ns3::WifiHelper::Install`` has been called and either the 802.11ac
+or 802.11ax 5 GHz standards are configured, a VHT configuration object will be
+automatically created to manage VHT-specific attributes.
+
+As of ns-3.29, however, there are no VHT-specific configuration items to
+manage; therefore, this object is a placeholder for future growth.
+
+HE configuration
+================
+
+IEEE 802.11ax is also known as High Efficiency (HE).  Once the ``ns3::WifiHelper::Install`` has been called and IEEE 802.11ax configured as the standard, an 
+HE configuration object will automatically be created to manage HE-specific
+attributes for 802.11ax devices.
+
+802.11ax PHY layer can use either 3200 ns, 1600 ns or 800 ns OFDM guard intervals. To configure this parameter, the following lines of code could be used (in this example, it enables the support of 1600 ns guard interval), such as in this example code snippet::
+
+ Ptr<NetDevice> nd = wifiStaDevices.Get (0);
+ Ptr<WifiNetDevice> wnd = nd->GetObject<WifiNetDevice> ();
+ Ptr<HeConfiguration> heConfiguration = wnd->GetHeConfiguration ();
+ heConfiguration->SetGuardInterval (NanoSeconds (1600));
+
+ 802.11ax allows extended compressed Block ACKs containing a 256-bits bitmap, making possible transmissions of A-MPDUs containing up to 256 MPDUs,
+ depending on the negotiated buffer size. In order to configure the buffer size of an 802.11ax device, the following line of code could be used::
+
+ heConfiguration->SetMpduBufferSize (256);
+
+ For transmitting large MPDUs, it might also be needed to increase the maximum aggregation size (see above).
 
 Mobility configuration
 ======================
@@ -783,7 +843,7 @@ Finally, we manually place them by using the ``ns3::ListPositionAllocator``::
   c.Create (2);
 
   WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
+  wifi.SetStandard (WIFI_STANDARD_80211a);
 
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
   // ns-3 supports RadioTap and Prism tracing extensions for 802.11
@@ -830,7 +890,7 @@ Each node is equipped with 802.11b Wi-Fi device::
   sta.Create (2);
 
   WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+  wifi.SetStandard (WIFI_STANDARD_80211b);
 
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default (); 
   // ns-3 supports RadioTap and Prism tracing extensions for 802.11

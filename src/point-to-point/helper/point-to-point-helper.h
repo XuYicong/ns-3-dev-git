@@ -183,7 +183,6 @@ private:
 
   ObjectFactory m_queueFactory;         //!< Queue Factory
   ObjectFactory m_channelFactory;       //!< Channel Factory
-  ObjectFactory m_remoteChannelFactory; //!< Remote Channel Factory
   ObjectFactory m_deviceFactory;        //!< Device Factory
 };
 

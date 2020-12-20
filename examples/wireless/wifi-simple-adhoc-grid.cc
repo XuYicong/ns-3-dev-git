@@ -47,13 +47,13 @@
 // the default of 500m.
 // To see this effect, try running:
 //
-// ./waf --run "wifi-simple-adhoc --distance=500"
-// ./waf --run "wifi-simple-adhoc --distance=1000"
-// ./waf --run "wifi-simple-adhoc --distance=1500"
+// ./waf --run "wifi-simple-adhoc-grid --distance=500"
+// ./waf --run "wifi-simple-adhoc-grid --distance=1000"
+// ./waf --run "wifi-simple-adhoc-grid --distance=1500"
 //
 // The source node and sink node can be changed like this:
 //
-// ./waf --run "wifi-simple-adhoc --sourceNode=20 --sinkNode=10"
+// ./waf --run "wifi-simple-adhoc-grid --sourceNode=20 --sinkNode=10"
 //
 // This script can also be helpful to put the Wifi layer into verbose
 // logging mode; this command will turn on all wifi logging:
@@ -126,7 +126,7 @@ int main (int argc, char *argv[])
   bool verbose = false;
   bool tracing = false;
 
-  CommandLine cmd;
+  CommandLine cmd (__FILE__);
   cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
   cmd.AddValue ("distance", "distance (m)", distance);
   cmd.AddValue ("packetSize", "size of application packet sent", packetSize);
@@ -168,7 +168,7 @@ int main (int argc, char *argv[])
 
   // Add an upper mac and disable rate control
   WifiMacHelper wifiMac;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+  wifi.SetStandard (WIFI_STANDARD_80211b);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));

@@ -27,7 +27,6 @@
 #include "ns3/socket.h"
 #include "ns3/uinteger.h"
 #include "ns3/ipv6.h"
-#include "ns3/ipv6-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/icmpv6-header.h"
 #include "ns3/ipv6-raw-socket-factory.h"
@@ -79,7 +78,7 @@ TypeId Ping6::GetTypeId ()
 
 Ping6::Ping6 ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION (this);
   m_sent = 0;
   m_socket = 0;
   m_seq = 0;
@@ -88,19 +87,19 @@ Ping6::Ping6 ()
 
 Ping6::~Ping6 ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION (this);
   m_socket = 0;
 }
 
 void Ping6::DoDispose ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION (this);
   Application::DoDispose ();
 }
 
 void Ping6::StartApplication ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION (this);
 
   if (!m_socket)
     {
@@ -131,7 +130,7 @@ void Ping6::SetRemote (Ipv6Address ipv6)
 
 void Ping6::StopApplication ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION (this);
 
   if (m_socket)
     {
@@ -159,7 +158,7 @@ void Ping6::SetRouters (std::vector<Ipv6Address> routers)
 
 void Ping6::Send ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION (this);
   NS_ASSERT (m_sendEvent.IsExpired ());
 
   Ipv6Address src;

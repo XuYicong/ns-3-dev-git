@@ -77,7 +77,7 @@ main (int argc, char *argv[])
   bool pcapTracing = false;                          /* PCAP Tracing is enabled or not. */
 
   /* Command line argument parser setup. */
-  CommandLine cmd;
+  CommandLine cmd (__FILE__);
   cmd.AddValue ("payloadSize", "Payload size in bytes", payloadSize);
   cmd.AddValue ("dataRate", "Application data ate", dataRate);
   cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpNewReno, "
@@ -109,7 +109,7 @@ main (int argc, char *argv[])
 
   WifiMacHelper wifiMac;
   WifiHelper wifiHelper;
-  wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+  wifiHelper.SetStandard (WIFI_STANDARD_80211n_5GHZ);
 
   /* Set up Legacy Channel */
   YansWifiChannelHelper wifiChannel;
@@ -119,14 +119,6 @@ main (int argc, char *argv[])
   /* Setup Physical Layer */
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
   wifiPhy.SetChannel (wifiChannel.Create ());
-  wifiPhy.Set ("TxPowerStart", DoubleValue (10.0));
-  wifiPhy.Set ("TxPowerEnd", DoubleValue (10.0));
-  wifiPhy.Set ("TxPowerLevels", UintegerValue (1));
-  wifiPhy.Set ("TxGain", DoubleValue (0));
-  wifiPhy.Set ("RxGain", DoubleValue (0));
-  wifiPhy.Set ("RxNoiseFigure", DoubleValue (10));
-  wifiPhy.Set ("CcaMode1Threshold", DoubleValue (-79));
-  wifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-79 + 3));
   wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
   wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                       "DataMode", StringValue (phyRate),

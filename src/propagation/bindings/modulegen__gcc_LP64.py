@@ -24,37 +24,57 @@ def register_types(module):
     module.add_enum('EnvironmentType', ['UrbanEnvironment', 'SubUrbanEnvironment', 'OpenAreasEnvironment'])
     ## propagation-environment.h (module 'propagation'): ns3::CitySize [enumeration]
     module.add_enum('CitySize', ['SmallCity', 'MediumCity', 'LargeCity'])
+    ## log.h (module 'core'): ns3::LogLevel [enumeration]
+    module.add_enum('LogLevel', ['LOG_NONE', 'LOG_ERROR', 'LOG_LEVEL_ERROR', 'LOG_WARN', 'LOG_LEVEL_WARN', 'LOG_DEBUG', 'LOG_LEVEL_DEBUG', 'LOG_INFO', 'LOG_LEVEL_INFO', 'LOG_FUNCTION', 'LOG_LEVEL_FUNCTION', 'LOG_LOGIC', 'LOG_LEVEL_LOGIC', 'LOG_ALL', 'LOG_LEVEL_ALL', 'LOG_PREFIX_FUNC', 'LOG_PREFIX_TIME', 'LOG_PREFIX_NODE', 'LOG_PREFIX_LEVEL', 'LOG_PREFIX_ALL'], import_from_module='ns.core')
     ## attribute-construction-list.h (module 'core'): ns3::AttributeConstructionList [class]
     module.add_class('AttributeConstructionList', import_from_module='ns.core')
     ## attribute-construction-list.h (module 'core'): ns3::AttributeConstructionList::Item [struct]
-    module.add_class('Item', import_from_module='ns.core', outer_class=root_module['ns3::AttributeConstructionList'])
-    typehandlers.add_type_alias(u'std::list< ns3::AttributeConstructionList::Item > const_iterator', u'ns3::AttributeConstructionList::CIterator')
-    typehandlers.add_type_alias(u'std::list< ns3::AttributeConstructionList::Item > const_iterator*', u'ns3::AttributeConstructionList::CIterator*')
-    typehandlers.add_type_alias(u'std::list< ns3::AttributeConstructionList::Item > const_iterator&', u'ns3::AttributeConstructionList::CIterator&')
+    module.add_class('Item', outer_class=root_module['ns3::AttributeConstructionList'], import_from_module='ns.core')
+    typehandlers.add_type_alias('std::list< ns3::AttributeConstructionList::Item > const_iterator', 'ns3::AttributeConstructionList::CIterator')
+    typehandlers.add_type_alias('std::list< ns3::AttributeConstructionList::Item > const_iterator*', 'ns3::AttributeConstructionList::CIterator*')
+    typehandlers.add_type_alias('std::list< ns3::AttributeConstructionList::Item > const_iterator&', 'ns3::AttributeConstructionList::CIterator&')
     ## callback.h (module 'core'): ns3::CallbackBase [class]
     module.add_class('CallbackBase', import_from_module='ns.core')
     ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::AttributeAccessor> [struct]
-    module.add_class('DefaultDeleter', import_from_module='ns.core', template_parameters=['ns3::AttributeAccessor'])
+    module.add_class('DefaultDeleter', template_parameters=['ns3::AttributeAccessor'], import_from_module='ns.core')
     ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::AttributeChecker> [struct]
-    module.add_class('DefaultDeleter', import_from_module='ns.core', template_parameters=['ns3::AttributeChecker'])
+    module.add_class('DefaultDeleter', template_parameters=['ns3::AttributeChecker'], import_from_module='ns.core')
     ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::AttributeValue> [struct]
-    module.add_class('DefaultDeleter', import_from_module='ns.core', template_parameters=['ns3::AttributeValue'])
+    module.add_class('DefaultDeleter', template_parameters=['ns3::AttributeValue'], import_from_module='ns.core')
     ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::CallbackImplBase> [struct]
-    module.add_class('DefaultDeleter', import_from_module='ns.core', template_parameters=['ns3::CallbackImplBase'])
+    module.add_class('DefaultDeleter', template_parameters=['ns3::CallbackImplBase'], import_from_module='ns.core')
+    ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::EventImpl> [struct]
+    module.add_class('DefaultDeleter', template_parameters=['ns3::EventImpl'], import_from_module='ns.core')
     ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::Hash::Implementation> [struct]
-    module.add_class('DefaultDeleter', import_from_module='ns.core', template_parameters=['ns3::Hash::Implementation'])
+    module.add_class('DefaultDeleter', template_parameters=['ns3::Hash::Implementation'], import_from_module='ns.core')
     ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::TraceSourceAccessor> [struct]
-    module.add_class('DefaultDeleter', import_from_module='ns.core', template_parameters=['ns3::TraceSourceAccessor'])
+    module.add_class('DefaultDeleter', template_parameters=['ns3::TraceSourceAccessor'], import_from_module='ns.core')
+    ## event-id.h (module 'core'): ns3::EventId [class]
+    module.add_class('EventId', import_from_module='ns.core')
     ## hash.h (module 'core'): ns3::Hasher [class]
     module.add_class('Hasher', import_from_module='ns.core')
+    ## log.h (module 'core'): ns3::LogComponent [class]
+    module.add_class('LogComponent', import_from_module='ns.core')
+    typehandlers.add_type_alias('std::map< std::string, ns3::LogComponent * >', 'ns3::LogComponent::ComponentList')
+    typehandlers.add_type_alias('std::map< std::string, ns3::LogComponent * >*', 'ns3::LogComponent::ComponentList*')
+    typehandlers.add_type_alias('std::map< std::string, ns3::LogComponent * >&', 'ns3::LogComponent::ComponentList&')
     ## object-base.h (module 'core'): ns3::ObjectBase [class]
     module.add_class('ObjectBase', allow_subclassing=True, import_from_module='ns.core')
     ## object.h (module 'core'): ns3::ObjectDeleter [struct]
     module.add_class('ObjectDeleter', import_from_module='ns.core')
+    ## log.h (module 'core'): ns3::ParameterLogger [class]
+    module.add_class('ParameterLogger', import_from_module='ns.core')
     ## propagation-cache.h (module 'propagation'): ns3::PropagationCache<ns3::JakesProcess> [class]
     module.add_class('PropagationCache', template_parameters=['ns3::JakesProcess'])
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::Object, ns3::ObjectBase, ns3::ObjectDeleter> [class]
-    module.add_class('SimpleRefCount', automatic_type_narrowing=True, import_from_module='ns.core', template_parameters=['ns3::Object', 'ns3::ObjectBase', 'ns3::ObjectDeleter'], parent=root_module['ns3::ObjectBase'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'))
+    module.add_class('SimpleRefCount', template_parameters=['ns3::Object', 'ns3::ObjectBase', 'ns3::ObjectDeleter'], parent=root_module['ns3::ObjectBase'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'), import_from_module='ns.core', automatic_type_narrowing=True)
+    ## nstime.h (module 'core'): ns3::Time [class]
+    module.add_class('Time', import_from_module='ns.core')
+    ## nstime.h (module 'core'): ns3::Time::Unit [enumeration]
+    module.add_enum('Unit', ['Y', 'D', 'H', 'MIN', 'S', 'MS', 'US', 'NS', 'PS', 'FS', 'LAST'], outer_class=root_module['ns3::Time'], import_from_module='ns.core')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Time )', 'ns3::Time::TracedCallback')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Time )*', 'ns3::Time::TracedCallback*')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Time )&', 'ns3::Time::TracedCallback&')
     ## nstime.h (module 'core'): ns3::TimeWithUnit [class]
     module.add_class('TimeWithUnit', import_from_module='ns.core')
     ## type-id.h (module 'core'): ns3::TypeId [class]
@@ -64,12 +84,12 @@ def register_types(module):
     ## type-id.h (module 'core'): ns3::TypeId::SupportLevel [enumeration]
     module.add_enum('SupportLevel', ['SUPPORTED', 'DEPRECATED', 'OBSOLETE'], outer_class=root_module['ns3::TypeId'], import_from_module='ns.core')
     ## type-id.h (module 'core'): ns3::TypeId::AttributeInformation [struct]
-    module.add_class('AttributeInformation', import_from_module='ns.core', outer_class=root_module['ns3::TypeId'])
+    module.add_class('AttributeInformation', outer_class=root_module['ns3::TypeId'], import_from_module='ns.core')
     ## type-id.h (module 'core'): ns3::TypeId::TraceSourceInformation [struct]
-    module.add_class('TraceSourceInformation', import_from_module='ns.core', outer_class=root_module['ns3::TypeId'])
-    typehandlers.add_type_alias(u'uint32_t', u'ns3::TypeId::hash_t')
-    typehandlers.add_type_alias(u'uint32_t*', u'ns3::TypeId::hash_t*')
-    typehandlers.add_type_alias(u'uint32_t&', u'ns3::TypeId::hash_t&')
+    module.add_class('TraceSourceInformation', outer_class=root_module['ns3::TypeId'], import_from_module='ns.core')
+    typehandlers.add_type_alias('uint32_t', 'ns3::TypeId::hash_t')
+    typehandlers.add_type_alias('uint32_t*', 'ns3::TypeId::hash_t*')
+    typehandlers.add_type_alias('uint32_t&', 'ns3::TypeId::hash_t&')
     ## vector.h (module 'core'): ns3::Vector2D [class]
     module.add_class('Vector2D', import_from_module='ns.core')
     ## vector.h (module 'core'): ns3::Vector3D [class]
@@ -81,9 +101,9 @@ def register_types(module):
     ## int64x64-128.h (module 'core'): ns3::int64x64_t::impl_type [enumeration]
     module.add_enum('impl_type', ['int128_impl', 'cairo_impl', 'ld_impl'], outer_class=root_module['ns3::int64x64_t'], import_from_module='ns.core')
     ## object.h (module 'core'): ns3::Object [class]
-    module.add_class('Object', import_from_module='ns.core', parent=root_module['ns3::SimpleRefCount< ns3::Object, ns3::ObjectBase, ns3::ObjectDeleter >'])
+    module.add_class('Object', parent=root_module['ns3::SimpleRefCount< ns3::Object, ns3::ObjectBase, ns3::ObjectDeleter >'], import_from_module='ns.core')
     ## object.h (module 'core'): ns3::Object::AggregateIterator [class]
-    module.add_class('AggregateIterator', import_from_module='ns.core', outer_class=root_module['ns3::Object'])
+    module.add_class('AggregateIterator', outer_class=root_module['ns3::Object'], import_from_module='ns.core')
     ## propagation-delay-model.h (module 'propagation'): ns3::PropagationDelayModel [class]
     module.add_class('PropagationDelayModel', parent=root_module['ns3::Object'])
     ## propagation-loss-model.h (module 'propagation'): ns3::PropagationLossModel [class]
@@ -93,86 +113,95 @@ def register_types(module):
     ## propagation-loss-model.h (module 'propagation'): ns3::RandomPropagationLossModel [class]
     module.add_class('RandomPropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## random-variable-stream.h (module 'core'): ns3::RandomVariableStream [class]
-    module.add_class('RandomVariableStream', import_from_module='ns.core', parent=root_module['ns3::Object'])
+    module.add_class('RandomVariableStream', parent=root_module['ns3::Object'], import_from_module='ns.core')
     ## propagation-loss-model.h (module 'propagation'): ns3::RangePropagationLossModel [class]
     module.add_class('RangePropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## random-variable-stream.h (module 'core'): ns3::SequentialRandomVariable [class]
-    module.add_class('SequentialRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('SequentialRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::AttributeAccessor, ns3::empty, ns3::DefaultDeleter<ns3::AttributeAccessor> > [class]
-    module.add_class('SimpleRefCount', automatic_type_narrowing=True, import_from_module='ns.core', template_parameters=['ns3::AttributeAccessor', 'ns3::empty', 'ns3::DefaultDeleter<ns3::AttributeAccessor>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'))
+    module.add_class('SimpleRefCount', template_parameters=['ns3::AttributeAccessor', 'ns3::empty', 'ns3::DefaultDeleter<ns3::AttributeAccessor>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'), import_from_module='ns.core', automatic_type_narrowing=True)
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::AttributeChecker, ns3::empty, ns3::DefaultDeleter<ns3::AttributeChecker> > [class]
-    module.add_class('SimpleRefCount', automatic_type_narrowing=True, import_from_module='ns.core', template_parameters=['ns3::AttributeChecker', 'ns3::empty', 'ns3::DefaultDeleter<ns3::AttributeChecker>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'))
+    module.add_class('SimpleRefCount', template_parameters=['ns3::AttributeChecker', 'ns3::empty', 'ns3::DefaultDeleter<ns3::AttributeChecker>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'), import_from_module='ns.core', automatic_type_narrowing=True)
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::AttributeValue, ns3::empty, ns3::DefaultDeleter<ns3::AttributeValue> > [class]
-    module.add_class('SimpleRefCount', automatic_type_narrowing=True, import_from_module='ns.core', template_parameters=['ns3::AttributeValue', 'ns3::empty', 'ns3::DefaultDeleter<ns3::AttributeValue>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'))
+    module.add_class('SimpleRefCount', template_parameters=['ns3::AttributeValue', 'ns3::empty', 'ns3::DefaultDeleter<ns3::AttributeValue>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'), import_from_module='ns.core', automatic_type_narrowing=True)
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::CallbackImplBase, ns3::empty, ns3::DefaultDeleter<ns3::CallbackImplBase> > [class]
-    module.add_class('SimpleRefCount', automatic_type_narrowing=True, import_from_module='ns.core', template_parameters=['ns3::CallbackImplBase', 'ns3::empty', 'ns3::DefaultDeleter<ns3::CallbackImplBase>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'))
+    module.add_class('SimpleRefCount', template_parameters=['ns3::CallbackImplBase', 'ns3::empty', 'ns3::DefaultDeleter<ns3::CallbackImplBase>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'), import_from_module='ns.core', automatic_type_narrowing=True)
+    ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::EventImpl, ns3::empty, ns3::DefaultDeleter<ns3::EventImpl> > [class]
+    module.add_class('SimpleRefCount', template_parameters=['ns3::EventImpl', 'ns3::empty', 'ns3::DefaultDeleter<ns3::EventImpl>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'), import_from_module='ns.core', automatic_type_narrowing=True)
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::Hash::Implementation, ns3::empty, ns3::DefaultDeleter<ns3::Hash::Implementation> > [class]
-    module.add_class('SimpleRefCount', automatic_type_narrowing=True, import_from_module='ns.core', template_parameters=['ns3::Hash::Implementation', 'ns3::empty', 'ns3::DefaultDeleter<ns3::Hash::Implementation>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'))
+    module.add_class('SimpleRefCount', template_parameters=['ns3::Hash::Implementation', 'ns3::empty', 'ns3::DefaultDeleter<ns3::Hash::Implementation>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'), import_from_module='ns.core', automatic_type_narrowing=True)
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::TraceSourceAccessor, ns3::empty, ns3::DefaultDeleter<ns3::TraceSourceAccessor> > [class]
-    module.add_class('SimpleRefCount', automatic_type_narrowing=True, import_from_module='ns.core', template_parameters=['ns3::TraceSourceAccessor', 'ns3::empty', 'ns3::DefaultDeleter<ns3::TraceSourceAccessor>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'))
+    module.add_class('SimpleRefCount', template_parameters=['ns3::TraceSourceAccessor', 'ns3::empty', 'ns3::DefaultDeleter<ns3::TraceSourceAccessor>'], parent=root_module['ns3::empty'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'), import_from_module='ns.core', automatic_type_narrowing=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppPropagationLossModel [class]
+    module.add_class('ThreeGppPropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppRmaPropagationLossModel [class]
+    module.add_class('ThreeGppRmaPropagationLossModel', parent=root_module['ns3::ThreeGppPropagationLossModel'])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppUmaPropagationLossModel [class]
+    module.add_class('ThreeGppUmaPropagationLossModel', parent=root_module['ns3::ThreeGppPropagationLossModel'])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppUmiStreetCanyonPropagationLossModel [class]
+    module.add_class('ThreeGppUmiStreetCanyonPropagationLossModel', parent=root_module['ns3::ThreeGppPropagationLossModel'])
     ## propagation-loss-model.h (module 'propagation'): ns3::ThreeLogDistancePropagationLossModel [class]
     module.add_class('ThreeLogDistancePropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
-    ## nstime.h (module 'core'): ns3::Time [class]
-    module.add_class('Time', import_from_module='ns.core')
-    ## nstime.h (module 'core'): ns3::Time::Unit [enumeration]
-    module.add_enum('Unit', ['Y', 'D', 'H', 'MIN', 'S', 'MS', 'US', 'NS', 'PS', 'FS', 'LAST'], outer_class=root_module['ns3::Time'], import_from_module='ns.core')
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Time )', u'ns3::Time::TracedCallback')
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Time )*', u'ns3::Time::TracedCallback*')
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Time )&', u'ns3::Time::TracedCallback&')
-    ## nstime.h (module 'core'): ns3::Time [class]
-    root_module['ns3::Time'].implicitly_converts_to(root_module['ns3::int64x64_t'])
     ## trace-source-accessor.h (module 'core'): ns3::TraceSourceAccessor [class]
-    module.add_class('TraceSourceAccessor', import_from_module='ns.core', parent=root_module['ns3::SimpleRefCount< ns3::TraceSourceAccessor, ns3::empty, ns3::DefaultDeleter<ns3::TraceSourceAccessor> >'])
+    module.add_class('TraceSourceAccessor', parent=root_module['ns3::SimpleRefCount< ns3::TraceSourceAccessor, ns3::empty, ns3::DefaultDeleter<ns3::TraceSourceAccessor> >'], import_from_module='ns.core')
     ## random-variable-stream.h (module 'core'): ns3::TriangularRandomVariable [class]
-    module.add_class('TriangularRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('TriangularRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## propagation-loss-model.h (module 'propagation'): ns3::TwoRayGroundPropagationLossModel [class]
     module.add_class('TwoRayGroundPropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## random-variable-stream.h (module 'core'): ns3::UniformRandomVariable [class]
-    module.add_class('UniformRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('UniformRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## random-variable-stream.h (module 'core'): ns3::WeibullRandomVariable [class]
-    module.add_class('WeibullRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('WeibullRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## random-variable-stream.h (module 'core'): ns3::ZetaRandomVariable [class]
-    module.add_class('ZetaRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('ZetaRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## random-variable-stream.h (module 'core'): ns3::ZipfRandomVariable [class]
-    module.add_class('ZipfRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('ZipfRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## attribute.h (module 'core'): ns3::AttributeAccessor [class]
-    module.add_class('AttributeAccessor', import_from_module='ns.core', parent=root_module['ns3::SimpleRefCount< ns3::AttributeAccessor, ns3::empty, ns3::DefaultDeleter<ns3::AttributeAccessor> >'])
+    module.add_class('AttributeAccessor', parent=root_module['ns3::SimpleRefCount< ns3::AttributeAccessor, ns3::empty, ns3::DefaultDeleter<ns3::AttributeAccessor> >'], import_from_module='ns.core')
     ## attribute.h (module 'core'): ns3::AttributeChecker [class]
-    module.add_class('AttributeChecker', allow_subclassing=False, automatic_type_narrowing=True, import_from_module='ns.core', parent=root_module['ns3::SimpleRefCount< ns3::AttributeChecker, ns3::empty, ns3::DefaultDeleter<ns3::AttributeChecker> >'])
+    module.add_class('AttributeChecker', parent=root_module['ns3::SimpleRefCount< ns3::AttributeChecker, ns3::empty, ns3::DefaultDeleter<ns3::AttributeChecker> >'], allow_subclassing=False, automatic_type_narrowing=True, import_from_module='ns.core')
     ## attribute.h (module 'core'): ns3::AttributeValue [class]
-    module.add_class('AttributeValue', allow_subclassing=False, automatic_type_narrowing=True, import_from_module='ns.core', parent=root_module['ns3::SimpleRefCount< ns3::AttributeValue, ns3::empty, ns3::DefaultDeleter<ns3::AttributeValue> >'])
+    module.add_class('AttributeValue', parent=root_module['ns3::SimpleRefCount< ns3::AttributeValue, ns3::empty, ns3::DefaultDeleter<ns3::AttributeValue> >'], allow_subclassing=False, automatic_type_narrowing=True, import_from_module='ns.core')
     ## callback.h (module 'core'): ns3::CallbackChecker [class]
-    module.add_class('CallbackChecker', import_from_module='ns.core', parent=root_module['ns3::AttributeChecker'])
+    module.add_class('CallbackChecker', parent=root_module['ns3::AttributeChecker'], import_from_module='ns.core')
     ## callback.h (module 'core'): ns3::CallbackImplBase [class]
-    module.add_class('CallbackImplBase', import_from_module='ns.core', parent=root_module['ns3::SimpleRefCount< ns3::CallbackImplBase, ns3::empty, ns3::DefaultDeleter<ns3::CallbackImplBase> >'])
+    module.add_class('CallbackImplBase', parent=root_module['ns3::SimpleRefCount< ns3::CallbackImplBase, ns3::empty, ns3::DefaultDeleter<ns3::CallbackImplBase> >'], import_from_module='ns.core')
     ## callback.h (module 'core'): ns3::CallbackValue [class]
-    module.add_class('CallbackValue', import_from_module='ns.core', parent=root_module['ns3::AttributeValue'])
+    module.add_class('CallbackValue', parent=root_module['ns3::AttributeValue'], import_from_module='ns.core')
+    ## channel-condition-model.h (module 'propagation'): ns3::ChannelCondition [class]
+    module.add_class('ChannelCondition', parent=root_module['ns3::Object'])
+    ## channel-condition-model.h (module 'propagation'): ns3::ChannelCondition::LosConditionValue [enumeration]
+    module.add_enum('LosConditionValue', ['LOS', 'NLOS'], outer_class=root_module['ns3::ChannelCondition'])
+    ## channel-condition-model.h (module 'propagation'): ns3::ChannelConditionModel [class]
+    module.add_class('ChannelConditionModel', parent=root_module['ns3::Object'])
     ## random-variable-stream.h (module 'core'): ns3::ConstantRandomVariable [class]
-    module.add_class('ConstantRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('ConstantRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## propagation-delay-model.h (module 'propagation'): ns3::ConstantSpeedPropagationDelayModel [class]
     module.add_class('ConstantSpeedPropagationDelayModel', parent=root_module['ns3::PropagationDelayModel'])
     ## cost231-propagation-loss-model.h (module 'propagation'): ns3::Cost231PropagationLossModel [class]
     module.add_class('Cost231PropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## random-variable-stream.h (module 'core'): ns3::DeterministicRandomVariable [class]
-    module.add_class('DeterministicRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('DeterministicRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## random-variable-stream.h (module 'core'): ns3::EmpiricalRandomVariable [class]
-    module.add_class('EmpiricalRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('EmpiricalRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## attribute.h (module 'core'): ns3::EmptyAttributeAccessor [class]
-    module.add_class('EmptyAttributeAccessor', import_from_module='ns.core', parent=root_module['ns3::AttributeAccessor'])
+    module.add_class('EmptyAttributeAccessor', parent=root_module['ns3::AttributeAccessor'], import_from_module='ns.core')
     ## attribute.h (module 'core'): ns3::EmptyAttributeChecker [class]
-    module.add_class('EmptyAttributeChecker', import_from_module='ns.core', parent=root_module['ns3::AttributeChecker'])
+    module.add_class('EmptyAttributeChecker', parent=root_module['ns3::AttributeChecker'], import_from_module='ns.core')
     ## attribute.h (module 'core'): ns3::EmptyAttributeValue [class]
-    module.add_class('EmptyAttributeValue', import_from_module='ns.core', parent=root_module['ns3::AttributeValue'])
+    module.add_class('EmptyAttributeValue', parent=root_module['ns3::AttributeValue'], import_from_module='ns.core')
     ## random-variable-stream.h (module 'core'): ns3::ErlangRandomVariable [class]
-    module.add_class('ErlangRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('ErlangRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
+    ## event-impl.h (module 'core'): ns3::EventImpl [class]
+    module.add_class('EventImpl', parent=root_module['ns3::SimpleRefCount< ns3::EventImpl, ns3::empty, ns3::DefaultDeleter<ns3::EventImpl> >'], import_from_module='ns.core')
     ## random-variable-stream.h (module 'core'): ns3::ExponentialRandomVariable [class]
-    module.add_class('ExponentialRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('ExponentialRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## propagation-loss-model.h (module 'propagation'): ns3::FixedRssLossModel [class]
     module.add_class('FixedRssLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## propagation-loss-model.h (module 'propagation'): ns3::FriisPropagationLossModel [class]
     module.add_class('FriisPropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## random-variable-stream.h (module 'core'): ns3::GammaRandomVariable [class]
-    module.add_class('GammaRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('GammaRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## itu-r-1411-los-propagation-loss-model.h (module 'propagation'): ns3::ItuR1411LosPropagationLossModel [class]
     module.add_class('ItuR1411LosPropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## itu-r-1411-nlos-over-rooftop-propagation-loss-model.h (module 'propagation'): ns3::ItuR1411NlosOverRooftopPropagationLossModel [class]
@@ -186,52 +215,77 @@ def register_types(module):
     ## propagation-loss-model.h (module 'propagation'): ns3::LogDistancePropagationLossModel [class]
     module.add_class('LogDistancePropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## random-variable-stream.h (module 'core'): ns3::LogNormalRandomVariable [class]
-    module.add_class('LogNormalRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('LogNormalRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## propagation-loss-model.h (module 'propagation'): ns3::MatrixPropagationLossModel [class]
     module.add_class('MatrixPropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## mobility-model.h (module 'mobility'): ns3::MobilityModel [class]
-    module.add_class('MobilityModel', import_from_module='ns.mobility', parent=root_module['ns3::Object'])
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Ptr< ns3::MobilityModel const > )', u'ns3::MobilityModel::TracedCallback')
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Ptr< ns3::MobilityModel const > )*', u'ns3::MobilityModel::TracedCallback*')
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Ptr< ns3::MobilityModel const > )&', u'ns3::MobilityModel::TracedCallback&')
+    module.add_class('MobilityModel', parent=root_module['ns3::Object'], import_from_module='ns.mobility')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Ptr< ns3::MobilityModel const > )', 'ns3::MobilityModel::TracedCallback')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Ptr< ns3::MobilityModel const > )*', 'ns3::MobilityModel::TracedCallback*')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Ptr< ns3::MobilityModel const > )&', 'ns3::MobilityModel::TracedCallback&')
     ## propagation-loss-model.h (module 'propagation'): ns3::NakagamiPropagationLossModel [class]
     module.add_class('NakagamiPropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
+    ## channel-condition-model.h (module 'propagation'): ns3::NeverLosChannelConditionModel [class]
+    module.add_class('NeverLosChannelConditionModel', parent=root_module['ns3::ChannelConditionModel'])
     ## random-variable-stream.h (module 'core'): ns3::NormalRandomVariable [class]
-    module.add_class('NormalRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('NormalRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
     ## okumura-hata-propagation-loss-model.h (module 'propagation'): ns3::OkumuraHataPropagationLossModel [class]
     module.add_class('OkumuraHataPropagationLossModel', parent=root_module['ns3::PropagationLossModel'])
     ## random-variable-stream.h (module 'core'): ns3::ParetoRandomVariable [class]
-    module.add_class('ParetoRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
+    module.add_class('ParetoRandomVariable', parent=root_module['ns3::RandomVariableStream'], import_from_module='ns.core')
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppChannelConditionModel [class]
+    module.add_class('ThreeGppChannelConditionModel', parent=root_module['ns3::ChannelConditionModel'])
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppIndoorMixedOfficeChannelConditionModel [class]
+    module.add_class('ThreeGppIndoorMixedOfficeChannelConditionModel', parent=root_module['ns3::ThreeGppChannelConditionModel'])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppIndoorOfficePropagationLossModel [class]
+    module.add_class('ThreeGppIndoorOfficePropagationLossModel', parent=root_module['ns3::ThreeGppPropagationLossModel'])
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppIndoorOpenOfficeChannelConditionModel [class]
+    module.add_class('ThreeGppIndoorOpenOfficeChannelConditionModel', parent=root_module['ns3::ThreeGppChannelConditionModel'])
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppRmaChannelConditionModel [class]
+    module.add_class('ThreeGppRmaChannelConditionModel', parent=root_module['ns3::ThreeGppChannelConditionModel'])
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppUmaChannelConditionModel [class]
+    module.add_class('ThreeGppUmaChannelConditionModel', parent=root_module['ns3::ThreeGppChannelConditionModel'])
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppUmiStreetCanyonChannelConditionModel [class]
+    module.add_class('ThreeGppUmiStreetCanyonChannelConditionModel', parent=root_module['ns3::ThreeGppChannelConditionModel'])
     ## nstime.h (module 'core'): ns3::TimeValue [class]
-    module.add_class('TimeValue', import_from_module='ns.core', parent=root_module['ns3::AttributeValue'])
+    module.add_class('TimeValue', parent=root_module['ns3::AttributeValue'], import_from_module='ns.core')
     ## type-id.h (module 'core'): ns3::TypeIdChecker [class]
-    module.add_class('TypeIdChecker', import_from_module='ns.core', parent=root_module['ns3::AttributeChecker'])
+    module.add_class('TypeIdChecker', parent=root_module['ns3::AttributeChecker'], import_from_module='ns.core')
     ## type-id.h (module 'core'): ns3::TypeIdValue [class]
-    module.add_class('TypeIdValue', import_from_module='ns.core', parent=root_module['ns3::AttributeValue'])
+    module.add_class('TypeIdValue', parent=root_module['ns3::AttributeValue'], import_from_module='ns.core')
     ## vector.h (module 'core'): ns3::Vector2DChecker [class]
-    module.add_class('Vector2DChecker', import_from_module='ns.core', parent=root_module['ns3::AttributeChecker'])
+    module.add_class('Vector2DChecker', parent=root_module['ns3::AttributeChecker'], import_from_module='ns.core')
     ## vector.h (module 'core'): ns3::Vector2DValue [class]
-    module.add_class('Vector2DValue', import_from_module='ns.core', parent=root_module['ns3::AttributeValue'])
+    module.add_class('Vector2DValue', parent=root_module['ns3::AttributeValue'], import_from_module='ns.core')
     ## vector.h (module 'core'): ns3::Vector3DChecker [class]
-    module.add_class('Vector3DChecker', import_from_module='ns.core', parent=root_module['ns3::AttributeChecker'])
+    module.add_class('Vector3DChecker', parent=root_module['ns3::AttributeChecker'], import_from_module='ns.core')
     ## vector.h (module 'core'): ns3::Vector3DValue [class]
-    module.add_class('Vector3DValue', import_from_module='ns.core', parent=root_module['ns3::AttributeValue'])
+    module.add_class('Vector3DValue', parent=root_module['ns3::AttributeValue'], import_from_module='ns.core')
+    ## channel-condition-model.h (module 'propagation'): ns3::AlwaysLosChannelConditionModel [class]
+    module.add_class('AlwaysLosChannelConditionModel', parent=root_module['ns3::ChannelConditionModel'])
     ## callback.h (module 'core'): ns3::CallbackImpl<ns3::ObjectBase *, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty> [class]
-    module.add_class('CallbackImpl', import_from_module='ns.core', template_parameters=['ns3::ObjectBase *', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty'], parent=root_module['ns3::CallbackImplBase'])
+    module.add_class('CallbackImpl', template_parameters=['ns3::ObjectBase *', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty'], parent=root_module['ns3::CallbackImplBase'], import_from_module='ns.core')
     ## callback.h (module 'core'): ns3::CallbackImpl<void, ns3::Ptr<const ns3::MobilityModel>, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty> [class]
-    module.add_class('CallbackImpl', import_from_module='ns.core', template_parameters=['void', 'ns3::Ptr<const ns3::MobilityModel>', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty'], parent=root_module['ns3::CallbackImplBase'])
-    typehandlers.add_type_alias(u'ns3::Vector3D', u'ns3::Vector')
-    typehandlers.add_type_alias(u'ns3::Vector3D*', u'ns3::Vector*')
-    typehandlers.add_type_alias(u'ns3::Vector3D&', u'ns3::Vector&')
+    module.add_class('CallbackImpl', template_parameters=['void', 'ns3::Ptr<const ns3::MobilityModel>', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty', 'ns3::empty'], parent=root_module['ns3::CallbackImplBase'], import_from_module='ns.core')
+    module.add_container('std::map< std::string, ns3::LogComponent * >', ('std::string', 'ns3::LogComponent *'), container_type='map')
+    typehandlers.add_type_alias('ns3::Vector3D', 'ns3::Vector')
+    typehandlers.add_type_alias('ns3::Vector3D*', 'ns3::Vector*')
+    typehandlers.add_type_alias('ns3::Vector3D&', 'ns3::Vector&')
     module.add_typedef(root_module['ns3::Vector3D'], 'Vector')
-    typehandlers.add_type_alias(u'ns3::Vector3DValue', u'ns3::VectorValue')
-    typehandlers.add_type_alias(u'ns3::Vector3DValue*', u'ns3::VectorValue*')
-    typehandlers.add_type_alias(u'ns3::Vector3DValue&', u'ns3::VectorValue&')
+    typehandlers.add_type_alias('ns3::Vector3DValue', 'ns3::VectorValue')
+    typehandlers.add_type_alias('ns3::Vector3DValue*', 'ns3::VectorValue*')
+    typehandlers.add_type_alias('ns3::Vector3DValue&', 'ns3::VectorValue&')
     module.add_typedef(root_module['ns3::Vector3DValue'], 'VectorValue')
-    typehandlers.add_type_alias(u'ns3::Vector3DChecker', u'ns3::VectorChecker')
-    typehandlers.add_type_alias(u'ns3::Vector3DChecker*', u'ns3::VectorChecker*')
-    typehandlers.add_type_alias(u'ns3::Vector3DChecker&', u'ns3::VectorChecker&')
+    typehandlers.add_type_alias('ns3::Vector3DChecker', 'ns3::VectorChecker')
+    typehandlers.add_type_alias('ns3::Vector3DChecker*', 'ns3::VectorChecker*')
+    typehandlers.add_type_alias('ns3::Vector3DChecker&', 'ns3::VectorChecker&')
     module.add_typedef(root_module['ns3::Vector3DChecker'], 'VectorChecker')
+    typehandlers.add_type_alias('void ( * ) ( std::ostream & )', 'ns3::TimePrinter')
+    typehandlers.add_type_alias('void ( * ) ( std::ostream & )*', 'ns3::TimePrinter*')
+    typehandlers.add_type_alias('void ( * ) ( std::ostream & )&', 'ns3::TimePrinter&')
+    typehandlers.add_type_alias('void ( * ) ( std::ostream & )', 'ns3::NodePrinter')
+    typehandlers.add_type_alias('void ( * ) ( std::ostream & )*', 'ns3::NodePrinter*')
+    typehandlers.add_type_alias('void ( * ) ( std::ostream & )&', 'ns3::NodePrinter&')
     
     ## Register a nested module for the namespace FatalImpl
     
@@ -259,13 +313,13 @@ def register_types_ns3_Hash(module):
     root_module = module.get_root()
     
     ## hash-function.h (module 'core'): ns3::Hash::Implementation [class]
-    module.add_class('Implementation', import_from_module='ns.core', parent=root_module['ns3::SimpleRefCount< ns3::Hash::Implementation, ns3::empty, ns3::DefaultDeleter<ns3::Hash::Implementation> >'])
-    typehandlers.add_type_alias(u'uint32_t ( * ) ( char const *, std::size_t const )', u'ns3::Hash::Hash32Function_ptr')
-    typehandlers.add_type_alias(u'uint32_t ( * ) ( char const *, std::size_t const )*', u'ns3::Hash::Hash32Function_ptr*')
-    typehandlers.add_type_alias(u'uint32_t ( * ) ( char const *, std::size_t const )&', u'ns3::Hash::Hash32Function_ptr&')
-    typehandlers.add_type_alias(u'uint64_t ( * ) ( char const *, std::size_t const )', u'ns3::Hash::Hash64Function_ptr')
-    typehandlers.add_type_alias(u'uint64_t ( * ) ( char const *, std::size_t const )*', u'ns3::Hash::Hash64Function_ptr*')
-    typehandlers.add_type_alias(u'uint64_t ( * ) ( char const *, std::size_t const )&', u'ns3::Hash::Hash64Function_ptr&')
+    module.add_class('Implementation', parent=root_module['ns3::SimpleRefCount< ns3::Hash::Implementation, ns3::empty, ns3::DefaultDeleter<ns3::Hash::Implementation> >'], import_from_module='ns.core')
+    typehandlers.add_type_alias('uint32_t ( * ) ( char const *, std::size_t const )', 'ns3::Hash::Hash32Function_ptr')
+    typehandlers.add_type_alias('uint32_t ( * ) ( char const *, std::size_t const )*', 'ns3::Hash::Hash32Function_ptr*')
+    typehandlers.add_type_alias('uint32_t ( * ) ( char const *, std::size_t const )&', 'ns3::Hash::Hash32Function_ptr&')
+    typehandlers.add_type_alias('uint64_t ( * ) ( char const *, std::size_t const )', 'ns3::Hash::Hash64Function_ptr')
+    typehandlers.add_type_alias('uint64_t ( * ) ( char const *, std::size_t const )*', 'ns3::Hash::Hash64Function_ptr*')
+    typehandlers.add_type_alias('uint64_t ( * ) ( char const *, std::size_t const )&', 'ns3::Hash::Hash64Function_ptr&')
     
     ## Register a nested module for the namespace Function
     
@@ -277,20 +331,20 @@ def register_types_ns3_Hash_Function(module):
     root_module = module.get_root()
     
     ## hash-fnv.h (module 'core'): ns3::Hash::Function::Fnv1a [class]
-    module.add_class('Fnv1a', import_from_module='ns.core', parent=root_module['ns3::Hash::Implementation'])
+    module.add_class('Fnv1a', parent=root_module['ns3::Hash::Implementation'], import_from_module='ns.core')
     ## hash-function.h (module 'core'): ns3::Hash::Function::Hash32 [class]
-    module.add_class('Hash32', import_from_module='ns.core', parent=root_module['ns3::Hash::Implementation'])
+    module.add_class('Hash32', parent=root_module['ns3::Hash::Implementation'], import_from_module='ns.core')
     ## hash-function.h (module 'core'): ns3::Hash::Function::Hash64 [class]
-    module.add_class('Hash64', import_from_module='ns.core', parent=root_module['ns3::Hash::Implementation'])
+    module.add_class('Hash64', parent=root_module['ns3::Hash::Implementation'], import_from_module='ns.core')
     ## hash-murmur3.h (module 'core'): ns3::Hash::Function::Murmur3 [class]
-    module.add_class('Murmur3', import_from_module='ns.core', parent=root_module['ns3::Hash::Implementation'])
+    module.add_class('Murmur3', parent=root_module['ns3::Hash::Implementation'], import_from_module='ns.core')
 
 def register_types_ns3_TracedValueCallback(module):
     root_module = module.get_root()
     
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Time, ns3::Time )', u'ns3::TracedValueCallback::Time')
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Time, ns3::Time )*', u'ns3::TracedValueCallback::Time*')
-    typehandlers.add_type_alias(u'void ( * ) ( ns3::Time, ns3::Time )&', u'ns3::TracedValueCallback::Time&')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Time, ns3::Time )', 'ns3::TracedValueCallback::Time')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Time, ns3::Time )*', 'ns3::TracedValueCallback::Time*')
+    typehandlers.add_type_alias('void ( * ) ( ns3::Time, ns3::Time )&', 'ns3::TracedValueCallback::Time&')
 
 def register_methods(root_module):
     register_Ns3AttributeConstructionList_methods(root_module, root_module['ns3::AttributeConstructionList'])
@@ -300,13 +354,18 @@ def register_methods(root_module):
     register_Ns3DefaultDeleter__Ns3AttributeChecker_methods(root_module, root_module['ns3::DefaultDeleter< ns3::AttributeChecker >'])
     register_Ns3DefaultDeleter__Ns3AttributeValue_methods(root_module, root_module['ns3::DefaultDeleter< ns3::AttributeValue >'])
     register_Ns3DefaultDeleter__Ns3CallbackImplBase_methods(root_module, root_module['ns3::DefaultDeleter< ns3::CallbackImplBase >'])
+    register_Ns3DefaultDeleter__Ns3EventImpl_methods(root_module, root_module['ns3::DefaultDeleter< ns3::EventImpl >'])
     register_Ns3DefaultDeleter__Ns3HashImplementation_methods(root_module, root_module['ns3::DefaultDeleter< ns3::Hash::Implementation >'])
     register_Ns3DefaultDeleter__Ns3TraceSourceAccessor_methods(root_module, root_module['ns3::DefaultDeleter< ns3::TraceSourceAccessor >'])
+    register_Ns3EventId_methods(root_module, root_module['ns3::EventId'])
     register_Ns3Hasher_methods(root_module, root_module['ns3::Hasher'])
+    register_Ns3LogComponent_methods(root_module, root_module['ns3::LogComponent'])
     register_Ns3ObjectBase_methods(root_module, root_module['ns3::ObjectBase'])
     register_Ns3ObjectDeleter_methods(root_module, root_module['ns3::ObjectDeleter'])
+    register_Ns3ParameterLogger_methods(root_module, root_module['ns3::ParameterLogger'])
     register_Ns3PropagationCache__Ns3JakesProcess_methods(root_module, root_module['ns3::PropagationCache< ns3::JakesProcess >'])
     register_Ns3SimpleRefCount__Ns3Object_Ns3ObjectBase_Ns3ObjectDeleter_methods(root_module, root_module['ns3::SimpleRefCount< ns3::Object, ns3::ObjectBase, ns3::ObjectDeleter >'])
+    register_Ns3Time_methods(root_module, root_module['ns3::Time'])
     register_Ns3TimeWithUnit_methods(root_module, root_module['ns3::TimeWithUnit'])
     register_Ns3TypeId_methods(root_module, root_module['ns3::TypeId'])
     register_Ns3TypeIdAttributeInformation_methods(root_module, root_module['ns3::TypeId::AttributeInformation'])
@@ -328,10 +387,14 @@ def register_methods(root_module):
     register_Ns3SimpleRefCount__Ns3AttributeChecker_Ns3Empty_Ns3DefaultDeleter__lt__ns3AttributeChecker__gt___methods(root_module, root_module['ns3::SimpleRefCount< ns3::AttributeChecker, ns3::empty, ns3::DefaultDeleter<ns3::AttributeChecker> >'])
     register_Ns3SimpleRefCount__Ns3AttributeValue_Ns3Empty_Ns3DefaultDeleter__lt__ns3AttributeValue__gt___methods(root_module, root_module['ns3::SimpleRefCount< ns3::AttributeValue, ns3::empty, ns3::DefaultDeleter<ns3::AttributeValue> >'])
     register_Ns3SimpleRefCount__Ns3CallbackImplBase_Ns3Empty_Ns3DefaultDeleter__lt__ns3CallbackImplBase__gt___methods(root_module, root_module['ns3::SimpleRefCount< ns3::CallbackImplBase, ns3::empty, ns3::DefaultDeleter<ns3::CallbackImplBase> >'])
+    register_Ns3SimpleRefCount__Ns3EventImpl_Ns3Empty_Ns3DefaultDeleter__lt__ns3EventImpl__gt___methods(root_module, root_module['ns3::SimpleRefCount< ns3::EventImpl, ns3::empty, ns3::DefaultDeleter<ns3::EventImpl> >'])
     register_Ns3SimpleRefCount__Ns3HashImplementation_Ns3Empty_Ns3DefaultDeleter__lt__ns3HashImplementation__gt___methods(root_module, root_module['ns3::SimpleRefCount< ns3::Hash::Implementation, ns3::empty, ns3::DefaultDeleter<ns3::Hash::Implementation> >'])
     register_Ns3SimpleRefCount__Ns3TraceSourceAccessor_Ns3Empty_Ns3DefaultDeleter__lt__ns3TraceSourceAccessor__gt___methods(root_module, root_module['ns3::SimpleRefCount< ns3::TraceSourceAccessor, ns3::empty, ns3::DefaultDeleter<ns3::TraceSourceAccessor> >'])
+    register_Ns3ThreeGppPropagationLossModel_methods(root_module, root_module['ns3::ThreeGppPropagationLossModel'])
+    register_Ns3ThreeGppRmaPropagationLossModel_methods(root_module, root_module['ns3::ThreeGppRmaPropagationLossModel'])
+    register_Ns3ThreeGppUmaPropagationLossModel_methods(root_module, root_module['ns3::ThreeGppUmaPropagationLossModel'])
+    register_Ns3ThreeGppUmiStreetCanyonPropagationLossModel_methods(root_module, root_module['ns3::ThreeGppUmiStreetCanyonPropagationLossModel'])
     register_Ns3ThreeLogDistancePropagationLossModel_methods(root_module, root_module['ns3::ThreeLogDistancePropagationLossModel'])
-    register_Ns3Time_methods(root_module, root_module['ns3::Time'])
     register_Ns3TraceSourceAccessor_methods(root_module, root_module['ns3::TraceSourceAccessor'])
     register_Ns3TriangularRandomVariable_methods(root_module, root_module['ns3::TriangularRandomVariable'])
     register_Ns3TwoRayGroundPropagationLossModel_methods(root_module, root_module['ns3::TwoRayGroundPropagationLossModel'])
@@ -345,6 +408,8 @@ def register_methods(root_module):
     register_Ns3CallbackChecker_methods(root_module, root_module['ns3::CallbackChecker'])
     register_Ns3CallbackImplBase_methods(root_module, root_module['ns3::CallbackImplBase'])
     register_Ns3CallbackValue_methods(root_module, root_module['ns3::CallbackValue'])
+    register_Ns3ChannelCondition_methods(root_module, root_module['ns3::ChannelCondition'])
+    register_Ns3ChannelConditionModel_methods(root_module, root_module['ns3::ChannelConditionModel'])
     register_Ns3ConstantRandomVariable_methods(root_module, root_module['ns3::ConstantRandomVariable'])
     register_Ns3ConstantSpeedPropagationDelayModel_methods(root_module, root_module['ns3::ConstantSpeedPropagationDelayModel'])
     register_Ns3Cost231PropagationLossModel_methods(root_module, root_module['ns3::Cost231PropagationLossModel'])
@@ -354,6 +419,7 @@ def register_methods(root_module):
     register_Ns3EmptyAttributeChecker_methods(root_module, root_module['ns3::EmptyAttributeChecker'])
     register_Ns3EmptyAttributeValue_methods(root_module, root_module['ns3::EmptyAttributeValue'])
     register_Ns3ErlangRandomVariable_methods(root_module, root_module['ns3::ErlangRandomVariable'])
+    register_Ns3EventImpl_methods(root_module, root_module['ns3::EventImpl'])
     register_Ns3ExponentialRandomVariable_methods(root_module, root_module['ns3::ExponentialRandomVariable'])
     register_Ns3FixedRssLossModel_methods(root_module, root_module['ns3::FixedRssLossModel'])
     register_Ns3FriisPropagationLossModel_methods(root_module, root_module['ns3::FriisPropagationLossModel'])
@@ -368,9 +434,17 @@ def register_methods(root_module):
     register_Ns3MatrixPropagationLossModel_methods(root_module, root_module['ns3::MatrixPropagationLossModel'])
     register_Ns3MobilityModel_methods(root_module, root_module['ns3::MobilityModel'])
     register_Ns3NakagamiPropagationLossModel_methods(root_module, root_module['ns3::NakagamiPropagationLossModel'])
+    register_Ns3NeverLosChannelConditionModel_methods(root_module, root_module['ns3::NeverLosChannelConditionModel'])
     register_Ns3NormalRandomVariable_methods(root_module, root_module['ns3::NormalRandomVariable'])
     register_Ns3OkumuraHataPropagationLossModel_methods(root_module, root_module['ns3::OkumuraHataPropagationLossModel'])
     register_Ns3ParetoRandomVariable_methods(root_module, root_module['ns3::ParetoRandomVariable'])
+    register_Ns3ThreeGppChannelConditionModel_methods(root_module, root_module['ns3::ThreeGppChannelConditionModel'])
+    register_Ns3ThreeGppIndoorMixedOfficeChannelConditionModel_methods(root_module, root_module['ns3::ThreeGppIndoorMixedOfficeChannelConditionModel'])
+    register_Ns3ThreeGppIndoorOfficePropagationLossModel_methods(root_module, root_module['ns3::ThreeGppIndoorOfficePropagationLossModel'])
+    register_Ns3ThreeGppIndoorOpenOfficeChannelConditionModel_methods(root_module, root_module['ns3::ThreeGppIndoorOpenOfficeChannelConditionModel'])
+    register_Ns3ThreeGppRmaChannelConditionModel_methods(root_module, root_module['ns3::ThreeGppRmaChannelConditionModel'])
+    register_Ns3ThreeGppUmaChannelConditionModel_methods(root_module, root_module['ns3::ThreeGppUmaChannelConditionModel'])
+    register_Ns3ThreeGppUmiStreetCanyonChannelConditionModel_methods(root_module, root_module['ns3::ThreeGppUmiStreetCanyonChannelConditionModel'])
     register_Ns3TimeValue_methods(root_module, root_module['ns3::TimeValue'])
     register_Ns3TypeIdChecker_methods(root_module, root_module['ns3::TypeIdChecker'])
     register_Ns3TypeIdValue_methods(root_module, root_module['ns3::TypeIdValue'])
@@ -378,6 +452,7 @@ def register_methods(root_module):
     register_Ns3Vector2DValue_methods(root_module, root_module['ns3::Vector2DValue'])
     register_Ns3Vector3DChecker_methods(root_module, root_module['ns3::Vector3DChecker'])
     register_Ns3Vector3DValue_methods(root_module, root_module['ns3::Vector3DValue'])
+    register_Ns3AlwaysLosChannelConditionModel_methods(root_module, root_module['ns3::AlwaysLosChannelConditionModel'])
     register_Ns3CallbackImpl__Ns3ObjectBase___star___Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_methods(root_module, root_module['ns3::CallbackImpl< ns3::ObjectBase *, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >'])
     register_Ns3CallbackImpl__Void_Ns3Ptr__lt__const_ns3MobilityModel__gt___Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_methods(root_module, root_module['ns3::CallbackImpl< void, ns3::Ptr<const ns3::MobilityModel>, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >'])
     register_Ns3HashImplementation_methods(root_module, root_module['ns3::Hash::Implementation'])
@@ -489,6 +564,18 @@ def register_Ns3DefaultDeleter__Ns3CallbackImplBase_methods(root_module, cls):
                    is_static=True)
     return
 
+def register_Ns3DefaultDeleter__Ns3EventImpl_methods(root_module, cls):
+    ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::EventImpl>::DefaultDeleter() [constructor]
+    cls.add_constructor([])
+    ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::EventImpl>::DefaultDeleter(ns3::DefaultDeleter<ns3::EventImpl> const & arg0) [constructor]
+    cls.add_constructor([param('ns3::DefaultDeleter< ns3::EventImpl > const &', 'arg0')])
+    ## default-deleter.h (module 'core'): static void ns3::DefaultDeleter<ns3::EventImpl>::Delete(ns3::EventImpl * object) [member function]
+    cls.add_method('Delete', 
+                   'void', 
+                   [param('ns3::EventImpl *', 'object')], 
+                   is_static=True)
+    return
+
 def register_Ns3DefaultDeleter__Ns3HashImplementation_methods(root_module, cls):
     ## default-deleter.h (module 'core'): ns3::DefaultDeleter<ns3::Hash::Implementation>::DefaultDeleter() [constructor]
     cls.add_constructor([])
@@ -511,6 +598,56 @@ def register_Ns3DefaultDeleter__Ns3TraceSourceAccessor_methods(root_module, cls)
                    'void', 
                    [param('ns3::TraceSourceAccessor *', 'object')], 
                    is_static=True)
+    return
+
+def register_Ns3EventId_methods(root_module, cls):
+    cls.add_binary_comparison_operator('==')
+    cls.add_binary_comparison_operator('!=')
+    cls.add_binary_comparison_operator('<')
+    ## event-id.h (module 'core'): ns3::EventId::EventId(ns3::EventId const & arg0) [constructor]
+    cls.add_constructor([param('ns3::EventId const &', 'arg0')])
+    ## event-id.h (module 'core'): ns3::EventId::EventId() [constructor]
+    cls.add_constructor([])
+    ## event-id.h (module 'core'): ns3::EventId::EventId(ns3::Ptr<ns3::EventImpl> const & impl, uint64_t ts, uint32_t context, uint32_t uid) [constructor]
+    cls.add_constructor([param('ns3::Ptr< ns3::EventImpl > const &', 'impl'), param('uint64_t', 'ts'), param('uint32_t', 'context'), param('uint32_t', 'uid')])
+    ## event-id.h (module 'core'): void ns3::EventId::Cancel() [member function]
+    cls.add_method('Cancel', 
+                   'void', 
+                   [])
+    ## event-id.h (module 'core'): uint32_t ns3::EventId::GetContext() const [member function]
+    cls.add_method('GetContext', 
+                   'uint32_t', 
+                   [], 
+                   is_const=True)
+    ## event-id.h (module 'core'): uint64_t ns3::EventId::GetTs() const [member function]
+    cls.add_method('GetTs', 
+                   'uint64_t', 
+                   [], 
+                   is_const=True)
+    ## event-id.h (module 'core'): uint32_t ns3::EventId::GetUid() const [member function]
+    cls.add_method('GetUid', 
+                   'uint32_t', 
+                   [], 
+                   is_const=True)
+    ## event-id.h (module 'core'): bool ns3::EventId::IsExpired() const [member function]
+    cls.add_method('IsExpired', 
+                   'bool', 
+                   [], 
+                   is_const=True)
+    ## event-id.h (module 'core'): bool ns3::EventId::IsRunning() const [member function]
+    cls.add_method('IsRunning', 
+                   'bool', 
+                   [], 
+                   is_const=True)
+    ## event-id.h (module 'core'): ns3::EventImpl * ns3::EventId::PeekEventImpl() const [member function]
+    cls.add_method('PeekEventImpl', 
+                   'ns3::EventImpl *', 
+                   [], 
+                   is_const=True)
+    ## event-id.h (module 'core'): void ns3::EventId::Remove() [member function]
+    cls.add_method('Remove', 
+                   'void', 
+                   [])
     return
 
 def register_Ns3Hasher_methods(root_module, cls):
@@ -542,6 +679,55 @@ def register_Ns3Hasher_methods(root_module, cls):
                    [])
     return
 
+def register_Ns3LogComponent_methods(root_module, cls):
+    ## log.h (module 'core'): ns3::LogComponent::LogComponent(ns3::LogComponent const & arg0) [constructor]
+    cls.add_constructor([param('ns3::LogComponent const &', 'arg0')])
+    ## log.h (module 'core'): ns3::LogComponent::LogComponent(std::string const & name, std::string const & file, ns3::LogLevel const mask=::ns3::LogLevel::LOG_NONE) [constructor]
+    cls.add_constructor([param('std::string const &', 'name'), param('std::string const &', 'file'), param('ns3::LogLevel const', 'mask', default_value='::ns3::LogLevel::LOG_NONE')])
+    ## log.h (module 'core'): void ns3::LogComponent::Disable(ns3::LogLevel const level) [member function]
+    cls.add_method('Disable', 
+                   'void', 
+                   [param('ns3::LogLevel const', 'level')])
+    ## log.h (module 'core'): void ns3::LogComponent::Enable(ns3::LogLevel const level) [member function]
+    cls.add_method('Enable', 
+                   'void', 
+                   [param('ns3::LogLevel const', 'level')])
+    ## log.h (module 'core'): std::string ns3::LogComponent::File() const [member function]
+    cls.add_method('File', 
+                   'std::string', 
+                   [], 
+                   is_const=True)
+    ## log.h (module 'core'): static ns3::LogComponent::ComponentList * ns3::LogComponent::GetComponentList() [member function]
+    cls.add_method('GetComponentList', 
+                   'ns3::LogComponent::ComponentList *', 
+                   [], 
+                   is_static=True)
+    ## log.h (module 'core'): static std::string ns3::LogComponent::GetLevelLabel(ns3::LogLevel const level) [member function]
+    cls.add_method('GetLevelLabel', 
+                   'std::string', 
+                   [param('ns3::LogLevel const', 'level')], 
+                   is_static=True)
+    ## log.h (module 'core'): bool ns3::LogComponent::IsEnabled(ns3::LogLevel const level) const [member function]
+    cls.add_method('IsEnabled', 
+                   'bool', 
+                   [param('ns3::LogLevel const', 'level')], 
+                   is_const=True)
+    ## log.h (module 'core'): bool ns3::LogComponent::IsNoneEnabled() const [member function]
+    cls.add_method('IsNoneEnabled', 
+                   'bool', 
+                   [], 
+                   is_const=True)
+    ## log.h (module 'core'): char const * ns3::LogComponent::Name() const [member function]
+    cls.add_method('Name', 
+                   'char const *', 
+                   [], 
+                   is_const=True)
+    ## log.h (module 'core'): void ns3::LogComponent::SetMask(ns3::LogLevel const level) [member function]
+    cls.add_method('SetMask', 
+                   'void', 
+                   [param('ns3::LogLevel const', 'level')])
+    return
+
 def register_Ns3ObjectBase_methods(root_module, cls):
     ## object-base.h (module 'core'): ns3::ObjectBase::ObjectBase() [constructor]
     cls.add_constructor([])
@@ -561,7 +747,7 @@ def register_Ns3ObjectBase_methods(root_module, cls):
     cls.add_method('GetInstanceTypeId', 
                    'ns3::TypeId', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## object-base.h (module 'core'): static ns3::TypeId ns3::ObjectBase::GetTypeId() [member function]
     cls.add_method('GetTypeId', 
                    'ns3::TypeId', 
@@ -615,6 +801,13 @@ def register_Ns3ObjectDeleter_methods(root_module, cls):
                    is_static=True)
     return
 
+def register_Ns3ParameterLogger_methods(root_module, cls):
+    ## log.h (module 'core'): ns3::ParameterLogger::ParameterLogger(ns3::ParameterLogger const & arg0) [constructor]
+    cls.add_constructor([param('ns3::ParameterLogger const &', 'arg0')])
+    ## log.h (module 'core'): ns3::ParameterLogger::ParameterLogger(std::ostream & os) [constructor]
+    cls.add_constructor([param('std::ostream &', 'os')])
+    return
+
 def register_Ns3PropagationCache__Ns3JakesProcess_methods(root_module, cls):
     ## propagation-cache.h (module 'propagation'): ns3::PropagationCache<ns3::JakesProcess>::PropagationCache(ns3::PropagationCache<ns3::JakesProcess> const & arg0) [constructor]
     cls.add_constructor([param('ns3::PropagationCache< ns3::JakesProcess > const &', 'arg0')])
@@ -635,6 +828,205 @@ def register_Ns3SimpleRefCount__Ns3Object_Ns3ObjectBase_Ns3ObjectDeleter_methods
     cls.add_constructor([])
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::Object, ns3::ObjectBase, ns3::ObjectDeleter>::SimpleRefCount(ns3::SimpleRefCount<ns3::Object, ns3::ObjectBase, ns3::ObjectDeleter> const & o) [constructor]
     cls.add_constructor([param('ns3::SimpleRefCount< ns3::Object, ns3::ObjectBase, ns3::ObjectDeleter > const &', 'o')])
+    return
+
+def register_Ns3Time_methods(root_module, cls):
+    cls.add_binary_comparison_operator('==')
+    cls.add_binary_comparison_operator('!=')
+    cls.add_binary_comparison_operator('<=')
+    cls.add_binary_comparison_operator('>=')
+    cls.add_binary_comparison_operator('<')
+    cls.add_binary_comparison_operator('>')
+    cls.add_binary_numeric_operator('+', root_module['ns3::Time'], root_module['ns3::Time'], param('ns3::Time const &', 'right'))
+    cls.add_binary_numeric_operator('-', root_module['ns3::Time'], root_module['ns3::Time'], param('ns3::Time const &', 'right'))
+    cls.add_binary_numeric_operator('*', root_module['ns3::Time'], root_module['ns3::Time'], param('ns3::int64x64_t const &', 'right'))
+    cls.add_binary_numeric_operator('/', root_module['ns3::int64x64_t'], root_module['ns3::Time'], param('ns3::Time const &', 'right'))
+    cls.add_binary_numeric_operator('/', root_module['ns3::Time'], root_module['ns3::Time'], param('ns3::int64x64_t const &', 'right'))
+    cls.add_inplace_numeric_operator('+=', param('ns3::Time const &', 'right'))
+    cls.add_inplace_numeric_operator('-=', param('ns3::Time const &', 'right'))
+    cls.add_output_stream_operator()
+    ## nstime.h (module 'core'): ns3::Time::Time() [constructor]
+    cls.add_constructor([])
+    ## nstime.h (module 'core'): ns3::Time::Time(ns3::Time const & o) [constructor]
+    cls.add_constructor([param('ns3::Time const &', 'o')])
+    ## nstime.h (module 'core'): ns3::Time::Time(double v) [constructor]
+    cls.add_constructor([param('double', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(int v) [constructor]
+    cls.add_constructor([param('int', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(long int v) [constructor]
+    cls.add_constructor([param('long int', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(long long int v) [constructor]
+    cls.add_constructor([param('long long int', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(unsigned int v) [constructor]
+    cls.add_constructor([param('unsigned int', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(long unsigned int v) [constructor]
+    cls.add_constructor([param('long unsigned int', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(long long unsigned int v) [constructor]
+    cls.add_constructor([param('long long unsigned int', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(ns3::int64x64_t const & v) [constructor]
+    cls.add_constructor([param('ns3::int64x64_t const &', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(std::string const & s) [constructor]
+    cls.add_constructor([param('std::string const &', 's')])
+    ## nstime.h (module 'core'): ns3::TimeWithUnit ns3::Time::As(ns3::Time::Unit const unit) const [member function]
+    cls.add_method('As', 
+                   'ns3::TimeWithUnit', 
+                   [param('ns3::Time::Unit const', 'unit')], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int ns3::Time::Compare(ns3::Time const & o) const [member function]
+    cls.add_method('Compare', 
+                   'int', 
+                   [param('ns3::Time const &', 'o')], 
+                   is_const=True)
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::From(ns3::int64x64_t const & value) [member function]
+    cls.add_method('From', 
+                   'ns3::Time', 
+                   [param('ns3::int64x64_t const &', 'value')], 
+                   is_static=True)
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::From(ns3::int64x64_t const & value, ns3::Time::Unit unit) [member function]
+    cls.add_method('From', 
+                   'ns3::Time', 
+                   [param('ns3::int64x64_t const &', 'value'), param('ns3::Time::Unit', 'unit')], 
+                   is_static=True)
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::FromDouble(double value, ns3::Time::Unit unit) [member function]
+    cls.add_method('FromDouble', 
+                   'ns3::Time', 
+                   [param('double', 'value'), param('ns3::Time::Unit', 'unit')], 
+                   is_static=True)
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::FromInteger(uint64_t value, ns3::Time::Unit unit) [member function]
+    cls.add_method('FromInteger', 
+                   'ns3::Time', 
+                   [param('uint64_t', 'value'), param('ns3::Time::Unit', 'unit')], 
+                   is_static=True)
+    ## nstime.h (module 'core'): double ns3::Time::GetDays() const [member function]
+    cls.add_method('GetDays', 
+                   'double', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): double ns3::Time::GetDouble() const [member function]
+    cls.add_method('GetDouble', 
+                   'double', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int64_t ns3::Time::GetFemtoSeconds() const [member function]
+    cls.add_method('GetFemtoSeconds', 
+                   'int64_t', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): double ns3::Time::GetHours() const [member function]
+    cls.add_method('GetHours', 
+                   'double', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int64_t ns3::Time::GetInteger() const [member function]
+    cls.add_method('GetInteger', 
+                   'int64_t', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int64_t ns3::Time::GetMicroSeconds() const [member function]
+    cls.add_method('GetMicroSeconds', 
+                   'int64_t', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int64_t ns3::Time::GetMilliSeconds() const [member function]
+    cls.add_method('GetMilliSeconds', 
+                   'int64_t', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): double ns3::Time::GetMinutes() const [member function]
+    cls.add_method('GetMinutes', 
+                   'double', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int64_t ns3::Time::GetNanoSeconds() const [member function]
+    cls.add_method('GetNanoSeconds', 
+                   'int64_t', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int64_t ns3::Time::GetPicoSeconds() const [member function]
+    cls.add_method('GetPicoSeconds', 
+                   'int64_t', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): static ns3::Time::Unit ns3::Time::GetResolution() [member function]
+    cls.add_method('GetResolution', 
+                   'ns3::Time::Unit', 
+                   [], 
+                   is_static=True)
+    ## nstime.h (module 'core'): double ns3::Time::GetSeconds() const [member function]
+    cls.add_method('GetSeconds', 
+                   'double', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int64_t ns3::Time::GetTimeStep() const [member function]
+    cls.add_method('GetTimeStep', 
+                   'int64_t', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): double ns3::Time::GetYears() const [member function]
+    cls.add_method('GetYears', 
+                   'double', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): bool ns3::Time::IsNegative() const [member function]
+    cls.add_method('IsNegative', 
+                   'bool', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): bool ns3::Time::IsPositive() const [member function]
+    cls.add_method('IsPositive', 
+                   'bool', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): bool ns3::Time::IsStrictlyNegative() const [member function]
+    cls.add_method('IsStrictlyNegative', 
+                   'bool', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): bool ns3::Time::IsStrictlyPositive() const [member function]
+    cls.add_method('IsStrictlyPositive', 
+                   'bool', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): bool ns3::Time::IsZero() const [member function]
+    cls.add_method('IsZero', 
+                   'bool', 
+                   [], 
+                   is_const=True)
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::Max() [member function]
+    cls.add_method('Max', 
+                   'ns3::Time', 
+                   [], 
+                   is_static=True)
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::Min() [member function]
+    cls.add_method('Min', 
+                   'ns3::Time', 
+                   [], 
+                   is_static=True)
+    ## nstime.h (module 'core'): static void ns3::Time::SetResolution(ns3::Time::Unit resolution) [member function]
+    cls.add_method('SetResolution', 
+                   'void', 
+                   [param('ns3::Time::Unit', 'resolution')], 
+                   is_static=True)
+    ## nstime.h (module 'core'): static bool ns3::Time::StaticInit() [member function]
+    cls.add_method('StaticInit', 
+                   'bool', 
+                   [], 
+                   is_static=True)
+    ## nstime.h (module 'core'): ns3::int64x64_t ns3::Time::To(ns3::Time::Unit unit) const [member function]
+    cls.add_method('To', 
+                   'ns3::int64x64_t', 
+                   [param('ns3::Time::Unit', 'unit')], 
+                   is_const=True)
+    ## nstime.h (module 'core'): double ns3::Time::ToDouble(ns3::Time::Unit unit) const [member function]
+    cls.add_method('ToDouble', 
+                   'double', 
+                   [param('ns3::Time::Unit', 'unit')], 
+                   is_const=True)
+    ## nstime.h (module 'core'): int64_t ns3::Time::ToInteger(ns3::Time::Unit unit) const [member function]
+    cls.add_method('ToInteger', 
+                   'int64_t', 
+                   [param('ns3::Time::Unit', 'unit')], 
+                   is_const=True)
     return
 
 def register_Ns3TimeWithUnit_methods(root_module, cls):
@@ -664,11 +1056,6 @@ def register_Ns3TypeId_methods(root_module, cls):
     cls.add_method('AddAttribute', 
                    'ns3::TypeId', 
                    [param('std::string', 'name'), param('std::string', 'help'), param('uint32_t', 'flags'), param('ns3::AttributeValue const &', 'initialValue'), param('ns3::Ptr< ns3::AttributeAccessor const >', 'accessor'), param('ns3::Ptr< ns3::AttributeChecker const >', 'checker'), param('ns3::TypeId::SupportLevel', 'supportLevel', default_value='::ns3::TypeId::SupportLevel::SUPPORTED'), param('std::string const &', 'supportMsg', default_value='""')])
-    ## type-id.h (module 'core'): ns3::TypeId ns3::TypeId::AddTraceSource(std::string name, std::string help, ns3::Ptr<const ns3::TraceSourceAccessor> accessor) [member function]
-    cls.add_method('AddTraceSource', 
-                   'ns3::TypeId', 
-                   [param('std::string', 'name'), param('std::string', 'help'), param('ns3::Ptr< ns3::TraceSourceAccessor const >', 'accessor')], 
-                   deprecated=True)
     ## type-id.h (module 'core'): ns3::TypeId ns3::TypeId::AddTraceSource(std::string name, std::string help, ns3::Ptr<const ns3::TraceSourceAccessor> accessor, std::string callback, ns3::TypeId::SupportLevel supportLevel=::ns3::TypeId::SupportLevel::SUPPORTED, std::string const & supportMsg="") [member function]
     cls.add_method('AddTraceSource', 
                    'ns3::TypeId', 
@@ -865,8 +1252,13 @@ def register_Ns3TypeIdTraceSourceInformation_methods(root_module, cls):
 def register_Ns3Vector2D_methods(root_module, cls):
     cls.add_output_stream_operator()
     cls.add_binary_comparison_operator('<')
-    cls.add_binary_numeric_operator('-', root_module['ns3::Vector2D'], root_module['ns3::Vector2D'], param('ns3::Vector2D const &', u'right'))
-    cls.add_binary_numeric_operator('+', root_module['ns3::Vector2D'], root_module['ns3::Vector2D'], param('ns3::Vector2D const &', u'right'))
+    cls.add_binary_numeric_operator('-', root_module['ns3::Vector2D'], root_module['ns3::Vector2D'], param('ns3::Vector2D const &', 'right'))
+    cls.add_binary_numeric_operator('+', root_module['ns3::Vector2D'], root_module['ns3::Vector2D'], param('ns3::Vector2D const &', 'right'))
+    cls.add_binary_comparison_operator('!=')
+    cls.add_binary_comparison_operator('==')
+    cls.add_binary_comparison_operator('>=')
+    cls.add_binary_comparison_operator('>')
+    cls.add_binary_comparison_operator('<=')
     ## vector.h (module 'core'): ns3::Vector2D::Vector2D(ns3::Vector2D const & arg0) [constructor]
     cls.add_constructor([param('ns3::Vector2D const &', 'arg0')])
     ## vector.h (module 'core'): ns3::Vector2D::Vector2D(double _x, double _y) [constructor]
@@ -887,8 +1279,13 @@ def register_Ns3Vector2D_methods(root_module, cls):
 def register_Ns3Vector3D_methods(root_module, cls):
     cls.add_output_stream_operator()
     cls.add_binary_comparison_operator('<')
-    cls.add_binary_numeric_operator('-', root_module['ns3::Vector3D'], root_module['ns3::Vector3D'], param('ns3::Vector3D const &', u'right'))
-    cls.add_binary_numeric_operator('+', root_module['ns3::Vector3D'], root_module['ns3::Vector3D'], param('ns3::Vector3D const &', u'right'))
+    cls.add_binary_numeric_operator('-', root_module['ns3::Vector3D'], root_module['ns3::Vector3D'], param('ns3::Vector3D const &', 'right'))
+    cls.add_binary_numeric_operator('+', root_module['ns3::Vector3D'], root_module['ns3::Vector3D'], param('ns3::Vector3D const &', 'right'))
+    cls.add_binary_comparison_operator('!=')
+    cls.add_binary_comparison_operator('==')
+    cls.add_binary_comparison_operator('>=')
+    cls.add_binary_comparison_operator('>')
+    cls.add_binary_comparison_operator('<=')
     ## vector.h (module 'core'): ns3::Vector3D::Vector3D(ns3::Vector3D const & arg0) [constructor]
     cls.add_constructor([param('ns3::Vector3D const &', 'arg0')])
     ## vector.h (module 'core'): ns3::Vector3D::Vector3D(double _x, double _y, double _z) [constructor]
@@ -916,10 +1313,11 @@ def register_Ns3Empty_methods(root_module, cls):
     return
 
 def register_Ns3Int64x64_t_methods(root_module, cls):
-    cls.add_binary_numeric_operator('+', root_module['ns3::int64x64_t'], root_module['ns3::int64x64_t'], param('ns3::int64x64_t const &', u'right'))
-    cls.add_binary_numeric_operator('-', root_module['ns3::int64x64_t'], root_module['ns3::int64x64_t'], param('ns3::int64x64_t const &', u'right'))
-    cls.add_binary_numeric_operator('*', root_module['ns3::int64x64_t'], root_module['ns3::int64x64_t'], param('ns3::int64x64_t const &', u'right'))
-    cls.add_binary_numeric_operator('/', root_module['ns3::int64x64_t'], root_module['ns3::int64x64_t'], param('ns3::int64x64_t const &', u'right'))
+    cls.add_binary_numeric_operator('*', root_module['ns3::Time'], root_module['ns3::int64x64_t'], param('ns3::Time const &', 'right'))
+    cls.add_binary_numeric_operator('+', root_module['ns3::int64x64_t'], root_module['ns3::int64x64_t'], param('ns3::int64x64_t const &', 'right'))
+    cls.add_binary_numeric_operator('-', root_module['ns3::int64x64_t'], root_module['ns3::int64x64_t'], param('ns3::int64x64_t const &', 'right'))
+    cls.add_binary_numeric_operator('*', root_module['ns3::int64x64_t'], root_module['ns3::int64x64_t'], param('ns3::int64x64_t const &', 'right'))
+    cls.add_binary_numeric_operator('/', root_module['ns3::int64x64_t'], root_module['ns3::int64x64_t'], param('ns3::int64x64_t const &', 'right'))
     cls.add_binary_comparison_operator('!=')
     cls.add_binary_comparison_operator('<=')
     cls.add_binary_comparison_operator('>=')
@@ -927,10 +1325,10 @@ def register_Ns3Int64x64_t_methods(root_module, cls):
     cls.add_binary_comparison_operator('==')
     cls.add_binary_comparison_operator('<')
     cls.add_binary_comparison_operator('>')
-    cls.add_inplace_numeric_operator('+=', param('ns3::int64x64_t const &', u'right'))
-    cls.add_inplace_numeric_operator('-=', param('ns3::int64x64_t const &', u'right'))
-    cls.add_inplace_numeric_operator('*=', param('ns3::int64x64_t const &', u'right'))
-    cls.add_inplace_numeric_operator('/=', param('ns3::int64x64_t const &', u'right'))
+    cls.add_inplace_numeric_operator('+=', param('ns3::int64x64_t const &', 'right'))
+    cls.add_inplace_numeric_operator('-=', param('ns3::int64x64_t const &', 'right'))
+    cls.add_inplace_numeric_operator('*=', param('ns3::int64x64_t const &', 'right'))
+    cls.add_inplace_numeric_operator('/=', param('ns3::int64x64_t const &', 'right'))
     cls.add_unary_numeric_operator('-')
     ## int64x64-128.h (module 'core'): ns3::int64x64_t::int64x64_t() [constructor]
     cls.add_constructor([])
@@ -1003,6 +1401,16 @@ def register_Ns3Object_methods(root_module, cls):
                    'ns3::TypeId', 
                    [], 
                    is_const=True, is_virtual=True)
+    ## object.h (module 'core'): ns3::Ptr<ns3::Object> ns3::Object::GetObject() const [member function]
+    cls.add_method('GetObject', 
+                   'ns3::Ptr< ns3::Object >', 
+                   [], 
+                   is_const=True, custom_template_method_name='GetObject', template_parameters=['ns3::Object'])
+    ## object.h (module 'core'): ns3::Ptr<ns3::Object> ns3::Object::GetObject(ns3::TypeId tid) const [member function]
+    cls.add_method('GetObject', 
+                   'ns3::Ptr< ns3::Object >', 
+                   [param('ns3::TypeId', 'tid')], 
+                   is_const=True, custom_template_method_name='GetObject', template_parameters=['ns3::Object'])
     ## object.h (module 'core'): static ns3::TypeId ns3::Object::GetTypeId() [member function]
     cls.add_method('GetTypeId', 
                    'ns3::TypeId', 
@@ -1066,7 +1474,7 @@ def register_Ns3PropagationDelayModel_methods(root_module, cls):
     cls.add_method('GetDelay', 
                    'ns3::Time', 
                    [param('ns3::Ptr< ns3::MobilityModel >', 'a'), param('ns3::Ptr< ns3::MobilityModel >', 'b')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## propagation-delay-model.h (module 'propagation'): static ns3::TypeId ns3::PropagationDelayModel::GetTypeId() [member function]
     cls.add_method('GetTypeId', 
                    'ns3::TypeId', 
@@ -1076,7 +1484,7 @@ def register_Ns3PropagationDelayModel_methods(root_module, cls):
     cls.add_method('DoAssignStreams', 
                    'int64_t', 
                    [param('int64_t', 'stream')], 
-                   is_pure_virtual=True, visibility='private', is_virtual=True)
+                   is_pure_virtual=True, is_virtual=True, visibility='private')
     return
 
 def register_Ns3PropagationLossModel_methods(root_module, cls):
@@ -1108,12 +1516,12 @@ def register_Ns3PropagationLossModel_methods(root_module, cls):
     cls.add_method('DoCalcRxPower', 
                    'double', 
                    [param('double', 'txPowerDbm'), param('ns3::Ptr< ns3::MobilityModel >', 'a'), param('ns3::Ptr< ns3::MobilityModel >', 'b')], 
-                   is_pure_virtual=True, is_const=True, visibility='private', is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True, visibility='private')
     ## propagation-loss-model.h (module 'propagation'): int64_t ns3::PropagationLossModel::DoAssignStreams(int64_t stream) [member function]
     cls.add_method('DoAssignStreams', 
                    'int64_t', 
                    [param('int64_t', 'stream')], 
-                   is_pure_virtual=True, visibility='private', is_virtual=True)
+                   is_pure_virtual=True, is_virtual=True, visibility='private')
     return
 
 def register_Ns3RandomPropagationDelayModel_methods(root_module, cls):
@@ -1289,6 +1697,13 @@ def register_Ns3SimpleRefCount__Ns3CallbackImplBase_Ns3Empty_Ns3DefaultDeleter__
     cls.add_constructor([param('ns3::SimpleRefCount< ns3::CallbackImplBase, ns3::empty, ns3::DefaultDeleter< ns3::CallbackImplBase > > const &', 'o')])
     return
 
+def register_Ns3SimpleRefCount__Ns3EventImpl_Ns3Empty_Ns3DefaultDeleter__lt__ns3EventImpl__gt___methods(root_module, cls):
+    ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::EventImpl, ns3::empty, ns3::DefaultDeleter<ns3::EventImpl> >::SimpleRefCount() [constructor]
+    cls.add_constructor([])
+    ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::EventImpl, ns3::empty, ns3::DefaultDeleter<ns3::EventImpl> >::SimpleRefCount(ns3::SimpleRefCount<ns3::EventImpl, ns3::empty, ns3::DefaultDeleter<ns3::EventImpl> > const & o) [constructor]
+    cls.add_constructor([param('ns3::SimpleRefCount< ns3::EventImpl, ns3::empty, ns3::DefaultDeleter< ns3::EventImpl > > const &', 'o')])
+    return
+
 def register_Ns3SimpleRefCount__Ns3HashImplementation_Ns3Empty_Ns3DefaultDeleter__lt__ns3HashImplementation__gt___methods(root_module, cls):
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::Hash::Implementation, ns3::empty, ns3::DefaultDeleter<ns3::Hash::Implementation> >::SimpleRefCount() [constructor]
     cls.add_constructor([])
@@ -1301,6 +1716,179 @@ def register_Ns3SimpleRefCount__Ns3TraceSourceAccessor_Ns3Empty_Ns3DefaultDelete
     cls.add_constructor([])
     ## simple-ref-count.h (module 'core'): ns3::SimpleRefCount<ns3::TraceSourceAccessor, ns3::empty, ns3::DefaultDeleter<ns3::TraceSourceAccessor> >::SimpleRefCount(ns3::SimpleRefCount<ns3::TraceSourceAccessor, ns3::empty, ns3::DefaultDeleter<ns3::TraceSourceAccessor> > const & o) [constructor]
     cls.add_constructor([param('ns3::SimpleRefCount< ns3::TraceSourceAccessor, ns3::empty, ns3::DefaultDeleter< ns3::TraceSourceAccessor > > const &', 'o')])
+    return
+
+def register_Ns3ThreeGppPropagationLossModel_methods(root_module, cls):
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppPropagationLossModel::ThreeGppPropagationLossModel() [constructor]
+    cls.add_constructor([])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::Ptr<ns3::ChannelConditionModel> ns3::ThreeGppPropagationLossModel::GetChannelConditionModel() const [member function]
+    cls.add_method('GetChannelConditionModel', 
+                   'ns3::Ptr< ns3::ChannelConditionModel >', 
+                   [], 
+                   is_const=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppPropagationLossModel::GetFrequency() const [member function]
+    cls.add_method('GetFrequency', 
+                   'double', 
+                   [], 
+                   is_const=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppPropagationLossModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): void ns3::ThreeGppPropagationLossModel::SetChannelConditionModel(ns3::Ptr<ns3::ChannelConditionModel> model) [member function]
+    cls.add_method('SetChannelConditionModel', 
+                   'void', 
+                   [param('ns3::Ptr< ns3::ChannelConditionModel >', 'model')])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): void ns3::ThreeGppPropagationLossModel::SetFrequency(double f) [member function]
+    cls.add_method('SetFrequency', 
+                   'void', 
+                   [param('double', 'f')])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): static double ns3::ThreeGppPropagationLossModel::Calculate2dDistance(ns3::Vector a, ns3::Vector b) [member function]
+    cls.add_method('Calculate2dDistance', 
+                   'double', 
+                   [param('ns3::Vector3D', 'a'), param('ns3::Vector3D', 'b')], 
+                   is_static=True, visibility='protected')
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): void ns3::ThreeGppPropagationLossModel::DoDispose() [member function]
+    cls.add_method('DoDispose', 
+                   'void', 
+                   [], 
+                   visibility='protected', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): int64_t ns3::ThreeGppPropagationLossModel::DoAssignStreams(int64_t stream) [member function]
+    cls.add_method('DoAssignStreams', 
+                   'int64_t', 
+                   [param('int64_t', 'stream')], 
+                   visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppPropagationLossModel::DoCalcRxPower(double txPowerDbm, ns3::Ptr<ns3::MobilityModel> a, ns3::Ptr<ns3::MobilityModel> b) const [member function]
+    cls.add_method('DoCalcRxPower', 
+                   'double', 
+                   [param('double', 'txPowerDbm'), param('ns3::Ptr< ns3::MobilityModel >', 'a'), param('ns3::Ptr< ns3::MobilityModel >', 'b')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppPropagationLossModel::GetLossLos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossLos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, is_pure_virtual=True, is_virtual=True, visibility='private')
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppPropagationLossModel::GetLossNlos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossNlos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, is_pure_virtual=True, is_virtual=True, visibility='private')
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppPropagationLossModel::GetShadowingCorrelationDistance(ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingCorrelationDistance', 
+                   'double', 
+                   [param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, is_pure_virtual=True, is_virtual=True, visibility='private')
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppPropagationLossModel::GetShadowingStd(ns3::Ptr<ns3::MobilityModel> a, ns3::Ptr<ns3::MobilityModel> b, ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingStd', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel >', 'a'), param('ns3::Ptr< ns3::MobilityModel >', 'b'), param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, is_pure_virtual=True, is_virtual=True, visibility='private')
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): std::pair<double, double> ns3::ThreeGppPropagationLossModel::GetUtAndBsHeights(double za, double zb) const [member function]
+    cls.add_method('GetUtAndBsHeights', 
+                   'std::pair< double, double >', 
+                   [param('double', 'za'), param('double', 'zb')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    return
+
+def register_Ns3ThreeGppRmaPropagationLossModel_methods(root_module, cls):
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppRmaPropagationLossModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppRmaPropagationLossModel::ThreeGppRmaPropagationLossModel() [constructor]
+    cls.add_constructor([])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppRmaPropagationLossModel::GetLossLos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossLos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppRmaPropagationLossModel::GetLossNlos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossNlos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppRmaPropagationLossModel::GetShadowingStd(ns3::Ptr<ns3::MobilityModel> a, ns3::Ptr<ns3::MobilityModel> b, ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingStd', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel >', 'a'), param('ns3::Ptr< ns3::MobilityModel >', 'b'), param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppRmaPropagationLossModel::GetShadowingCorrelationDistance(ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingCorrelationDistance', 
+                   'double', 
+                   [param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    return
+
+def register_Ns3ThreeGppUmaPropagationLossModel_methods(root_module, cls):
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppUmaPropagationLossModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppUmaPropagationLossModel::ThreeGppUmaPropagationLossModel() [constructor]
+    cls.add_constructor([])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): int64_t ns3::ThreeGppUmaPropagationLossModel::DoAssignStreams(int64_t stream) [member function]
+    cls.add_method('DoAssignStreams', 
+                   'int64_t', 
+                   [param('int64_t', 'stream')], 
+                   visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppUmaPropagationLossModel::GetLossLos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossLos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppUmaPropagationLossModel::GetLossNlos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossNlos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppUmaPropagationLossModel::GetShadowingStd(ns3::Ptr<ns3::MobilityModel> a, ns3::Ptr<ns3::MobilityModel> b, ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingStd', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel >', 'a'), param('ns3::Ptr< ns3::MobilityModel >', 'b'), param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppUmaPropagationLossModel::GetShadowingCorrelationDistance(ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingCorrelationDistance', 
+                   'double', 
+                   [param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    return
+
+def register_Ns3ThreeGppUmiStreetCanyonPropagationLossModel_methods(root_module, cls):
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppUmiStreetCanyonPropagationLossModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppUmiStreetCanyonPropagationLossModel::ThreeGppUmiStreetCanyonPropagationLossModel() [constructor]
+    cls.add_constructor([])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppUmiStreetCanyonPropagationLossModel::GetLossLos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossLos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppUmiStreetCanyonPropagationLossModel::GetLossNlos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossNlos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppUmiStreetCanyonPropagationLossModel::GetShadowingStd(ns3::Ptr<ns3::MobilityModel> a, ns3::Ptr<ns3::MobilityModel> b, ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingStd', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel >', 'a'), param('ns3::Ptr< ns3::MobilityModel >', 'b'), param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppUmiStreetCanyonPropagationLossModel::GetShadowingCorrelationDistance(ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingCorrelationDistance', 
+                   'double', 
+                   [param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): std::pair<double, double> ns3::ThreeGppUmiStreetCanyonPropagationLossModel::GetUtAndBsHeights(double za, double zb) const [member function]
+    cls.add_method('GetUtAndBsHeights', 
+                   'std::pair< double, double >', 
+                   [param('double', 'za'), param('double', 'zb')], 
+                   is_const=True, visibility='private', is_virtual=True)
     return
 
 def register_Ns3ThreeLogDistancePropagationLossModel_methods(root_module, cls):
@@ -1323,204 +1911,6 @@ def register_Ns3ThreeLogDistancePropagationLossModel_methods(root_module, cls):
                    visibility='private', is_virtual=True)
     return
 
-def register_Ns3Time_methods(root_module, cls):
-    cls.add_binary_comparison_operator('==')
-    cls.add_binary_comparison_operator('!=')
-    cls.add_binary_comparison_operator('<=')
-    cls.add_binary_comparison_operator('>=')
-    cls.add_binary_comparison_operator('<')
-    cls.add_binary_comparison_operator('>')
-    cls.add_binary_numeric_operator('+', root_module['ns3::Time'], root_module['ns3::Time'], param('ns3::Time const &', u'right'))
-    cls.add_binary_numeric_operator('-', root_module['ns3::Time'], root_module['ns3::Time'], param('ns3::Time const &', u'right'))
-    cls.add_binary_numeric_operator('*', root_module['ns3::Time'], root_module['ns3::Time'], param('int64_t const &', u'right'))
-    cls.add_binary_numeric_operator('/', root_module['ns3::Time'], root_module['ns3::Time'], param('int64_t const &', u'right'))
-    cls.add_inplace_numeric_operator('+=', param('ns3::Time const &', u'right'))
-    cls.add_inplace_numeric_operator('-=', param('ns3::Time const &', u'right'))
-    cls.add_output_stream_operator()
-    ## nstime.h (module 'core'): ns3::Time::Time() [constructor]
-    cls.add_constructor([])
-    ## nstime.h (module 'core'): ns3::Time::Time(ns3::Time const & o) [constructor]
-    cls.add_constructor([param('ns3::Time const &', 'o')])
-    ## nstime.h (module 'core'): ns3::Time::Time(double v) [constructor]
-    cls.add_constructor([param('double', 'v')])
-    ## nstime.h (module 'core'): ns3::Time::Time(int v) [constructor]
-    cls.add_constructor([param('int', 'v')])
-    ## nstime.h (module 'core'): ns3::Time::Time(long int v) [constructor]
-    cls.add_constructor([param('long int', 'v')])
-    ## nstime.h (module 'core'): ns3::Time::Time(long long int v) [constructor]
-    cls.add_constructor([param('long long int', 'v')])
-    ## nstime.h (module 'core'): ns3::Time::Time(unsigned int v) [constructor]
-    cls.add_constructor([param('unsigned int', 'v')])
-    ## nstime.h (module 'core'): ns3::Time::Time(long unsigned int v) [constructor]
-    cls.add_constructor([param('long unsigned int', 'v')])
-    ## nstime.h (module 'core'): ns3::Time::Time(long long unsigned int v) [constructor]
-    cls.add_constructor([param('long long unsigned int', 'v')])
-    ## nstime.h (module 'core'): ns3::Time::Time(ns3::int64x64_t const & v) [constructor]
-    cls.add_constructor([param('ns3::int64x64_t const &', 'v')])
-    ## nstime.h (module 'core'): ns3::Time::Time(std::string const & s) [constructor]
-    cls.add_constructor([param('std::string const &', 's')])
-    ## nstime.h (module 'core'): ns3::TimeWithUnit ns3::Time::As(ns3::Time::Unit const unit) const [member function]
-    cls.add_method('As', 
-                   'ns3::TimeWithUnit', 
-                   [param('ns3::Time::Unit const', 'unit')], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int ns3::Time::Compare(ns3::Time const & o) const [member function]
-    cls.add_method('Compare', 
-                   'int', 
-                   [param('ns3::Time const &', 'o')], 
-                   is_const=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::From(ns3::int64x64_t const & value) [member function]
-    cls.add_method('From', 
-                   'ns3::Time', 
-                   [param('ns3::int64x64_t const &', 'value')], 
-                   is_static=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::From(ns3::int64x64_t const & value, ns3::Time::Unit unit) [member function]
-    cls.add_method('From', 
-                   'ns3::Time', 
-                   [param('ns3::int64x64_t const &', 'value'), param('ns3::Time::Unit', 'unit')], 
-                   is_static=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::FromDouble(double value, ns3::Time::Unit unit) [member function]
-    cls.add_method('FromDouble', 
-                   'ns3::Time', 
-                   [param('double', 'value'), param('ns3::Time::Unit', 'unit')], 
-                   is_static=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::FromInteger(uint64_t value, ns3::Time::Unit unit) [member function]
-    cls.add_method('FromInteger', 
-                   'ns3::Time', 
-                   [param('uint64_t', 'value'), param('ns3::Time::Unit', 'unit')], 
-                   is_static=True)
-    ## nstime.h (module 'core'): double ns3::Time::GetDays() const [member function]
-    cls.add_method('GetDays', 
-                   'double', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): double ns3::Time::GetDouble() const [member function]
-    cls.add_method('GetDouble', 
-                   'double', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::GetFemtoSeconds() const [member function]
-    cls.add_method('GetFemtoSeconds', 
-                   'int64_t', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): double ns3::Time::GetHours() const [member function]
-    cls.add_method('GetHours', 
-                   'double', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::GetInteger() const [member function]
-    cls.add_method('GetInteger', 
-                   'int64_t', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::GetMicroSeconds() const [member function]
-    cls.add_method('GetMicroSeconds', 
-                   'int64_t', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::GetMilliSeconds() const [member function]
-    cls.add_method('GetMilliSeconds', 
-                   'int64_t', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): double ns3::Time::GetMinutes() const [member function]
-    cls.add_method('GetMinutes', 
-                   'double', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::GetNanoSeconds() const [member function]
-    cls.add_method('GetNanoSeconds', 
-                   'int64_t', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::GetPicoSeconds() const [member function]
-    cls.add_method('GetPicoSeconds', 
-                   'int64_t', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): static ns3::Time::Unit ns3::Time::GetResolution() [member function]
-    cls.add_method('GetResolution', 
-                   'ns3::Time::Unit', 
-                   [], 
-                   is_static=True)
-    ## nstime.h (module 'core'): double ns3::Time::GetSeconds() const [member function]
-    cls.add_method('GetSeconds', 
-                   'double', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::GetTimeStep() const [member function]
-    cls.add_method('GetTimeStep', 
-                   'int64_t', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): double ns3::Time::GetYears() const [member function]
-    cls.add_method('GetYears', 
-                   'double', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): bool ns3::Time::IsNegative() const [member function]
-    cls.add_method('IsNegative', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): bool ns3::Time::IsPositive() const [member function]
-    cls.add_method('IsPositive', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): bool ns3::Time::IsStrictlyNegative() const [member function]
-    cls.add_method('IsStrictlyNegative', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): bool ns3::Time::IsStrictlyPositive() const [member function]
-    cls.add_method('IsStrictlyPositive', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): bool ns3::Time::IsZero() const [member function]
-    cls.add_method('IsZero', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::Max() [member function]
-    cls.add_method('Max', 
-                   'ns3::Time', 
-                   [], 
-                   is_static=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::Min() [member function]
-    cls.add_method('Min', 
-                   'ns3::Time', 
-                   [], 
-                   is_static=True)
-    ## nstime.h (module 'core'): static void ns3::Time::SetResolution(ns3::Time::Unit resolution) [member function]
-    cls.add_method('SetResolution', 
-                   'void', 
-                   [param('ns3::Time::Unit', 'resolution')], 
-                   is_static=True)
-    ## nstime.h (module 'core'): static bool ns3::Time::StaticInit() [member function]
-    cls.add_method('StaticInit', 
-                   'bool', 
-                   [], 
-                   is_static=True)
-    ## nstime.h (module 'core'): ns3::int64x64_t ns3::Time::To(ns3::Time::Unit unit) const [member function]
-    cls.add_method('To', 
-                   'ns3::int64x64_t', 
-                   [param('ns3::Time::Unit', 'unit')], 
-                   is_const=True)
-    ## nstime.h (module 'core'): double ns3::Time::ToDouble(ns3::Time::Unit unit) const [member function]
-    cls.add_method('ToDouble', 
-                   'double', 
-                   [param('ns3::Time::Unit', 'unit')], 
-                   is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::ToInteger(ns3::Time::Unit unit) const [member function]
-    cls.add_method('ToInteger', 
-                   'int64_t', 
-                   [param('ns3::Time::Unit', 'unit')], 
-                   is_const=True)
-    return
-
 def register_Ns3TraceSourceAccessor_methods(root_module, cls):
     ## trace-source-accessor.h (module 'core'): ns3::TraceSourceAccessor::TraceSourceAccessor(ns3::TraceSourceAccessor const & arg0) [constructor]
     cls.add_constructor([param('ns3::TraceSourceAccessor const &', 'arg0')])
@@ -1530,22 +1920,22 @@ def register_Ns3TraceSourceAccessor_methods(root_module, cls):
     cls.add_method('Connect', 
                    'bool', 
                    [param('ns3::ObjectBase *', 'obj', transfer_ownership=False), param('std::string', 'context'), param('ns3::CallbackBase const &', 'cb')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## trace-source-accessor.h (module 'core'): bool ns3::TraceSourceAccessor::ConnectWithoutContext(ns3::ObjectBase * obj, ns3::CallbackBase const & cb) const [member function]
     cls.add_method('ConnectWithoutContext', 
                    'bool', 
                    [param('ns3::ObjectBase *', 'obj', transfer_ownership=False), param('ns3::CallbackBase const &', 'cb')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## trace-source-accessor.h (module 'core'): bool ns3::TraceSourceAccessor::Disconnect(ns3::ObjectBase * obj, std::string context, ns3::CallbackBase const & cb) const [member function]
     cls.add_method('Disconnect', 
                    'bool', 
                    [param('ns3::ObjectBase *', 'obj', transfer_ownership=False), param('std::string', 'context'), param('ns3::CallbackBase const &', 'cb')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## trace-source-accessor.h (module 'core'): bool ns3::TraceSourceAccessor::DisconnectWithoutContext(ns3::ObjectBase * obj, ns3::CallbackBase const & cb) const [member function]
     cls.add_method('DisconnectWithoutContext', 
                    'bool', 
                    [param('ns3::ObjectBase *', 'obj', transfer_ownership=False), param('ns3::CallbackBase const &', 'cb')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3TriangularRandomVariable_methods(root_module, cls):
@@ -1803,22 +2193,22 @@ def register_Ns3AttributeAccessor_methods(root_module, cls):
     cls.add_method('Get', 
                    'bool', 
                    [param('ns3::ObjectBase const *', 'object'), param('ns3::AttributeValue &', 'attribute')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): bool ns3::AttributeAccessor::HasGetter() const [member function]
     cls.add_method('HasGetter', 
                    'bool', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): bool ns3::AttributeAccessor::HasSetter() const [member function]
     cls.add_method('HasSetter', 
                    'bool', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): bool ns3::AttributeAccessor::Set(ns3::ObjectBase * object, ns3::AttributeValue const & value) const [member function]
     cls.add_method('Set', 
                    'bool', 
                    [param('ns3::ObjectBase *', 'object', transfer_ownership=False), param('ns3::AttributeValue const &', 'value')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3AttributeChecker_methods(root_module, cls):
@@ -1830,17 +2220,17 @@ def register_Ns3AttributeChecker_methods(root_module, cls):
     cls.add_method('Check', 
                    'bool', 
                    [param('ns3::AttributeValue const &', 'value')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): bool ns3::AttributeChecker::Copy(ns3::AttributeValue const & source, ns3::AttributeValue & destination) const [member function]
     cls.add_method('Copy', 
                    'bool', 
                    [param('ns3::AttributeValue const &', 'source'), param('ns3::AttributeValue &', 'destination')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): ns3::Ptr<ns3::AttributeValue> ns3::AttributeChecker::Create() const [member function]
     cls.add_method('Create', 
                    'ns3::Ptr< ns3::AttributeValue >', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): ns3::Ptr<ns3::AttributeValue> ns3::AttributeChecker::CreateValidValue(ns3::AttributeValue const & value) const [member function]
     cls.add_method('CreateValidValue', 
                    'ns3::Ptr< ns3::AttributeValue >', 
@@ -1850,17 +2240,17 @@ def register_Ns3AttributeChecker_methods(root_module, cls):
     cls.add_method('GetUnderlyingTypeInformation', 
                    'std::string', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): std::string ns3::AttributeChecker::GetValueTypeName() const [member function]
     cls.add_method('GetValueTypeName', 
                    'std::string', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): bool ns3::AttributeChecker::HasUnderlyingTypeInformation() const [member function]
     cls.add_method('HasUnderlyingTypeInformation', 
                    'bool', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3AttributeValue_methods(root_module, cls):
@@ -1872,7 +2262,7 @@ def register_Ns3AttributeValue_methods(root_module, cls):
     cls.add_method('Copy', 
                    'ns3::Ptr< ns3::AttributeValue >', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## attribute.h (module 'core'): bool ns3::AttributeValue::DeserializeFromString(std::string value, ns3::Ptr<const ns3::AttributeChecker> checker) [member function]
     cls.add_method('DeserializeFromString', 
                    'bool', 
@@ -1882,7 +2272,7 @@ def register_Ns3AttributeValue_methods(root_module, cls):
     cls.add_method('SerializeToString', 
                    'std::string', 
                    [param('ns3::Ptr< ns3::AttributeChecker const >', 'checker')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3CallbackChecker_methods(root_module, cls):
@@ -1901,12 +2291,12 @@ def register_Ns3CallbackImplBase_methods(root_module, cls):
     cls.add_method('GetTypeid', 
                    'std::string', 
                    [], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## callback.h (module 'core'): bool ns3::CallbackImplBase::IsEqual(ns3::Ptr<const ns3::CallbackImplBase> other) const [member function]
     cls.add_method('IsEqual', 
                    'bool', 
                    [param('ns3::Ptr< ns3::CallbackImplBase const >', 'other')], 
-                   is_pure_virtual=True, is_const=True, is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
     ## callback.h (module 'core'): static std::string ns3::CallbackImplBase::Demangle(std::string const & mangled) [member function]
     cls.add_method('Demangle', 
                    'std::string', 
@@ -1916,17 +2306,17 @@ def register_Ns3CallbackImplBase_methods(root_module, cls):
     cls.add_method('GetCppTypeid', 
                    'std::string', 
                    [], 
-                   is_static=True, visibility='protected', template_parameters=[u'ns3::ObjectBase*'])
+                   is_static=True, template_parameters=['ns3::ObjectBase*'], visibility='protected')
     ## callback.h (module 'core'): static std::string ns3::CallbackImplBase::GetCppTypeid() [member function]
     cls.add_method('GetCppTypeid', 
                    'std::string', 
                    [], 
-                   is_static=True, visibility='protected', template_parameters=[u'void'])
+                   is_static=True, template_parameters=['void'], visibility='protected')
     ## callback.h (module 'core'): static std::string ns3::CallbackImplBase::GetCppTypeid() [member function]
     cls.add_method('GetCppTypeid', 
                    'std::string', 
                    [], 
-                   is_static=True, visibility='protected', template_parameters=[u'ns3::Ptr<ns3::MobilityModel const> '])
+                   is_static=True, template_parameters=['ns3::Ptr<ns3::MobilityModel const> '], visibility='protected')
     return
 
 def register_Ns3CallbackValue_methods(root_module, cls):
@@ -1955,6 +2345,47 @@ def register_Ns3CallbackValue_methods(root_module, cls):
     cls.add_method('Set', 
                    'void', 
                    [param('ns3::CallbackBase', 'base')])
+    return
+
+def register_Ns3ChannelCondition_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): ns3::ChannelCondition::ChannelCondition(ns3::ChannelCondition const & arg0) [constructor]
+    cls.add_constructor([param('ns3::ChannelCondition const &', 'arg0')])
+    ## channel-condition-model.h (module 'propagation'): ns3::ChannelCondition::ChannelCondition() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): ns3::ChannelCondition::LosConditionValue ns3::ChannelCondition::GetLosCondition() const [member function]
+    cls.add_method('GetLosCondition', 
+                   'ns3::ChannelCondition::LosConditionValue', 
+                   [], 
+                   is_const=True)
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::ChannelCondition::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): void ns3::ChannelCondition::SetLosCondition(ns3::ChannelCondition::LosConditionValue losCondition) [member function]
+    cls.add_method('SetLosCondition', 
+                   'void', 
+                   [param('ns3::ChannelCondition::LosConditionValue', 'losCondition')])
+    return
+
+def register_Ns3ChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::ChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::ChannelConditionModel::ChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): ns3::Ptr<ns3::ChannelCondition> ns3::ChannelConditionModel::GetChannelCondition(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('GetChannelCondition', 
+                   'ns3::Ptr< ns3::ChannelCondition >', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, is_pure_virtual=True, is_virtual=True)
+    ## channel-condition-model.h (module 'propagation'): int64_t ns3::ChannelConditionModel::AssignStreams(int64_t stream) [member function]
+    cls.add_method('AssignStreams', 
+                   'int64_t', 
+                   [param('int64_t', 'stream')], 
+                   is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3ConstantRandomVariable_methods(root_module, cls):
@@ -2140,16 +2571,15 @@ def register_Ns3EmpiricalRandomVariable_methods(root_module, cls):
                    'double', 
                    [], 
                    is_virtual=True)
-    ## random-variable-stream.h (module 'core'): double ns3::EmpiricalRandomVariable::Interpolate(double c1, double c2, double v1, double v2, double r) [member function]
+    ## random-variable-stream.h (module 'core'): double ns3::EmpiricalRandomVariable::Interpolate() [member function]
     cls.add_method('Interpolate', 
                    'double', 
-                   [param('double', 'c1'), param('double', 'c2'), param('double', 'v1'), param('double', 'v2'), param('double', 'r')], 
-                   visibility='private', is_virtual=True)
-    ## random-variable-stream.h (module 'core'): void ns3::EmpiricalRandomVariable::Validate() [member function]
-    cls.add_method('Validate', 
-                   'void', 
                    [], 
-                   visibility='private', is_virtual=True)
+                   is_virtual=True)
+    ## random-variable-stream.h (module 'core'): bool ns3::EmpiricalRandomVariable::SetInterpolate(bool interpolate) [member function]
+    cls.add_method('SetInterpolate', 
+                   'bool', 
+                   [param('bool', 'interpolate')])
     return
 
 def register_Ns3EmptyAttributeAccessor_methods(root_module, cls):
@@ -2274,6 +2704,30 @@ def register_Ns3ErlangRandomVariable_methods(root_module, cls):
                    'uint32_t', 
                    [], 
                    is_virtual=True)
+    return
+
+def register_Ns3EventImpl_methods(root_module, cls):
+    ## event-impl.h (module 'core'): ns3::EventImpl::EventImpl(ns3::EventImpl const & arg0) [constructor]
+    cls.add_constructor([param('ns3::EventImpl const &', 'arg0')])
+    ## event-impl.h (module 'core'): ns3::EventImpl::EventImpl() [constructor]
+    cls.add_constructor([])
+    ## event-impl.h (module 'core'): void ns3::EventImpl::Cancel() [member function]
+    cls.add_method('Cancel', 
+                   'void', 
+                   [])
+    ## event-impl.h (module 'core'): void ns3::EventImpl::Invoke() [member function]
+    cls.add_method('Invoke', 
+                   'void', 
+                   [])
+    ## event-impl.h (module 'core'): bool ns3::EventImpl::IsCancelled() [member function]
+    cls.add_method('IsCancelled', 
+                   'bool', 
+                   [])
+    ## event-impl.h (module 'core'): void ns3::EventImpl::Notify() [member function]
+    cls.add_method('Notify', 
+                   'void', 
+                   [], 
+                   is_pure_virtual=True, is_virtual=True, visibility='protected')
     return
 
 def register_Ns3ExponentialRandomVariable_methods(root_module, cls):
@@ -2708,17 +3162,17 @@ def register_Ns3MobilityModel_methods(root_module, cls):
     cls.add_method('DoGetPosition', 
                    'ns3::Vector', 
                    [], 
-                   is_pure_virtual=True, is_const=True, visibility='private', is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True, visibility='private')
     ## mobility-model.h (module 'mobility'): ns3::Vector ns3::MobilityModel::DoGetVelocity() const [member function]
     cls.add_method('DoGetVelocity', 
                    'ns3::Vector', 
                    [], 
-                   is_pure_virtual=True, is_const=True, visibility='private', is_virtual=True)
+                   is_const=True, is_pure_virtual=True, is_virtual=True, visibility='private')
     ## mobility-model.h (module 'mobility'): void ns3::MobilityModel::DoSetPosition(ns3::Vector const & position) [member function]
     cls.add_method('DoSetPosition', 
                    'void', 
                    [param('ns3::Vector const &', 'position')], 
-                   is_pure_virtual=True, visibility='private', is_virtual=True)
+                   is_pure_virtual=True, is_virtual=True, visibility='private')
     return
 
 def register_Ns3NakagamiPropagationLossModel_methods(root_module, cls):
@@ -2739,6 +3193,26 @@ def register_Ns3NakagamiPropagationLossModel_methods(root_module, cls):
                    'int64_t', 
                    [param('int64_t', 'stream')], 
                    visibility='private', is_virtual=True)
+    return
+
+def register_Ns3NeverLosChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::NeverLosChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::NeverLosChannelConditionModel::NeverLosChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): ns3::Ptr<ns3::ChannelCondition> ns3::NeverLosChannelConditionModel::GetChannelCondition(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('GetChannelCondition', 
+                   'ns3::Ptr< ns3::ChannelCondition >', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, is_virtual=True)
+    ## channel-condition-model.h (module 'propagation'): int64_t ns3::NeverLosChannelConditionModel::AssignStreams(int64_t stream) [member function]
+    cls.add_method('AssignStreams', 
+                   'int64_t', 
+                   [param('int64_t', 'stream')], 
+                   is_virtual=True)
     return
 
 def register_Ns3NormalRandomVariable_methods(root_module, cls):
@@ -2819,11 +3293,6 @@ def register_Ns3ParetoRandomVariable_methods(root_module, cls):
                    is_static=True)
     ## random-variable-stream.h (module 'core'): ns3::ParetoRandomVariable::ParetoRandomVariable() [constructor]
     cls.add_constructor([])
-    ## random-variable-stream.h (module 'core'): double ns3::ParetoRandomVariable::GetMean() const [member function]
-    cls.add_method('GetMean', 
-                   'double', 
-                   [], 
-                   deprecated=True, is_const=True)
     ## random-variable-stream.h (module 'core'): double ns3::ParetoRandomVariable::GetScale() const [member function]
     cls.add_method('GetScale', 
                    'double', 
@@ -2857,6 +3326,146 @@ def register_Ns3ParetoRandomVariable_methods(root_module, cls):
                    'uint32_t', 
                    [], 
                    is_virtual=True)
+    return
+
+def register_Ns3ThreeGppChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppChannelConditionModel::ThreeGppChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): int64_t ns3::ThreeGppChannelConditionModel::AssignStreams(int64_t stream) [member function]
+    cls.add_method('AssignStreams', 
+                   'int64_t', 
+                   [param('int64_t', 'stream')], 
+                   is_virtual=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::Ptr<ns3::ChannelCondition> ns3::ThreeGppChannelConditionModel::GetChannelCondition(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('GetChannelCondition', 
+                   'ns3::Ptr< ns3::ChannelCondition >', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, is_virtual=True)
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): static double ns3::ThreeGppChannelConditionModel::Calculate2dDistance(ns3::Vector const & a, ns3::Vector const & b) [member function]
+    cls.add_method('Calculate2dDistance', 
+                   'double', 
+                   [param('ns3::Vector const &', 'a'), param('ns3::Vector const &', 'b')], 
+                   is_static=True, visibility='protected')
+    ## channel-condition-model.h (module 'propagation'): void ns3::ThreeGppChannelConditionModel::DoDispose() [member function]
+    cls.add_method('DoDispose', 
+                   'void', 
+                   [], 
+                   visibility='protected', is_virtual=True)
+    ## channel-condition-model.h (module 'propagation'): double ns3::ThreeGppChannelConditionModel::ComputePlos(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('ComputePlos', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, is_pure_virtual=True, is_virtual=True, visibility='private')
+    return
+
+def register_Ns3ThreeGppIndoorMixedOfficeChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppIndoorMixedOfficeChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppIndoorMixedOfficeChannelConditionModel::ThreeGppIndoorMixedOfficeChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): double ns3::ThreeGppIndoorMixedOfficeChannelConditionModel::ComputePlos(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('ComputePlos', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    return
+
+def register_Ns3ThreeGppIndoorOfficePropagationLossModel_methods(root_module, cls):
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppIndoorOfficePropagationLossModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): ns3::ThreeGppIndoorOfficePropagationLossModel::ThreeGppIndoorOfficePropagationLossModel() [constructor]
+    cls.add_constructor([])
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppIndoorOfficePropagationLossModel::GetLossLos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossLos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppIndoorOfficePropagationLossModel::GetLossNlos(double distance2D, double distance3D, double hUt, double hBs) const [member function]
+    cls.add_method('GetLossNlos', 
+                   'double', 
+                   [param('double', 'distance2D'), param('double', 'distance3D'), param('double', 'hUt'), param('double', 'hBs')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppIndoorOfficePropagationLossModel::GetShadowingStd(ns3::Ptr<ns3::MobilityModel> a, ns3::Ptr<ns3::MobilityModel> b, ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingStd', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel >', 'a'), param('ns3::Ptr< ns3::MobilityModel >', 'b'), param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    ## three-gpp-propagation-loss-model.h (module 'propagation'): double ns3::ThreeGppIndoorOfficePropagationLossModel::GetShadowingCorrelationDistance(ns3::ChannelCondition::LosConditionValue cond) const [member function]
+    cls.add_method('GetShadowingCorrelationDistance', 
+                   'double', 
+                   [param('ns3::ChannelCondition::LosConditionValue', 'cond')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    return
+
+def register_Ns3ThreeGppIndoorOpenOfficeChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppIndoorOpenOfficeChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppIndoorOpenOfficeChannelConditionModel::ThreeGppIndoorOpenOfficeChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): double ns3::ThreeGppIndoorOpenOfficeChannelConditionModel::ComputePlos(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('ComputePlos', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    return
+
+def register_Ns3ThreeGppRmaChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppRmaChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppRmaChannelConditionModel::ThreeGppRmaChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): double ns3::ThreeGppRmaChannelConditionModel::ComputePlos(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('ComputePlos', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    return
+
+def register_Ns3ThreeGppUmaChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppUmaChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppUmaChannelConditionModel::ThreeGppUmaChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): double ns3::ThreeGppUmaChannelConditionModel::ComputePlos(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('ComputePlos', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, visibility='private', is_virtual=True)
+    return
+
+def register_Ns3ThreeGppUmiStreetCanyonChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::ThreeGppUmiStreetCanyonChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::ThreeGppUmiStreetCanyonChannelConditionModel::ThreeGppUmiStreetCanyonChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): double ns3::ThreeGppUmiStreetCanyonChannelConditionModel::ComputePlos(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('ComputePlos', 
+                   'double', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, visibility='private', is_virtual=True)
     return
 
 def register_Ns3TimeValue_methods(root_module, cls):
@@ -3012,6 +3621,26 @@ def register_Ns3Vector3DValue_methods(root_module, cls):
                    [param('ns3::Vector3D const &', 'value')])
     return
 
+def register_Ns3AlwaysLosChannelConditionModel_methods(root_module, cls):
+    ## channel-condition-model.h (module 'propagation'): static ns3::TypeId ns3::AlwaysLosChannelConditionModel::GetTypeId() [member function]
+    cls.add_method('GetTypeId', 
+                   'ns3::TypeId', 
+                   [], 
+                   is_static=True)
+    ## channel-condition-model.h (module 'propagation'): ns3::AlwaysLosChannelConditionModel::AlwaysLosChannelConditionModel() [constructor]
+    cls.add_constructor([])
+    ## channel-condition-model.h (module 'propagation'): ns3::Ptr<ns3::ChannelCondition> ns3::AlwaysLosChannelConditionModel::GetChannelCondition(ns3::Ptr<const ns3::MobilityModel> a, ns3::Ptr<const ns3::MobilityModel> b) const [member function]
+    cls.add_method('GetChannelCondition', 
+                   'ns3::Ptr< ns3::ChannelCondition >', 
+                   [param('ns3::Ptr< ns3::MobilityModel const >', 'a'), param('ns3::Ptr< ns3::MobilityModel const >', 'b')], 
+                   is_const=True, is_virtual=True)
+    ## channel-condition-model.h (module 'propagation'): int64_t ns3::AlwaysLosChannelConditionModel::AssignStreams(int64_t stream) [member function]
+    cls.add_method('AssignStreams', 
+                   'int64_t', 
+                   [param('int64_t', 'stream')], 
+                   is_virtual=True)
+    return
+
 def register_Ns3CallbackImpl__Ns3ObjectBase___star___Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_methods(root_module, cls):
     ## callback.h (module 'core'): ns3::CallbackImpl<ns3::ObjectBase *, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty>::CallbackImpl() [constructor]
     cls.add_constructor([])
@@ -3031,7 +3660,7 @@ def register_Ns3CallbackImpl__Ns3ObjectBase___star___Ns3Empty_Ns3Empty_Ns3Empty_
     cls.add_method('operator()', 
                    'ns3::ObjectBase *', 
                    [], 
-                   is_pure_virtual=True, is_virtual=True, custom_name=u'__call__')
+                   custom_name='__call__', is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3CallbackImpl__Void_Ns3Ptr__lt__const_ns3MobilityModel__gt___Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_Ns3Empty_methods(root_module, cls):
@@ -3053,7 +3682,7 @@ def register_Ns3CallbackImpl__Void_Ns3Ptr__lt__const_ns3MobilityModel__gt___Ns3E
     cls.add_method('operator()', 
                    'void', 
                    [param('ns3::Ptr< ns3::MobilityModel const >', 'arg0')], 
-                   is_pure_virtual=True, is_virtual=True, custom_name=u'__call__')
+                   custom_name='__call__', is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3HashImplementation_methods(root_module, cls):
