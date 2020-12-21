@@ -29,6 +29,7 @@
 #include "ns3/antenna-model.h"
 #include "ns3/spectrum-channel.h"
 #include "ns3/spectrum-model.h"
+#include "ns3/wifi-spectrum-value-helper.h"
 #include "wifi-phy.h"
 
 namespace ns3 {
@@ -120,7 +121,7 @@ public:
    *         for all SpectrumValues that are passed to StartRx. If 0 is
    *         returned, it means that any model will be accepted.
    */
-  Ptr<const SpectrumModel> GetRxSpectrumModel () const;
+  Ptr<const SpectrumModel> GetRxSpectrumModel ();
 
   /**
    * \return the width of each band (Hz)
@@ -161,12 +162,22 @@ public:
   void SetRuBits (uint32_t ruBits);
   void SetMuMode (bool muMode);
   uint32_t GetRuBits (void) const;
-  bool GetMuMode (void) const;
+  bool GetMuMode (void) const;//Xyct: Get these out of there
 
 protected:
   // Inherited
   void DoDispose (void);
   void DoInitialize (void);
+
+  /**
+   * Get the start band index and the stop band index for a given band
+   *
+   * \param bandWidth the width of the band to be returned (MHz)
+   * \param bandIndex the index of the band to be returned
+   *
+   * \return a pair of start and stop indexes that defines the band
+   */
+  WifiSpectrumBand GetBand (uint16_t bandWidth, uint8_t bandIndex = 0);
 
 
 private:
@@ -182,12 +193,25 @@ private:
    */
   Ptr<SpectrumValue> GetTxPowerSpectralDensity (uint16_t centerFrequency, uint16_t channelWidth, double txPowerW, WifiModulationClass modulationClass, uint32_t ruBits, bool muMode) const;
 
- /**
+  /**
+   * \param channelWidth the total channel width (MHz) used for the OFDMA transmission
+   * \param range the subcarrier range of the HE RU
+   * \return the converted subcarriers
+   *
+   * This is a helper function to convert HE RU subcarriers, which are relative to the center frequency subcarrier, to the indexes used by the Spectrum model.
+   */
+  WifiSpectrumBand ConvertHeRuSubcarriers (uint16_t channelWidth, HeRu::SubcarrierRange range) const;
+
+  /**
    * Perform run-time spectrum model change
    */
   void ResetSpectrumModel (void);
+  /**
+   * This function is called to update the bands handled by the InterferenceHelper.
+   */
+  void UpdateInterferenceHelperBands (void);
 
-  Ptr<SpectrumChannel> m_channel;        //!< SpectrumChannel that this SpectrumWifiPhy is connected to
+  Ptr<SpectrumChannel> m_channel; //!< SpectrumChannel that this SpectrumWifiPhy is connected to
 
   uint32_t m_currentRu; //infocom
   bool m_muMode; //infocom
@@ -197,6 +221,9 @@ private:
   bool m_disableWifiReception;                              //!< forces this PHY to fail to sync on any signal
   TracedCallback<bool, uint32_t, double, Time> m_signalCb;  //!< Signal callback
 
+  double m_txMaskInnerBandMinimumRejection; //!< The minimum rejection (in dBr) for the inner band of the transmit spectrum mask
+  double m_txMaskOuterBandMinimumRejection; //!< The minimum rejection (in dBr) for the outer band of the transmit spectrum mask
+  double m_txMaskOuterBandMaximumRejection; //!< The maximum rejection (in dBr) for the outer band of the transmit spectrum mask
 };
 
 } //namespace ns3

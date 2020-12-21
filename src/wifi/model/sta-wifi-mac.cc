@@ -138,6 +138,7 @@ StaWifiMac::TriggerFrameRespAccess (void)
 {
   RegularWifiMac::NotifyTfRespAccess (GetRuBits ());
   Simulator::Schedule (MicroSeconds (1), &ChannelAccessManager::NotifyMaybeCcaBusyStartNow, m_channelAccessManagerMu[GetRuBits ()], Seconds(1)); //Hack
+  //Xyct: Why is there hack everywhere
 }
 
 void
@@ -719,7 +720,7 @@ StaWifiMac::Receive (Ptr<WifiMacQueueItem> mpdu)
     {
         MgtBsrAckHeader bsrAck;
         packet->RemoveHeader (bsrAck);
-
+        //Xyct: You don't get RU here, it's mac low's job
         m_bsrAckRecvd = true;
         SetMuMode (1);
         SetTfCw (GetTfCwMin ());
@@ -728,7 +729,7 @@ StaWifiMac::Receive (Ptr<WifiMacQueueItem> mpdu)
         Simulator::Schedule(MicroSeconds (17), &ChannelAccessManager::NotifyMaybeCcaBusyStartNow, m_channelAccessManagerMu[GetRuBits ()], Seconds (1)); 
     }
   else if (hdr->IsTF ())
-    {
+    {//Xyct: These are to be firstly moved to mac low
       m_lastTfTxStart = m_low->CalculateTfBeaconDuration (packet, *hdr); // hack
       MgtTFHeader tf;
       packet->RemoveHeader (tf);
@@ -736,7 +737,7 @@ StaWifiMac::Receive (Ptr<WifiMacQueueItem> mpdu)
       RegularWifiMac::RUAllocations alloc = tf.GetRUAllocations ();
       uint32_t ulFlag = tf.GetUplinkFlag ();
       m_muUlFlag = ulFlag;
-      SetTfDuration(tf.GetTfDuration ());
+      SetTfDuration(tf.GetTfDuration ());//Xyct: TODO: move these two to mac low, so that can remove header
       m_muDlModeEnd = GetTfDuration () * GetSlot () - m_lastTfTxStart;  
       m_channelAccessManager->NotifyMaybeCcaBusyStartNow (m_muDlModeEnd); 
       m_muModeExpireEvent = Simulator::Schedule (m_muDlModeEnd, &StaWifiMac::StopMuMode, this); 

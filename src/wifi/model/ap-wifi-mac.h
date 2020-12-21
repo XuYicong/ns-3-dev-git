@@ -78,7 +78,6 @@ public:
   void TriggerFrameExpire ();
   bool SupportsSendFrom (void) const;
   Time CalculateCurrentTfDuration (void);
-  bool SupportsSendFrom (void) const;
   void SetAddress (Mac48Address address);
 
   /**

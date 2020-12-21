@@ -343,7 +343,7 @@ private:
   void DoInitialize (void);
 
   MacState m_state;            ///< MAC state
-  //int m_noSlots;Xyct: test whether this variable is useless
+  int m_noSlots;
   uint32_t m_muSlots;
   uint16_t m_aid;              ///< Association AID
   Time m_waitBeaconTimeout;    ///< wait beacon timeout

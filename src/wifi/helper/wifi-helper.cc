@@ -827,7 +827,7 @@ WifiHelper::Install (const WifiPhyHelper &phyHelper,
       Ptr<WifiPhy> phy = phyHelper.Create (node, device);
       mac->SetAddress (Mac48Address::Allocate ());
       mac->ConfigureStandard (m_standard);
-      phy->ConfigureStandard (m_standard);
+      //phy->ConfigureStandard (m_standard);
       phy->ConfigureStandardAndBand (it->second.phyStandard, it->second.phyBand);
       phy->SetMuMode (0);
       phy->SetRuBits (9);
@@ -836,8 +836,8 @@ WifiHelper::Install (const WifiPhyHelper &phyHelper,
       device->SetPhy (phy);
       device->SetRemoteStationManager (manager);
       
-      if (m_standard == WIFI_PHY_STANDARD_80211ax_5GHZ)
-       {
+      if (m_standard == WIFI_PHY_STANDARD_80211ax)
+       {//Xyct: should eliminate MuPhy
   	  for (uint32_t j = 0; j < 9; j++)
             {
                Ptr<WifiPhy> phyMu = phyHelper.Create(node, device);
@@ -983,6 +983,7 @@ WifiHelper::EnableLogComponents (void)
   LogComponentEnable ("SpectrumWifiPhy", LOG_LEVEL_ALL);
   LogComponentEnable ("StaWifiMac", LOG_LEVEL_ALL);
   LogComponentEnable ("SupportedRates", LOG_LEVEL_ALL);
+  LogComponentEnable ("TableBasedErrorRateModel", LOG_LEVEL_ALL);
   LogComponentEnable ("ThresholdPreambleDetectionModel", LOG_LEVEL_ALL);
   LogComponentEnable ("WifiMac", LOG_LEVEL_ALL);
   LogComponentEnable ("WifiMacQueueItem", LOG_LEVEL_ALL);
@@ -999,6 +1000,9 @@ WifiHelper::EnableLogComponents (void)
   LogComponentEnable ("YansErrorRateModel", LOG_LEVEL_ALL);
   LogComponentEnable ("YansWifiChannel", LOG_LEVEL_ALL);
   LogComponentEnable ("YansWifiPhy", LOG_LEVEL_ALL);
+
+  //From Spectrum
+  LogComponentEnable ("WifiSpectrumValueHelper", LOG_LEVEL_ALL);
 }
 
 int64_t

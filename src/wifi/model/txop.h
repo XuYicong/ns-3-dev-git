@@ -349,10 +349,6 @@ public:
   bool GetMuMode (void) const;
   void SetRuBits (uint32_t ruBits);
   uint32_t GetRuBits (void) const; 
-  /**
-   * Request access from DCF manager if needed.
-   */
-  virtual void StartAccessIfNeeded (void);
 
   /**
    * \returns true if access has been requested for this function and

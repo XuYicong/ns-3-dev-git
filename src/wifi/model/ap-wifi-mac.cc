@@ -1014,7 +1014,7 @@ ApWifiMac::KillTriggerFrameBeaconRetransmission (void)
    */
   if (!m_tfBeaconExpire.IsExpired ())
    {
-     std::cout<<"Canceling TF retransmission because at least one STA transmitted, time = "<<Simulator::Now ().GetMicroSeconds () << std::endl;	
+     std::cout<<"Canceling TF retransmission because at least one STA transmitted, time = "<<Simulator::Now ().GetMicroSeconds () << std::endl;	//Xyct: The two below is NOT commented out by me
      //m_tfBeaconExpire.Cancel ();
      //m_cancelEvent.Cancel ();
      Time timeToExpire = MicroSeconds (440) + GetSifs ();

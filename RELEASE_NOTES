@@ -9,6 +9,19 @@ http://www.nsnam.org including tutorials: http://www.nsnam.org/tutorials.html
 Consult the file CHANGES.html for more detailed information about changed
 API and behavior across ns-3 releases.
 
+Release 3-dev
+=============
+
+New user-visible features
+-------------------------
+- (wifi) A new table-based error model based on link simulations has been
+  added (TableBasedErrorRateModel) and made the default for 802.11n/ac/ax simulations.
+- (wifi) It is now possible to select either BCC or LDPC FEC encoding.
+
+Bugs fixed
+----------
+- (wifi) Fix Minstrel HT statistics update window duration
+
 Release 3.32
 ============
 

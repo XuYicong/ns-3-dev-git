@@ -332,7 +332,7 @@ private:
   uint16_t FindRate (MinstrelHtWifiRemoteStation *station);
 
   /**
-   * Update the Minstrel Table every 1/10 seconds.
+   * Update the Minstrel Table.
    *
    * \param station the minstrel HT wifi remote station
    */
@@ -554,7 +554,8 @@ private:
   /// Returns a list of only the HT MCS supported by the device.
   WifiModeList GetHtDeviceMcsList (void) const;
 
-  Time m_updateStats;        //!< How frequent do we calculate the stats (1/10 seconds).
+  Time m_updateStats;        //!< How frequent do we calculate the stats.
+  Time m_legacyUpdateStats;  //!< How frequent do we calculate the stats for legacy MinstrelWifiManager.
   uint8_t m_lookAroundRate;  //!< The % to try other rates than our current rate.
   uint8_t m_ewmaLevel;       //!< Exponential weighted moving average level (or coefficient).
   uint8_t m_nSampleCol;      //!< Number of sample columns.
