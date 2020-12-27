@@ -3462,7 +3462,6 @@ WifiPhy::StartReceivePayload (Ptr<Event> event)
           NS_LOG_DEBUG ("No PSDU addressed to that PHY in the received MU PPDU. The PPDU is filtered.");
           payloadDuration = NanoSeconds (0); //so as to call AbortCurrentReception below
           m_phyRxPayloadBeginTrace (txVector, payloadDuration); //this callback (equivalent to PHY-RXSTART primitive) is also triggered for filtered PPDUs
-          m_currentPreambleEvents.clear ();
         }
       if (modulation == WIFI_MOD_CLASS_HE)
         {
