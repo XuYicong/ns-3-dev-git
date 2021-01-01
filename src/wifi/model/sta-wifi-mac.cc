@@ -651,7 +651,7 @@ StaWifiMac::Receive (Ptr<WifiMacQueueItem> mpdu)
 {
   NS_LOG_FUNCTION (this << *mpdu);
   const WifiMacHeader* hdr = &mpdu->GetHeader ();
-  Ptr<const Packet> packet = mpdu->GetPacket ();
+  Ptr<Packet> packet = mpdu->GetPacket ();
   NS_ASSERT (!hdr->IsCtl ());
   if (hdr->GetAddr3 () == GetAddress ())
     {
@@ -738,7 +738,7 @@ StaWifiMac::Receive (Ptr<WifiMacQueueItem> mpdu)
       uint32_t ulFlag = tf.GetUplinkFlag ();
       m_muUlFlag = ulFlag;
       SetTfDuration(tf.GetTfDuration ());//Xyct: TODO: move these two to mac low, so that can remove header
-      m_muDlModeEnd = GetTfDuration () * GetSlot () - m_lastTfTxStart;  
+      m_muDlModeEnd = GetTfDuration () /* GetSlot ()*/ - m_lastTfTxStart;  
       m_channelAccessManager->NotifyMaybeCcaBusyStartNow (m_muDlModeEnd); 
       m_muModeExpireEvent = Simulator::Schedule (m_muDlModeEnd, &StaWifiMac::StopMuMode, this); 
       Ptr<UniformRandomVariable> rv = CreateObject<UniformRandomVariable> ();

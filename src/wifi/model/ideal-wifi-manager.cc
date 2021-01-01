@@ -58,7 +58,7 @@ IdealWifiManager::GetTypeId (void)
     .AddConstructor<IdealWifiManager> ()
     .AddAttribute ("BerThreshold",
                    "The maximum Bit Error Rate acceptable at any transmission mode",
-                   DoubleValue (1e-5),
+                   DoubleValue (1e-6),
                    MakeDoubleAccessor (&IdealWifiManager::m_ber),
                    MakeDoubleChecker<double> ())
     .AddTraceSource ("Rate",
@@ -327,6 +327,7 @@ IdealWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
   WifiMode maxMode = GetDefaultMode ();
   WifiTxVector txVector;
   WifiMode mode;
+  uint64_t bestRate = 0;
   uint8_t selectedNss = 1;
   uint16_t guardInterval;
   uint16_t channelWidth = std::min (GetChannelWidth (station), GetPhy ()->GetChannelWidth ());
@@ -425,6 +426,7 @@ IdealWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
                           continue;
                         }
                       double threshold = GetSnrThreshold (txVector);
+                      uint64_t dataRate = mode.GetDataRate (txVector.GetChannelWidth (), txVector.GetGuardInterval (), nss);
                       NS_LOG_DEBUG ("Testing mode = " << mode.GetUniqueName () <<
                                     " threshold " << threshold  << " maxThreshold " <<
                                     maxThreshold << " last snr observed " <<
@@ -468,6 +470,7 @@ IdealWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
                           continue;
                         }
                       double threshold = GetSnrThreshold (txVector);
+                      uint64_t dataRate = mode.GetDataRate (txVector.GetChannelWidth (), txVector.GetGuardInterval (), nss);
                       NS_LOG_DEBUG ("Testing mode = " << mode.GetUniqueName () <<
                                     " threshold " << threshold  << " maxThreshold " <<
                                     maxThreshold << " last snr observed " <<
@@ -500,6 +503,7 @@ IdealWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
               uint16_t channelWidth = GetChannelWidthForNonHtMode (mode);
               txVector.SetChannelWidth (channelWidth);
               double threshold = GetSnrThreshold (txVector);
+              uint64_t dataRate = mode.GetDataRate (txVector.GetChannelWidth (), txVector.GetGuardInterval (),txVector.GetNss ());
               NS_LOG_DEBUG ("mode = " << mode.GetUniqueName () <<
                             " threshold " << threshold  <<
                             " last snr observed " <<

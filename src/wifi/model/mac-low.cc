@@ -434,10 +434,10 @@ MacLow::RegisterChannelAccessManager (Ptr<ChannelAccessManager> channelAccessMan
 Time 
 MacLow::CalculateTfBeaconDuration (Ptr<const Packet> packet, const WifiMacHeader &hdr)
 {
-  WifiTxVector tfBeaconTxVector = GetDataTxVector (packet, &hdr);
+  WifiTxVector tfBeaconTxVector = GetDataTxVector (Create<const WifiMacQueueItem> (packet, hdr));
   tfBeaconTxVector.SetMuMode (0);
   tfBeaconTxVector.SetRuBits (1);
-  return m_phy->CalculateTxDuration (GetSize(packet, &hdr, false), tfBeaconTxVector, m_phy->GetFrequency ()); 
+  return m_phy->CalculateTxDuration (GetSize(packet, &hdr, false), tfBeaconTxVector, m_phy->GetPhyBand ()); 
 }
 
 uint32_t
@@ -451,10 +451,10 @@ MacLow::CalculateStaPayloadDuration (void)
    {
      Ptr<Packet> p = item->GetPacket ()->Copy ();
      WifiMacHeader hdr = item->GetHeader ();
-     WifiTxVector txVector = GetDataTxVector (p, &hdr); 
+     WifiTxVector txVector = GetDataTxVector (Create<const WifiMacQueueItem> (p, hdr)); 
      txVector.SetMuMode (1);
      txVector.SetRuBits (0);
-     return m_phy->CalculateTxDuration (GetSize (p, &hdr, false), txVector, m_phy->GetFrequency ()).GetMicroSeconds ();
+     return m_phy->CalculateTxDuration (GetSize (p, &hdr, false), txVector, m_phy->GetPhyBand ()).GetMicroSeconds ();
    }  
   else // No packet found
    {
@@ -473,10 +473,10 @@ MacLow::CalculateApPayloadDuration (void)
    { 
      Ptr<Packet> p = item->GetPacket ()->Copy ();
      WifiMacHeader hdr = item->GetHeader ();
-     WifiTxVector txVector = GetDataTxVector (p, &hdr); 
+     WifiTxVector txVector = GetDataTxVector (item); 
      txVector.SetMuMode (1);
      txVector.SetRuBits (0);
-     return m_phy->CalculateTxDuration (GetSize (p, &hdr, false), txVector, m_phy->GetFrequency ()).GetMicroSeconds ();
+     return m_phy->CalculateTxDuration (GetSize (p, &hdr, false), txVector, m_phy->GetPhyBand ()).GetMicroSeconds ();
    }  
   else // No packet found
    {
@@ -538,12 +538,12 @@ MacLow::StartTransmission (Ptr<WifiMacQueueItem> mpdu,
     {
       m_currentTxVector = GetDataTxVector (mpdu);
     }
-  if (hdr->IsTFResponse ())
+  if (hdr.IsTFResponse ())
     {
        m_currentTxVector.SetMode (WifiModeFactory::CreateWifiMode ("OfdmRate6Mbps", WIFI_MOD_CLASS_OFDM, true, WIFI_CODE_RATE_1_2,2));
        m_tfRespAccessGrantCallback ();
     }
-  if (hdr->IsBsrAck ())
+  if (hdr.IsBsrAck ())
     {
        m_currentTxVector.SetMode (WifiModeFactory::CreateWifiMode ("OfdmRate6Mbps", WIFI_MOD_CLASS_OFDM, true, WIFI_CODE_RATE_1_2,2));
     }
@@ -980,6 +980,8 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, double rxSnr, WifiTxVector txVect
     }
   else if (hdr.IsBlockAckReq () && hdr.GetAddr1 () == m_self)
     {
+      m_stationManager->ReportRxOk (hdr.GetAddr2 (), rxSnr, txVector.GetMode ());
+
       CtrlBAckRequestHeader blockAckReq;
       packet->RemoveHeader (blockAckReq);
       if (!blockAckReq.IsMultiTid ())
@@ -1152,15 +1154,15 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, double rxSnr, WifiTxVector txVect
                 {
                   NS_LOG_DEBUG ("rx unicast/sendAck from=" << hdr.GetAddr2 ());
                   NS_ASSERT (m_sendAckEvent.IsExpired ());
-                  if (!hdr.IsTFResponse () && !hdr.IsBsrAck ())
-                    {
+                  //if (!hdr.IsTFResponse () && !hdr.IsBsrAck ())
+                    //{//Xyct: changed to CTL, then the if becomes aleays true
                       m_sendAckEvent = Simulator::Schedule (GetSifs (),
                                                             &MacLow::SendAckAfterData, this,
                                                             hdr.GetAddr2 (),
                                                             hdr.GetDuration (),
                                                             txVector.GetMode (),
                                                             rxSnr);
-                    }
+                    //}
                 }
             }
         }
@@ -1957,7 +1959,7 @@ MacLow::StartDataTxTimers (WifiTxVector dataTxVector)
       // aRxPHYStartDelay equals the time to transmit the PHY header.
       WifiTxVector blockAckTxVector = GetBlockAckTxVector (m_currentPacket->GetAddr1 (),
                                                            dataTxVector.GetMode ());
-      Time timerDelay = txDuration + GetSifs () + GetSlotTime ()
+      //Time timerDelay = txDuration + GetSifs () + GetSlotTime ()
       Time timerDelay = GetSifs () + GetSlotTime ()
                         + m_phy->CalculatePhyPreambleAndHeaderDuration (blockAckTxVector);
      if (m_phy->GetMuMode ())//Xyct: original hack multi-ed "m_blcokAckTimeout" by 9. I regard it as all left

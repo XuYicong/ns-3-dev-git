@@ -338,7 +338,7 @@ Txop::Queue (Ptr<Packet> packet, const WifiMacHeader &hdr)
 }
 
 void
-Txop::QueueButDontSend (Ptr<const Packet> packet, const WifiMacHeader &hdr)
+Txop::QueueButDontSend (Ptr<Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
   m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
@@ -373,7 +373,7 @@ Txop::CancelNextPacket (void)
   //CancelAccessRequested ();
 }
 void
-Txop::QueueTFResp (Ptr<const Packet> packet, const WifiMacHeader &hdr)
+Txop::QueueTFResp (Ptr<Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
   m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);

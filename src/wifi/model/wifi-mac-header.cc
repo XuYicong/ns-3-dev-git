@@ -197,15 +197,15 @@ WifiMacHeader::SetType (WifiMacType type, bool resetToDsFromDs)
       m_ctrlType = TYPE_MGT;
       m_ctrlSubtype = 15;
       break;
-    case WIFI_MAC_MGT_BSR_ACK: //infocom: Type and subtype for TF beacon, TF response, TF 
+    case WIFI_MAC_CTL_BSR_ACK: //Xyct: change Mgt to Ctl. infocom: Type and subtype for TF beacon, TF response, TF 
       m_ctrlType = TYPE_MGT;
       m_ctrlSubtype = 10;
       break;
-    case WIFI_MAC_MGT_TF_RESP: //infocom: Type and subtype for TF beacon, TF response, TF
+    case WIFI_MAC_CTL_TF_RESP: //infocom: Type and subtype for TF beacon, TF response, TF
       m_ctrlType = TYPE_MGT;
       m_ctrlSubtype = 11;
       break;
-    case WIFI_MAC_MGT_TF: //infocom: Type and subtype for TF beacon, TF response, TF
+    case WIFI_MAC_CTL_TF: //infocom: Type and subtype for TF beacon, TF response, TF
       m_ctrlType = TYPE_MGT;
       m_ctrlSubtype = 12;
       break;
@@ -586,21 +586,21 @@ WifiMacHeader::IsCfPoll (void) const
 void
 WifiMacHeader::SetBsrAck (void) //infocom: set TF beacon, response and TF
 {
-  m_ctrlType = TYPE_MGT;
+  m_ctrlType = TYPE_CTL;
   m_ctrlSubtype = 10;
 }
 
 void
-WifiMacHeader::SetTriggerFrameResp (void) //infocom: set TF beacon, response and TF
+WifiMacHeader::SetTriggerFrameResp (void) //Xyct: change MGT to CTL. infocom: set TF beacon, response and TF
 {
-  m_ctrlType = TYPE_MGT;
+  m_ctrlType = TYPE_CTL;
   m_ctrlSubtype = 11;
 }
 
 void
 WifiMacHeader::SetTriggerFrame (void) //infocom: set TF beacon, response and TF
 {
-  m_ctrlType = TYPE_MGT;
+  m_ctrlType = TYPE_CTL;
   m_ctrlSubtype = 12;
 }
 
@@ -758,19 +758,19 @@ WifiMacHeader::IsBlockAck (void) const
 bool
 WifiMacHeader::IsBsrAck (void) const //infocom: TF
 {
-  return (GetType () == WIFI_MAC_MGT_BSR_ACK);
+  return (GetType () == WIFI_MAC_CTL_BSR_ACK);
 }
 
 bool
-WifiMacHeader::IsTFResponse (void) const //infocom: TF
+WifiMacHeader::IsTFResponse (void) const //Xyct: change MGT to CTL. infocom: TF
 {
-  return (GetType () == WIFI_MAC_MGT_TF_RESP);
+  return (GetType () == WIFI_MAC_CTL_TF_RESP);
 }
 
 bool
 WifiMacHeader::IsTF (void) const //infocom: TF
 {
-  return (GetType () == WIFI_MAC_MGT_TF);
+  return (GetType () == WIFI_MAC_CTL_TF);
 }
 
 uint16_t

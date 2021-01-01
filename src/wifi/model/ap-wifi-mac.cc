@@ -1017,7 +1017,7 @@ ApWifiMac::KillTriggerFrameBeaconRetransmission (void)
      std::cout<<"Canceling TF retransmission because at least one STA transmitted, time = "<<Simulator::Now ().GetMicroSeconds () << std::endl;	//Xyct: The two below is NOT commented out by me
      //m_tfBeaconExpire.Cancel ();
      //m_cancelEvent.Cancel ();
-     Time timeToExpire = MicroSeconds (440) + GetSifs ();
+     Time timeToExpire = MicroSeconds (440) /*+ GetSifs ()*/;
      std::cout<<"Collision canceling scheduled at "<<(Now () + timeToExpire).GetMicroSeconds () << std::endl;
    }
 }
@@ -1029,12 +1029,12 @@ ApWifiMac::TriggerFrameExpire ()
    /*
     * At this point TF has gained access to the medium, now declare the 20 MHz channelAccessManager busy until MU mode ends
     */
-   Time timeToExpire = CalculateCurrentTfDuration () + GetSifs () + GetSlot (); // Difs
+   Time timeToExpire = CalculateCurrentTfDuration ()/* + GetSifs () + GetSlot ()*/; // Difs
    //m_tfBeaconExpire = Simulator::Schedule (timeToExpire, &ApWifiMac::StartMuModeUplink, this);
    std::cout<<"DIFS canceling scheduled at "<<(Now () + timeToExpire).GetMicroSeconds () << std::endl;
-
-   m_channelAccessManager->NotifyMaybeCcaBusyStartNow (GetTfDuration () * GetSlot ()); // Tell the 20 MHz channelAccessManager that you are busy until MU mode ends  
-   m_muModeExpireEvent = Simulator::Schedule (GetTfDuration () * GetSlot (), &ApWifiMac::StopMuMode, this);
+//Xyct: GetSlot compiles error
+   m_channelAccessManager->NotifyMaybeCcaBusyStartNow (GetTfDuration ()/* * GetSlot ()*/); // Tell the 20 MHz channelAccessManager that you are busy until MU mode ends  
+   m_muModeExpireEvent = Simulator::Schedule (GetTfDuration ()/* * GetSlot ()*/, &ApWifiMac::StopMuMode, this);
    if (!m_muUlFlag) // Don't start MU Mode at AP if this is a UL TF
     {
       Simulator::Schedule (MicroSeconds (200), &ApWifiMac::StartMuModeDelayed, this); // Hack: The TF takes 200 microseconds to reach the RX, so start MU mode only after TF reaches STAs
@@ -1338,17 +1338,17 @@ ApWifiMac::CalculateTfDuration (void)
    {
      if (GetNScheduled () < 9)
       {
-     	total = t1 + GetSifs () + MicroSeconds (440) + GetSifs () + MicroSeconds (416) + GetSifs () + t2 + GetSifs () + MicroSeconds (224); //164: time taken for ACK
+     	total = t1 /*+ GetSifs ()*/ + MicroSeconds (440) /*+ GetSifs ()*/ + MicroSeconds (416)/* + GetSifs ()*/ + t2/* + GetSifs ()*/ + MicroSeconds (224); //164: time taken for ACK
       }
      else if (GetNScheduled () == 9)
       {
-	total = t1 + GetSifs () + t2 + GetSifs () + MicroSeconds (224);
+	total = t1 /*+ GetSifs ()*/ + t2 /*+ GetSifs ()*/ + MicroSeconds (224);
       }
      // AP ----TF----> STA ----TFResp----> AP ----BSRACK----> STA ----Payload----> AP ----ACK----> STA
    }
   else
-   {  
-     total = t1 + GetSifs ();
+   { //Xyct: GetSifs() compiles error 
+     total = t1 /*+ GetSifs ()*/;
    }
   std::cout<<"t1 = "<<t1.GetMicroSeconds () << std::endl;
   std::cout<<"t2 = "<<t2.GetMicroSeconds () << std::endl;
@@ -1363,7 +1363,7 @@ ApWifiMac::Receive (Ptr<WifiMacQueueItem> mpdu)
 {
   NS_LOG_FUNCTION (this << *mpdu);
   const WifiMacHeader* hdr = &mpdu->GetHeader ();
-  Ptr<const Packet> packet = mpdu->GetPacket ();
+  Ptr<Packet> packet = mpdu->GetPacket ();
   Mac48Address from = hdr->GetAddr2 ();
   if (hdr->IsData ())
     {

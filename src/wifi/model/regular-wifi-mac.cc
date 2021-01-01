@@ -1559,7 +1559,7 @@ RegularWifiMac::EnableAggregation (void)
 
   for (uint32_t i = 0; i < 9; i++)
    {
-  if (GetMuVOQueue (i)->GetMsduAggregator () != 0)
+  /*if (GetMuVOQueue (i)->GetMsduAggregator () != 0)
     {
       GetMuVOQueue (i)->GetMsduAggregator ()->SetMaxAmsduSize (m_voMaxAmsduSize);
     }
@@ -1590,10 +1590,11 @@ RegularWifiMac::EnableAggregation (void)
   if (GetMuBKQueue (i)->GetMpduAggregator () != 0)
     {
       GetMuBKQueue (i)->GetMpduAggregator ()->SetMaxAmpduSize (m_bkMaxAmpduSize);
-    }
+    }*///don't understand, causes compilation error
    }
 }
 //Xyct: Aggregation is not what should be considered here
+//Xyct: Why do I say that
 void
 RegularWifiMac::DisableAggregation (void)
 {
