@@ -83,11 +83,12 @@ protected:
   /**
    * Spectrum wifi receive success function
    * \param psdu the PSDU
-   * \param snr the SNR
+   * \param rxSignalInfo the info on the received signal (\see RxSignalInfo)
    * \param txVector the transmit vector
    * \param statusPerMpdu reception status per MPDU
    */
-  void SpectrumWifiPhyRxSuccess (Ptr<WifiPsdu> psdu, double snr, WifiTxVector txVector, std::vector<bool> statusPerMpdu);
+  void SpectrumWifiPhyRxSuccess (Ptr<WifiPsdu> psdu, RxSignalInfo rxSignalInfo,
+                                 WifiTxVector txVector, std::vector<bool> statusPerMpdu);
   /**
    * Spectrum wifi receive failure function
    * \param psdu the PSDU
@@ -97,6 +98,8 @@ protected:
 
 private:
   virtual void DoRun (void);
+
+  uint64_t m_uid;
 };
 
 SpectrumWifiPhyBasicTest::SpectrumWifiPhyBasicTest ()
@@ -107,7 +110,8 @@ SpectrumWifiPhyBasicTest::SpectrumWifiPhyBasicTest ()
 
 SpectrumWifiPhyBasicTest::SpectrumWifiPhyBasicTest (std::string name)
   : TestCase (name),
-    m_count (0)
+    m_count (0),
+    m_uid (0)
 {
 }
 
@@ -126,7 +130,7 @@ SpectrumWifiPhyBasicTest::MakeSignal (double txPowerWatts)
   Ptr<WifiPsdu> psdu = Create<WifiPsdu> (pkt, hdr);
   Time txDuration = m_phy->CalculateTxDuration (psdu->GetSize (), txVector, m_phy->GetPhyBand ());
 
-  Ptr<WifiPpdu> ppdu = Create<WifiPpdu> (psdu, txVector, txDuration, WIFI_PHY_BAND_5GHZ);
+  Ptr<WifiPpdu> ppdu = Create<WifiPpdu> (psdu, txVector, txDuration, WIFI_PHY_BAND_5GHZ, m_uid++);
 
   Ptr<SpectrumValue> txPowerSpectrum = WifiSpectrumValueHelper::CreateOfdmTxPowerSpectralDensity (FREQUENCY, CHANNEL_WIDTH, txPowerWatts, GUARD_WIDTH);
   Ptr<WifiSpectrumSignalParameters> txParams = Create<WifiSpectrumSignalParameters> ();
@@ -146,9 +150,10 @@ SpectrumWifiPhyBasicTest::SendSignal (double txPowerWatts)
 }
 
 void
-SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxSuccess (Ptr<WifiPsdu> psdu, double snr, WifiTxVector txVector, std::vector<bool> statusPerMpdu)
+SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxSuccess (Ptr<WifiPsdu> psdu, RxSignalInfo rxSignalInfo,
+                                                    WifiTxVector txVector, std::vector<bool> statusPerMpdu)
 {
-  NS_LOG_FUNCTION (this << *psdu << snr << txVector);
+  NS_LOG_FUNCTION (this << *psdu << rxSignalInfo << txVector);
   m_count++;
 }
 

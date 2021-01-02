@@ -51,6 +51,7 @@ class CtrlBAckRequestHeader;
 class CtrlBAckResponseHeader;
 class MsduAggregator;
 class MpduAggregator;
+struct RxSignalInfo;
 
 /**
  * \ingroup wifi
@@ -309,14 +310,14 @@ public:
 
   /**
    * \param mpdu MPDU received
-   * \param rxSnr snr of MPDU received in linear scale
+   * \param rxSignalInfo the info on the received signal (\see RxSignalInfo)
    * \param txVector TXVECTOR of MPDU received
    * \param ampduSubframe true if this MPDU is part of an A-MPDU
    *
    * This method is typically invoked by the lower PHY layer to notify
    * the MAC layer that an MPDU was successfully received.
    */
-  void ReceiveOk (Ptr<WifiMacQueueItem> mpdu, double rxSnr, WifiTxVector txVector, bool ampduSubframe);
+  void ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTxVector txVector, bool ampduSubframe);
   /**
    * \param psdu PSDU received.
    *
@@ -381,15 +382,15 @@ public:
   void RegisterEdcaForAc (AcIndex ac, Ptr<QosTxop> edca);
   /**
    * \param aggregatedPacket which is the current A-MPDU
-   * \param rxSnr SNR of packet received in linear scale
+   * \param rxSignalInfo the info on the received signal (\see RxSignalInfo)
    * \param txVector TXVECTOR of packet received
    * \param statusPerMpdu reception status per MPDU
    *
    * This function de-aggregates an A-MPDU and decide if each MPDU is received correctly or not
    *
    */
-  void DeaggregateAmpduAndReceive (Ptr<WifiPsdu> aggregatedPacket, double rxSnr, WifiTxVector txVector,
-                                   std::vector<bool> statusPerMpdu);
+  void DeaggregateAmpduAndReceive (Ptr<WifiPsdu> aggregatedPacket, RxSignalInfo rxSignalInfo,
+                                   WifiTxVector txVector, std::vector<bool> statusPerMpdu);
 
   /**
    * Return a TXVECTOR for the Data frame given the destination.

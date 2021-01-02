@@ -117,11 +117,11 @@ void wifiNodes::Configure ()
   WifiHelper wifi;
   if (use_ax) 
    {
-     wifi.SetStandard (WIFI_PHY_STANDARD_80211ax_5GHZ);
+     wifi.SetStandard (WIFI_STANDARD_80211ax_5GHZ);
    }
   else 
    {
-     wifi.SetStandard (WIFI_PHY_STANDARD_80211ac);
+     wifi.SetStandard (WIFI_STANDARD_80211ac);
    }
   WifiMacHelper mac;
   Ssid ssid = Ssid ("wifi");
@@ -134,7 +134,7 @@ void wifiNodes::Configure ()
   m_spectrumPhy.SetChannel (m_spectrumChannel);
   m_spectrumPhy.SetErrorRateModel (m_errorModelType);
   m_spectrumPhy.Set ("Frequency", UintegerValue (m_freq)); // channel 36 at 20 MHz
-  m_spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (false));
+  //m_spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (false));//Xyct: to compile
   m_spectrumPhy.Set ("ChannelWidth", UintegerValue (m_bw));
 	
   mac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid), "TfDuration", UintegerValue (m_tfDuration), "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue(m_alpha), "nScheduled", UintegerValue(m_nScheduled));
@@ -227,7 +227,7 @@ int main (int argc, char *argv[])
 {
 //  Packet::EnablePrinting ();
 //  Packet::EnableChecking ();
-  uint32_t noNodes = 60;
+  uint32_t noNodes = 5;
   uint32_t wifiDistance = 1;
   double simulationTime = 10; //seconds
   uint32_t wifiFreq = 5180;
@@ -244,7 +244,7 @@ int main (int argc, char *argv[])
   uint32_t tfCw = 7;
   uint32_t tfCwMin = 7;
   uint32_t tfCwMax = 63;
-  uint32_t nScheduled = 0;
+  uint32_t nScheduled = 4;
   double alpha = 0;
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
 
@@ -288,7 +288,7 @@ int main (int argc, char *argv[])
   Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel> ();
   spectrumChannel->SetPropagationDelayModel (delayModel);
   
-  SpectrumWifiPhyHelper spectrumPhy = SpectrumWifiPhyHelper::Default ();
+  SpectrumWifiPhyHelper spectrumPhy /*= SpectrumWifiPhyHelper::Default ()*/;
   
   wifiNodes wifi;
   wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, wifiDistance, interval, spectrumPhy, noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled);
@@ -328,16 +328,16 @@ int main (int argc, char *argv[])
   mobility.Install (wifi.GetApNode());
   mobility.Install (wifi.GetStaNodes());
   
-  Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&CountTfCycles));
+  //Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&CountTfCycles));
   if (g_verbose) {
-  	Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&PrintTrace));
+  	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&PrintTrace));//Xyct: for compile
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxBegin",MakeCallback(&PrintTrace));
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd",MakeCallback(&PrintTrace));
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop",MakeCallback(&PrintTrace));
-  	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx",MakeCallback(&PrintTrace));
+  	Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx",MakeCallback(&PrintTrace));
         //Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/State/State",MakeCallback(&PrintState));
         Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxDrop",MakeCallback(&PrintTrace));
-  	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop",MakeCallback(&PrintTrace));
+  	Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop",MakeCallback(&PrintTrace));
         Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/State/Tx",MakeCallback(&PrintTx));
   }
 

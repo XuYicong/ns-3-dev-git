@@ -317,7 +317,7 @@ RegularWifiMac::SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager>
     }
 }
 
-void
+/*void
 RegularWifiMac::SetMuWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager, uint32_t i)
 {
   NS_LOG_FUNCTION (this << stationManager);
@@ -334,7 +334,7 @@ RegularWifiMac::SetMuWifiRemoteStationManager (const Ptr<WifiRemoteStationManage
     {
       j->second->SetWifiRemoteStationManager (stationManager);
     }
-}
+}*///Xyct: good bye Mu
 
 void
 RegularWifiMac::StopMuMode ()
@@ -816,20 +816,20 @@ RegularWifiMac::SetWifiPhy (const Ptr<WifiPhy> phy)
   m_channelAccessManager->SetupPhyListener (phy);
   m_low->SetPhy (phy);
 }
-
+/*
 void
 RegularWifiMac::LinkMuAndRegularPhy (uint32_t i)
 {
-}
+}*/
 
-void
+/*void
 RegularWifiMac::SetMuWifiPhy (const Ptr<WifiPhy> phy, uint32_t i)
 {
   NS_LOG_FUNCTION (this << phy << i);
   m_phyMu[i] = phy;
   m_channelAccessManagerMu[i]->SetupPhyListener (phy);
   m_lowMu[i]->SetPhy (phy);
-}
+}*///Xyct: Bye Mu
 
 Ptr<WifiPhy>
 RegularWifiMac::GetWifiPhy (void) const

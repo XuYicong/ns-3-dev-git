@@ -66,6 +66,7 @@ public:
   virtual bool SupportsSendFrom (void) const;
   virtual void SetWifiPhy (const Ptr<WifiPhy> phy);
   Ptr<WifiPhy> GetWifiPhy (void) const;
+  Ptr<WifiPhy> GetMuWifiPhy (uint32_t) const;//Xyct: add to compile
   void ResetWifiPhy (void);
   virtual void SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager);
   void ConfigureStandard (WifiStandard standard);

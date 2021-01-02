@@ -341,7 +341,7 @@ void
 Txop::QueueButDontSend (Ptr<Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
-  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
+  //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
   m_queue->Enqueue (Create<WifiMacQueueItem> (packet, hdr));
 }
 
@@ -376,7 +376,7 @@ void
 Txop::QueueTFResp (Ptr<Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
-  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
+  //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
   m_queue->PushFront (Create<WifiMacQueueItem> (packet, hdr));
 }
 

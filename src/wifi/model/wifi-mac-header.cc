@@ -448,11 +448,11 @@ WifiMacHeader::GetType (void) const
         case 8:
           return WIFI_MAC_MGT_BEACON;
         case 10:
-          return WIFI_MAC_MGT_BSR_ACK; //GetType for TF
+          return WIFI_MAC_CTL_BSR_ACK; //GetType for TF
         case 11:
-          return WIFI_MAC_MGT_TF_RESP;
+          return WIFI_MAC_CTL_TF_RESP;//Xyct: change MGT to CTL
         case 12:
-          return WIFI_MAC_MGT_TF;
+          return WIFI_MAC_CTL_TF;
         case 13:
           return WIFI_MAC_MGT_ACTION;
         case 14:
@@ -1000,11 +1000,11 @@ case WIFI_MAC_ ## x: \
       FOO (CTL_BACKRESP);
       FOO (CTL_END);
       FOO (CTL_END_ACK);
+      FOO (CTL_BSR_ACK);
+      FOO (CTL_TF_RESP);
+      FOO (CTL_TF);
 
       FOO (MGT_BEACON);
-      FOO (MGT_BSR_ACK);
-      FOO (MGT_TF_RESP);
-      FOO (MGT_TF);
       FOO (MGT_ASSOCIATION_REQUEST);
       FOO (MGT_ASSOCIATION_RESPONSE);
       FOO (MGT_DISASSOCIATION);
@@ -1079,6 +1079,9 @@ WifiMacHeader::Print (std::ostream &os) const
       os << "Duration/ID=" << m_duration << "us"
          << ", RA=" << m_addr1 << ", TA=" << m_addr2;
       break;
+    case WIFI_MAC_CTL_BSR_ACK: //infocom: TF
+    case WIFI_MAC_CTL_TF_RESP://Xyct: MGT to CTL
+    case WIFI_MAC_CTL_TF:
     case WIFI_MAC_CTL_CTS:
     case WIFI_MAC_CTL_ACK:
       os << "Duration/ID=" << m_duration << "us"
@@ -1094,9 +1097,6 @@ WifiMacHeader::Print (std::ostream &os) const
     case WIFI_MAC_MGT_PROBE_RESPONSE:
     case WIFI_MAC_MGT_AUTHENTICATION:
     case WIFI_MAC_MGT_DEAUTHENTICATION:
-    case WIFI_MAC_MGT_BSR_ACK: //infocom: TF
-    case WIFI_MAC_MGT_TF_RESP:
-    case WIFI_MAC_MGT_TF:
       PrintFrameControl (os);
       os << " Duration/ID=" << m_duration << "us"
          << ", DA=" << m_addr1 << ", SA=" << m_addr2
