@@ -43,12 +43,11 @@ void
 WifiMac::LinkMuAndRegularPhy (uint32_t i)
 {
 }
-//Xyct: Mu should not have separate PHY
-Ptr<WifiPhy>
+/*Ptr<WifiPhy>
 WifiMac::GetMuWifiPhy (uint32_t i) const
 {
   return 0;
-}
+}*/
 
 void
 WifiMac::SetMuWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager, uint32_t i)

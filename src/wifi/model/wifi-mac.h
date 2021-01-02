@@ -147,7 +147,7 @@ public:
    * \return the physical layer attached to this MAC
    */
   virtual Ptr<WifiPhy> GetWifiPhy (void) const = 0;
-  virtual Ptr<WifiPhy> GetMuWifiPhy (uint32_t i) const;
+  virtual Ptr<WifiPhy> GetMuWifiPhy (uint32_t i) const = 0;
   /**
    * Remove currently attached WifiPhy device from this MAC.
    */

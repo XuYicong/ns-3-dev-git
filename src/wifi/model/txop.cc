@@ -341,7 +341,7 @@ void
 Txop::QueueButDontSend (Ptr<Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
-  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
+  //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
   m_queue->Enqueue (Create<WifiMacQueueItem> (packet, hdr));
 }
 
@@ -376,7 +376,7 @@ void
 Txop::QueueTFResp (Ptr<Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
-  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
+  //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
   m_queue->PushFront (Create<WifiMacQueueItem> (packet, hdr));
 }
 
@@ -565,6 +565,7 @@ Txop::NotifyAccessGranted (void)
   NS_LOG_FUNCTION (this);
   NS_ASSERT (m_accessRequested);
   m_accessRequested = false;
+  //std::cout<<"Xyct:"<<m_currentPacket<<std::endl;
   if (m_currentPacket == 0)
     {
       if (m_queue->IsEmpty ())
@@ -592,6 +593,7 @@ Txop::NotifyAccessGranted (void)
     {
       m_tfBeaconAccessGrantCallback (); //Gaurang: Here is where I called back to RegularWifiMac when TF Beacon got access to the channel
     }
+  //std::cout<<"Xyct:"<<m_currentHdr.IsTF ()<<std::endl;
   if (m_currentHdr.IsTF ())
     {
       m_tfAccessGrantCallback ();

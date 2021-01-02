@@ -108,6 +108,22 @@ Event::GetTxVector (void) const
   return m_txVector;
 }
 
+void
+Event::UpdateRxPowerW (RxPowerWattPerChannelBand rxPower)
+{
+  NS_ASSERT (rxPower.size () == m_rxPowerW.size ());
+  //Update power band per band
+  for (auto & currentRxPowerW : m_rxPowerW)
+    {
+      auto band = currentRxPowerW.first;
+      auto it = rxPower.find (band);
+      if (it != rxPower.end ())
+        {
+          currentRxPowerW.second += it->second;
+        }
+    }
+}
+
 std::ostream & operator << (std::ostream &os, const Event &event)
 {
   os << "start=" << event.GetStartTime () << ", end=" << event.GetEndTime ()
@@ -165,10 +181,10 @@ InterferenceHelper::~InterferenceHelper ()
 }
 
 Ptr<Event>
-InterferenceHelper::Add (Ptr<const WifiPpdu> ppdu, WifiTxVector txVector, Time duration, RxPowerWattPerChannelBand rxPowerW)
+InterferenceHelper::Add (Ptr<const WifiPpdu> ppdu, WifiTxVector txVector, Time duration, RxPowerWattPerChannelBand rxPowerW, bool isStartOfdmaRxing)
 {
   Ptr<Event> event = Create<Event> (ppdu, txVector, duration, rxPowerW);
-  AppendEvent (event);
+  AppendEvent (event, isStartOfdmaRxing);
   return event;
 }
 
@@ -180,7 +196,7 @@ InterferenceHelper::AddForeignSignal (Time duration, RxPowerWattPerChannelBand r
   WifiMacHeader hdr;
   hdr.SetType (WIFI_MAC_QOSDATA);
   Ptr<WifiPpdu> fakePpdu = Create<WifiPpdu> (Create<WifiPsdu> (Create<Packet> (0), hdr),
-                                             WifiTxVector (), duration, WIFI_PHY_BAND_UNSPECIFIED);
+                                             WifiTxVector (), duration, WIFI_PHY_BAND_UNSPECIFIED, UINT64_MAX);
   Add (fakePpdu, WifiTxVector (), duration, rxPowerW);
 }
 
@@ -229,7 +245,7 @@ InterferenceHelper::SetNumberOfReceiveAntennas (uint8_t rx)
 }
 
 Time
-InterferenceHelper::GetEnergyDuration (double energyW, WifiSpectrumBand band) const
+InterferenceHelper::GetEnergyDuration (double energyW, WifiSpectrumBand band)
 {
   Time now = Simulator::Now ();
   auto i = GetPreviousPosition (now, band);
@@ -249,9 +265,9 @@ InterferenceHelper::GetEnergyDuration (double energyW, WifiSpectrumBand band) co
 }
 
 void
-InterferenceHelper::AppendEvent (Ptr<Event> event)
+InterferenceHelper::AppendEvent (Ptr<Event> event, bool isStartOfdmaRxing)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << event << isStartOfdmaRxing);
   RxPowerWattPerChannelBand rxPowerWattPerChannelBand = event->GetRxPowerWPerBand ();
   for (auto const& it : rxPowerWattPerChannelBand)
     {
@@ -268,6 +284,13 @@ InterferenceHelper::AppendEvent (Ptr<Event> event)
           // Always leave the first zero power noise event in the list
           ni_it->second.erase (++(ni_it->second.begin ()), GetNextPosition (event->GetStartTime (), band));
         }
+      else if (isStartOfdmaRxing)
+        {
+          //When the first UL-OFDMA payload is received, we need to set m_firstPowerPerBand
+          //so that it takes into account interferences that arrived between the start of the
+          //UL MU transmission and the start of UL-OFDMA payload.
+          m_firstPowerPerBand.find (band)->second = previousPowerStart;
+        }
       auto first = AddNiChangeEvent (event->GetStartTime (), NiChange (previousPowerStart, event), band);
       auto last = AddNiChangeEvent (event->GetEndTime (), NiChange (previousPowerEnd, event), band);
       for (auto i = first; i != last; ++i)
@@ -275,6 +298,26 @@ InterferenceHelper::AppendEvent (Ptr<Event> event)
           i->second.AddPower (it.second);
         }
     }
+}
+
+void
+InterferenceHelper::UpdateEvent (Ptr<Event> event, RxPowerWattPerChannelBand rxPower)
+{
+  NS_LOG_FUNCTION (this << event);
+  //This is called for UL MU events, in order to scale power as long as UL MU PPDUs arrive
+  for (auto const& it : rxPower)
+    {
+      WifiSpectrumBand band = it.first;
+      auto ni_it = m_niChangesPerBand.find (band);
+      NS_ASSERT (ni_it != m_niChangesPerBand.end ());
+      auto first = GetPreviousPosition (event->GetStartTime (), band);
+      auto last = GetPreviousPosition (event->GetEndTime (), band);
+      for (auto i = first; i != last; ++i)
+        {
+          i->second.AddPower (it.second);
+        }
+    }
+    event->UpdateRxPowerW (rxPower);
 }
 
 double
@@ -370,10 +413,19 @@ InterferenceHelper::CalculatePayloadPer (Ptr<const Event> event, uint16_t channe
   Time previous = j->first;
   WifiMode payloadMode = txVector.GetMode (staId);
   WifiPreamble preamble = txVector.GetPreambleType ();
-  Time phyHeaderStart = j->first + WifiPhy::GetPhyPreambleDuration (txVector); //PPDU start time + preamble
-  Time phyHtSigHeaderStart = phyHeaderStart + WifiPhy::GetPhyHeaderDuration (txVector); //PPDU start time + preamble + L-SIG
-  Time phyTrainingSymbolsStart = phyHtSigHeaderStart + WifiPhy::GetPhyHtSigHeaderDuration (preamble) + WifiPhy::GetPhySigA1Duration (preamble) + WifiPhy::GetPhySigA2Duration (preamble); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A
-  Time phyPayloadStart = phyTrainingSymbolsStart + WifiPhy::GetPhyTrainingSymbolDuration (txVector) + WifiPhy::GetPhySigBDuration (preamble); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A + Training + SIG-B
+  Time phyPayloadStart;
+  if (!event->GetPpdu ()->IsUlMu ())
+    {
+      Time phyHeaderStart = j->first + WifiPhy::GetPhyPreambleDuration (txVector); //PPDU start time + preamble
+      Time phyHtSigHeaderStart = phyHeaderStart + WifiPhy::GetPhyHeaderDuration (txVector); //PPDU start time + preamble + L-SIG
+      Time phyTrainingSymbolsStart = phyHtSigHeaderStart + WifiPhy::GetPhyHtSigHeaderDuration (preamble) + WifiPhy::GetPhySigA1Duration (preamble) + WifiPhy::GetPhySigA2Duration (preamble); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A
+      phyPayloadStart = phyTrainingSymbolsStart + WifiPhy::GetPhyTrainingSymbolDuration (txVector) + WifiPhy::GetPhySigBDuration (txVector); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A + Training + SIG-B
+    }
+  else
+    {
+      //j->first corresponds to the start of the UL-OFDMA payload
+      phyPayloadStart = j->first;
+    }
   Time windowStart = phyPayloadStart + window.first;
   Time windowEnd = phyPayloadStart + window.second;
   double noiseInterferenceW = m_firstPowerPerBand.find (band)->second;
@@ -409,11 +461,11 @@ InterferenceHelper::CalculatePayloadPer (Ptr<const Event> event, uint16_t channe
 }
 
 double
-InterferenceHelper::CalculateNonHtPhyHeaderPer (Ptr<const Event> event, NiChangesPerBand *nis, WifiSpectrumBand band) const
+InterferenceHelper::CalculateNonHtPhyHeaderPer (Ptr<const Event> event, NiChangesPerBand *nis,
+                                                uint16_t channelWidth, WifiSpectrumBand band) const
 {
   NS_LOG_FUNCTION (this << band.first << band.second);
   const WifiTxVector txVector = event->GetTxVector ();
-  uint16_t channelWidth = txVector.GetChannelWidth () >= 40 ? 20 : txVector.GetChannelWidth (); //calculate PER on the 20 MHz primary channel for L-SIG
   double psr = 1.0; /* Packet Success Rate */
   auto ni_it = nis->find (band)->second;
   auto j = ni_it.begin ();
@@ -423,7 +475,7 @@ InterferenceHelper::CalculateNonHtPhyHeaderPer (Ptr<const Event> event, NiChange
   Time phyHeaderStart = j->first + WifiPhy::GetPhyPreambleDuration (txVector); //PPDU start time + preamble
   Time phyLSigHeaderEnd = phyHeaderStart + WifiPhy::GetPhyHeaderDuration (txVector); //PPDU start time + preamble + L-SIG
   Time phyTrainingSymbolsStart = phyLSigHeaderEnd + WifiPhy::GetPhyHtSigHeaderDuration (preamble) + WifiPhy::GetPhySigA1Duration (preamble) + WifiPhy::GetPhySigA2Duration (preamble); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A
-  Time phyPayloadStart = phyTrainingSymbolsStart + WifiPhy::GetPhyTrainingSymbolDuration (txVector) + WifiPhy::GetPhySigBDuration (preamble); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A + Training + SIG-B
+  Time phyPayloadStart = phyTrainingSymbolsStart + WifiPhy::GetPhyTrainingSymbolDuration (txVector) + WifiPhy::GetPhySigBDuration (txVector); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A + Training + SIG-B
   double noiseInterferenceW = m_firstPowerPerBand.find (band)->second;
   double powerW = event->GetRxPowerW (band);
   while (++j != ni_it.end ())
@@ -524,11 +576,11 @@ InterferenceHelper::CalculateNonHtPhyHeaderPer (Ptr<const Event> event, NiChange
 }
 
 double
-InterferenceHelper::CalculateHtPhyHeaderPer (Ptr<const Event> event, NiChangesPerBand *nis, WifiSpectrumBand band) const
+InterferenceHelper::CalculateHtPhyHeaderPer (Ptr<const Event> event, NiChangesPerBand *nis,
+                                             uint16_t channelWidth, WifiSpectrumBand band) const
 {
   NS_LOG_FUNCTION (this << band.first << band.second);
   const WifiTxVector txVector = event->GetTxVector ();
-  uint16_t channelWidth = txVector.GetChannelWidth () >= 40 ? 20 : txVector.GetChannelWidth (); //calculate PER on the 20 MHz primary channel for PHY headers
   double psr = 1.0; /* Packet Success Rate */
   auto ni_it = nis->find (band)->second;
   auto j = ni_it.begin ();
@@ -554,7 +606,7 @@ InterferenceHelper::CalculateHtPhyHeaderPer (Ptr<const Event> event, NiChangesPe
   Time phyHeaderStart = j->first + WifiPhy::GetPhyPreambleDuration (txVector); //PPDU start time + preamble
   Time phyLSigHeaderEnd = phyHeaderStart + WifiPhy::GetPhyHeaderDuration (txVector); //PPDU start time + preamble + L-SIG
   Time phyTrainingSymbolsStart = phyLSigHeaderEnd + WifiPhy::GetPhyHtSigHeaderDuration (preamble) + WifiPhy::GetPhySigA1Duration (preamble) + WifiPhy::GetPhySigA2Duration (preamble); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A
-  Time phyPayloadStart = phyTrainingSymbolsStart + WifiPhy::GetPhyTrainingSymbolDuration (txVector) + WifiPhy::GetPhySigBDuration (preamble); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A + Training + SIG-B
+  Time phyPayloadStart = phyTrainingSymbolsStart + WifiPhy::GetPhyTrainingSymbolDuration (txVector) + WifiPhy::GetPhySigBDuration (txVector); //PPDU start time + preamble + L-SIG + HT-SIG or SIG-A + Training + SIG-B
   double noiseInterferenceW = m_firstPowerPerBand.find (band)->second;
   double powerW = event->GetRxPowerW (band);
   while (++j != ni_it.end ())
@@ -827,19 +879,10 @@ InterferenceHelper::CalculateSnr (Ptr<Event> event, uint16_t channelWidth, uint8
 }
 
 struct InterferenceHelper::SnrPer
-InterferenceHelper::CalculateNonHtPhyHeaderSnrPer (Ptr<Event> event, WifiSpectrumBand band) const
+InterferenceHelper::CalculateNonHtPhyHeaderSnrPer (Ptr<Event> event, uint16_t channelWidth, WifiSpectrumBand band) const
 {
-  NS_LOG_FUNCTION (this << band.first << band.second);
+  NS_LOG_FUNCTION (this << channelWidth << band.first << band.second);
   NiChangesPerBand ni;
-  uint16_t channelWidth;
-  if (event->GetTxVector ().GetChannelWidth () >= 40)
-    {
-      channelWidth = 20; //calculate PER on the 20 MHz primary channel for L-SIG
-    }
-  else
-    {
-      channelWidth = event->GetTxVector ().GetChannelWidth ();
-    }
   double noiseInterferenceW = CalculateNoiseInterferenceW (event, &ni, band);
   double snr = CalculateSnr (event->GetRxPowerW (band),
                              noiseInterferenceW,
@@ -849,7 +892,7 @@ InterferenceHelper::CalculateNonHtPhyHeaderSnrPer (Ptr<Event> event, WifiSpectru
   /* calculate the SNIR at the start of the PHY header and accumulate
    * all SNIR changes in the SNIR vector.
    */
-  double per = CalculateNonHtPhyHeaderPer (event, &ni, band);
+  double per = CalculateNonHtPhyHeaderPer (event, &ni, channelWidth, band);
 
   struct SnrPer snrPer;
   snrPer.snr = snr;
@@ -858,19 +901,10 @@ InterferenceHelper::CalculateNonHtPhyHeaderSnrPer (Ptr<Event> event, WifiSpectru
 }
 
 struct InterferenceHelper::SnrPer
-InterferenceHelper::CalculateHtPhyHeaderSnrPer (Ptr<Event> event, WifiSpectrumBand band) const
+InterferenceHelper::CalculateHtPhyHeaderSnrPer (Ptr<Event> event, uint16_t channelWidth, WifiSpectrumBand band) const
 {
   NS_LOG_FUNCTION (this << band.first << band.second);
   NiChangesPerBand ni;
-  uint16_t channelWidth;
-  if (event->GetTxVector ().GetChannelWidth () >= 40)
-    {
-      channelWidth = 20; //calculate PER on the 20 MHz primary channel for PHY headers
-    }
-  else
-    {
-      channelWidth = event->GetTxVector ().GetChannelWidth ();
-    }
   double noiseInterferenceW = CalculateNoiseInterferenceW (event, &ni, band);
   double snr = CalculateSnr (event->GetRxPowerW (band),
                              noiseInterferenceW,
@@ -880,7 +914,7 @@ InterferenceHelper::CalculateHtPhyHeaderSnrPer (Ptr<Event> event, WifiSpectrumBa
   /* calculate the SNIR at the start of the PHY header and accumulate
    * all SNIR changes in the SNIR vector.
    */
-  double per = CalculateHtPhyHeaderPer (event, &ni, band);
+  double per = CalculateHtPhyHeaderPer (event, &ni, channelWidth, band);
   
   struct SnrPer snrPer;
   snrPer.snr = snr;
@@ -901,16 +935,16 @@ InterferenceHelper::EraseEvents (void)
   m_rxing = false;
 }
 
-InterferenceHelper::NiChanges::const_iterator
-InterferenceHelper::GetNextPosition (Time moment, WifiSpectrumBand band) const
+InterferenceHelper::NiChanges::iterator
+InterferenceHelper::GetNextPosition (Time moment, WifiSpectrumBand band)
 {
   auto it = m_niChangesPerBand.find (band);
   NS_ASSERT (it != m_niChangesPerBand.end ());
   return it->second.upper_bound (moment);
 }
 
-InterferenceHelper::NiChanges::const_iterator
-InterferenceHelper::GetPreviousPosition (Time moment, WifiSpectrumBand band) const
+InterferenceHelper::NiChanges::iterator
+InterferenceHelper::GetPreviousPosition (Time moment, WifiSpectrumBand band)
 {
   auto it = GetNextPosition (moment, band);
   // This is safe since there is always an NiChange at time 0,
@@ -935,15 +969,15 @@ InterferenceHelper::NotifyRxStart ()
 }
 
 void
-InterferenceHelper::NotifyRxEnd ()
+InterferenceHelper::NotifyRxEnd (Time endTime)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << endTime);
   m_rxing = false;
-  //Update m_firstPower for frame capture
+  //Update m_firstPowerPerBand for frame capture
   for (auto ni : m_niChangesPerBand)
     {
       NS_ASSERT (ni.second.size () > 1);
-      auto it = GetPreviousPosition (Simulator::Now (), ni.first);
+      auto it = GetPreviousPosition (endTime, ni.first);
       it--;
       m_firstPowerPerBand.find (ni.first)->second = it->second.GetPower ();
     }

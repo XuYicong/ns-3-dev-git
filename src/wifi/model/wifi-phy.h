@@ -32,6 +32,7 @@
 #include "wifi-mac-header.h"
 #include "wifi-phy-state-helper.h"
 #include "wifi-ppdu.h"
+#include "wifi-spectrum-signal-parameters.h"
 
 namespace ns3 {
 
@@ -65,10 +66,12 @@ enum WifiPhyRxfailureReason
   RECEPTION_ABORTED_BY_TX,
   L_SIG_FAILURE,
   SIG_A_FAILURE,
+  SIG_B_FAILURE,
   PREAMBLE_DETECTION_PACKET_SWITCH,
   FRAME_CAPTURE_PACKET_SWITCH,
   OBSS_PD_CCA_RESET,
-  FILTERED
+  FILTERED,
+  HE_TB_PPDU_TOO_LATE
 };
 
 /**
@@ -110,6 +113,8 @@ inline std::ostream& operator<< (std::ostream& os, WifiPhyRxfailureReason reason
       return (os << "OBSS_PD_CCA_RESET");
     case FILTERED:
       return (os << "FILTERED");
+    case HE_TB_PPDU_TOO_LATE:
+      return (os << "HE_TB_PPDU_TOO_LATE");
     case UNKNOWN:
     default:
       NS_FATAL_ERROR ("Unknown reason");
@@ -132,11 +137,18 @@ struct MpduInfo
   uint32_t mpduRefNumber; ///< MPDU ref number
 };
 
-/// Parameters for receive HE preamble
-struct HePreambleParameters
+/// Parameters for received HE-SIG-A for OBSS_PD based SR
+struct HeSigAParameters
 {
   double rssiW; ///< RSSI in W
   uint8_t bssColor; ///< BSS color
+};
+
+/// RxSignalInfo structure containing info on the received signal
+struct RxSignalInfo
+{
+  double snr;  ///< SNR in linear scale
+  double rssi; ///< RSSI in dBm
 };
 
 /**
@@ -211,7 +223,7 @@ public:
    * Start receiving the PHY preamble of a PPDU (i.e. the first bit of the preamble has arrived).
    *
    * \param ppdu the arriving PPDU
-   * \param rxPowersW the receive power in W per 20 MHz channel band
+   * \param rxPowersW the receive power in W per band
    */
   void StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxPowersW);
 
@@ -230,11 +242,37 @@ public:
   void ContinueReceiveHeader (Ptr<Event> event);
 
   /**
+   * The last common PHY header of the current PPDU has been received.
+   *
+   * The last common PHY header is:
+   *  - the non-HT header if the PPDU is non-HT
+   *  - the HT or SIG-A header otherwise
+   *
+   * \param event the event holding incoming PPDU's information
+   */
+  void EndReceiveCommonHeader (Ptr<Event> event);
+
+  /**
+   * The SIG-B of the current MU PPDU has been received.
+   *
+   * \param event the event holding incoming PPDU's information
+   */
+  void EndReceiveSigB (Ptr<Event> event);
+
+  /**
    * Start receiving the PSDU (i.e. the first symbol of the PSDU has arrived).
    *
    * \param event the event holding incoming PPDU's information
    */
   void StartReceivePayload (Ptr<Event> event);
+
+  /**
+   * Start receiving the PSDU (i.e. the first symbol of the PSDU has arrived) of an UL-OFDMA transmission.
+   * This function is called upon the RX event corresponding to the OFDMA part of the UL MU PPDU.
+   *
+   * \param event the event holding incoming OFDMA part of the PPDU's information
+   */
+  void StartReceiveOfdmaPayload (Ptr<Event> event);
 
   /**
    * The last symbol of the PPDU has arrived.
@@ -273,8 +311,13 @@ public:
 
   /**
    * \param ppdu the PPDU to send
+   * \param txPowerLevel the power level to use
+   *
+   * Note that now that the content of the TXVECTOR is stored in the WifiPpdu through PHY headers,
+   * the calling method has to specify the TX power level to use upon transmission.
+   * Indeed the TXVECTOR obtained from WifiPpdu does not have this information set.
    */
-  virtual void StartTx (Ptr<WifiPpdu> ppdu) = 0;
+  virtual void StartTx (Ptr<WifiPpdu> ppdu, uint8_t txPowerLevel) = 0;
 
   /**
    * Put in sleep mode.
@@ -348,6 +391,23 @@ public:
   Time GetLastRxEndTime (void) const;
 
   /**
+   * \param ppduDuration the duration of the HE TB PPDU
+   * \param band the frequency band being used
+   *
+   * \return the L-SIG length value corresponding to that HE TB PPDU duration.
+   */
+  static uint16_t ConvertHeTbPpduDurationToLSigLength (Time ppduDuration, WifiPhyBand band);
+
+  /**
+   * \param length the L-SIG length value
+   * \param txVector the TXVECTOR used for the transmission of this HE TB PPDU
+   * \param band the frequency band being used
+   *
+   * \return the duration of the HE TB PPDU corresponding to that L-SIG length value.
+   */
+  static Time ConvertLSigLengthToHeTbPpduDuration (uint16_t length, WifiTxVector txVector, WifiPhyBand band);
+
+  /**
    * \param size the number of bytes in the packet to send
    * \param txVector the TXVECTOR used for the transmission of this packet
    * \param band the frequency band being used
@@ -373,6 +433,12 @@ public:
    */
   static Time CalculatePhyPreambleAndHeaderDuration (WifiTxVector txVector);
   /**
+   * \param txVector the transmission parameters used for the HE TB PPDU
+   *
+   * \return the duration of the non-OFDMA portion of the HE TB PPDU.
+   */
+  static Time CalculateNonOfdmaDurationForHeTb (WifiTxVector txVector);
+  /**
    *
    * \return the preamble detection duration, which is the time correlation needs to detect the start of an incoming frame.
    */
@@ -397,6 +463,19 @@ public:
    */
   static WifiMode GetHePhyHeaderMode ();
   /**
+   * Get the mode used for HE-SIG-B transmission.
+   * This is applicable only for HE MU.
+   * Get smallest HE MCS index among station's allocations and use the
+   * VHT version of the index. This enables to have 800 ns GI, 52 data
+   * tones, and 312.5 kHz spacing while ensuring that MCS will be decoded
+   * by all stations.
+   *
+   * \param txVector the transmission parameters used for the HE MU PPDU
+   *
+   * \return the transmission mode used for HE-SIG-B
+   */
+  static WifiMode GetHeSigBMode (WifiTxVector txVector);
+  /**
    * \param preamble the type of preamble
    *
    * \return the duration of the HT-SIG in Mixed Format and Greenfield format PHY header
@@ -415,11 +494,11 @@ public:
    */
   static Time GetPhySigA2Duration (WifiPreamble preamble);
   /**
-   * \param preamble the type of preamble
+   * \param txVector the transmission parameters used for this packet
    *
    * \return the duration of the SIG-B in PHY header
    */
-  static Time GetPhySigBDuration (WifiPreamble preamble);
+  static Time GetPhySigBDuration (WifiTxVector txVector);
   /**
    * \param txVector the transmission parameters used for this packet
    *
@@ -1448,19 +1527,19 @@ public:
   typedef void (* PsduTxBeginCallback)(WifiConstPsduMap psduMap, WifiTxVector txVector, double txPowerW);
 
   /**
-   * Public method used to fire a EndOfHePreamble trace once both HE SIG fields have been received, as well as training fields.
+   * Public method used to fire a EndOfHeSigA trace once HE-SIG-A field has been received.
    *
-   * \param params the HE preamble parameters
+   * \param params the HE-SIG-A parameters
    */
-  void NotifyEndOfHePreamble (HePreambleParameters params);
+  void NotifyEndOfHeSigA (HeSigAParameters params);
 
   /**
    * TracedCallback signature for end of HE-SIG-A events.
    *
    *
-   * \param params the HE preamble parameters
+   * \param params the HE-SIG-A parameters
    */
-  typedef void (* EndOfHePreambleCallback)(HePreambleParameters params);
+  typedef void (* EndOfHeSigACallback)(HeSigAParameters params);
 
   /**
    * TracedCallback signature for start of PSDU reception events.
@@ -1729,12 +1808,16 @@ public:
    */
   void ResetCca (bool powerRestricted, double txPowerMaxSiso = 0, double txPowerMaxMimo = 0);
   /**
-   * Compute the transmit power (in dBm) for the next transmission.
+   * Compute the transmit power for the next transmission.
+   * The returned power will satisfy the power density constraints
+   * after addition of antenna gain.
    *
    * \param txVector the TXVECTOR
+   * \param staId the STA-ID of the transmitting station, only applicable for HE TB PPDU
+   * \param flag flag indicating the type of Tx PSD to build
    * \return the transmit power in dBm for the next transmission
    */
-  double GetTxPowerForTransmission (WifiTxVector txVector) const;
+  double GetTxPowerForTransmission (WifiTxVector txVector, uint16_t staId = SU_STA_ID, TxPsdFlag flag = PSD_NON_HE_TB) const;
   /**
    * Notify the PHY that an access to the channel was requested.
    * This is typically called by the channel access manager to
@@ -1744,11 +1827,35 @@ public:
    */
   void NotifyChannelAccessRequested (void);
 
+  /**
+   * Get the RU band used to transmit a PSDU to a given STA in a HE MU PPDU
+   *
+   * \param txVector the TXVECTOR used for the transmission
+   * \param staId the STA-ID of the recipient
+   *
+   * \return the RU band used to transmit a PSDU to a given STA in a HE MU PPDU
+   */
+  WifiSpectrumBand GetRuBand (WifiTxVector txVector, uint16_t staId) const;
+  /**
+   * Get the band used to transmit the non-OFDMA part of an HE TB PPDU.
+   *
+   * \param txVector the TXVECTOR used for the transmission
+   * \param staId the STA-ID of the station taking part of the UL MU
+   *
+   * \return the spectrum band used to transmit the non-OFDMA part of an HE TB PPDU
+   */
+  WifiSpectrumBand GetNonOfdmaBand (WifiTxVector txVector, uint16_t staId) const;
+
 
 protected:
   // Inherited
   virtual void DoInitialize (void);
   virtual void DoDispose (void);
+
+  /*
+   * Reset data upon end of TX or RX
+   */
+  void Reset (void);
 
   /**
    * The default implementation does nothing and returns true.  This method
@@ -1776,16 +1883,29 @@ protected:
    * state of interference tracker.  In this model, CCA becomes busy when
    * the aggregation of all signals as tracked by the InterferenceHelper
    * class is higher than the CcaEdThreshold
+   *
+   * \param channelWidth the channel width in MHz used for RSSI measurement
    */
-  void SwitchMaybeToCcaBusy (void);
+  void SwitchMaybeToCcaBusy (uint16_t channelWidth);
 
   /**
    * Return the STA ID that has been assigned to the station this PHY belongs to.
    * This is typically called for MU PPDUs, in order to pick the correct PSDU.
    *
+   * \param ppdu the PPDU for which the STA ID is requested
    * \return the STA ID
    */
-  virtual uint16_t GetStaId (void) const;
+  virtual uint16_t GetStaId (const Ptr<const WifiPpdu> ppdu) const;
+
+  /**
+   * Return the channel width used to measure the RSSI.
+   * This corresponds to the primary channel unless it corresponds to the
+   * HE TB PPDU solicited by the AP.
+   *
+   * \param ppdu the PPDU that is being received
+   * \param the channel width (in MHz) used for RSSI measurement
+   */
+  uint16_t GetMeasurementChannelWidth (const Ptr<const WifiPpdu> ppdu) const;
 
   /**
    * Get the start band index and the stop band index for a given band
@@ -1813,11 +1933,22 @@ protected:
   uint32_t m_txMpduReferenceNumber;    //!< A-MPDU reference number to identify all transmitted subframes belonging to the same received A-MPDU
   uint32_t m_rxMpduReferenceNumber;    //!< A-MPDU reference number to identify all received subframes belonging to the same received A-MPDU
 
-  EventId m_endRxEvent;                //!< the end of receive event
   EventId m_endPhyRxEvent;             //!< the end of PHY receive event
-  EventId m_endPreambleDetectionEvent; //!< the end of preamble detection event
-
   EventId m_endTxEvent;                //!< the end of transmit event
+
+  std::vector <EventId> m_endRxEvents; //!< the end of receive events (only one unless UL MU reception)
+  std::vector <EventId> m_endPreambleDetectionEvents; //!< the end of preamble detection events
+
+  std::map <uint16_t /* STA-ID */, EventId> m_beginOfdmaPayloadRxEvents; //!< the beginning of the OFDMA payload reception events (indexed by STA-ID)
+
+  Ptr<Event> m_currentEvent; //!< Hold the current event
+  std::map <std::pair<uint64_t /* UID*/, WifiPreamble>, Ptr<Event> > m_currentPreambleEvents; //!< store event associated to a PPDU (that has a unique ID and preamble combination) whose preamble is being received
+
+  uint64_t m_currentHeTbPpduUid;   //!< UID of the HE TB PPDU being received
+  uint64_t m_previouslyRxPpduUid;  //!< UID of the previously received PPDU (reused by HE TB PPDUs), reset to UINT64_MAX upon transmission
+  uint64_t m_previouslyTxPpduUid;  //!< UID of the previously sent PPDU, used by AP to recognize response HE TB PPDUs
+
+  static uint64_t m_globalPpduUid;     //!< Global counter of the PPDU UID
 
 
 private:
@@ -1926,8 +2057,9 @@ private:
 
   /**
    * Eventually switch to CCA busy
+   * \param channelWidth the channel width in MHz used for RSSI measurement
    */
-  void MaybeCcaBusyDuration (void);
+  void MaybeCcaBusyDuration (uint16_t channelWidth);
 
   /**
    * Starting receiving the PPDU after having detected the medium is idle or after a reception switch.
@@ -1977,14 +2109,26 @@ private:
   Ptr<const WifiPsdu> GetAddressedPsduInPpdu (Ptr<const WifiPpdu> ppdu) const;
 
   /**
-   * Get the RU band used to transmit a PSDU to a given STA in a HE MU PPDU
+   * Schedule StartReceivePayload if the mode in the SIG and the number of
+   * spatial streams are supported.
    *
-   * \param txVector the TXVECTOR used for the transmission
-   * \param staId the STA-ID of the recipient
-   *
-   * \return the RU band used to transmit a PSDU to a given STA in a HE MU PPDU
+   * \param event the event holding the incoming PPDU's information
+   * \param timeToPayloadStart the time left till payload start
+   * \return \c true if the reception of the payload has been scheduled,
+   *         \c false otherwise
    */
-  WifiSpectrumBand GetRuBand (WifiTxVector txVector, uint16_t staId);
+  bool ScheduleStartReceivePayload (Ptr<Event> event, Time timeToPayloadStart);
+
+  /**
+   * Drop the PPDU and the corresponding preamble detection event, but keep CCA busy
+   * state after the completion of the currently processed event.
+   *
+   * \param ppdu the incoming PPDU
+   * \param reason the reason the PPDU is dropped
+   * \param endRx the end of the incoming PPDU's reception
+   * \param measurementChannelWidth the measurement width (in MHz) to consider for the PPDU
+   */
+  void DropPreambleEvent (Ptr<const WifiPpdu> ppdu, WifiPhyRxfailureReason reason, Time endRx, uint16_t measurementChannelWidth);
 
   /**
    * The trace source fired when a packet begins the transmission process on
@@ -2085,11 +2229,11 @@ private:
   TracedCallback<Ptr<const Packet>, uint16_t /* frequency (MHz) */, WifiTxVector, MpduInfo, uint16_t /* STA-ID*/> m_phyMonitorSniffTxTrace;
 
   /**
-   * A trace source that indicates the end of both HE SIG fields as well as training fields for received 802.11ax packets
+   * A trace source that indicates the end of HE SIG-A field for received 802.11ax PPDUs
    *
    * \see class CallBackTraceSource
    */
-  TracedCallback<HePreambleParameters> m_phyEndOfHePreambleTrace;
+  TracedCallback<HeSigAParameters> m_phyEndOfHeSigATrace;
 
   /**
    * This vector holds the set of transmission modes that this
@@ -2155,6 +2299,7 @@ private:
   double   m_txPowerBaseDbm;      //!< Minimum transmission power (dBm)
   double   m_txPowerEndDbm;       //!< Maximum transmission power (dBm)
   uint8_t  m_nTxPower;            //!< Number of available transmission power levels
+  double m_powerDensityLimit;     //!< the power density limit (dBm/MHz)
 
   bool m_powerRestricted;        //!< Flag whether transmit power is restricted by OBSS PD SR
   double m_txPowerMaxSiso;       //!< SISO maximum transmit power due to OBSS PD SR power restriction (dBm)
@@ -2179,7 +2324,6 @@ private:
   Ptr<MobilityModel> m_mobility; //!< Pointer to the mobility model
 
   Callback<void> m_killTfBReTxCallback;
-  Ptr<Event> m_currentEvent;                            //!< Hold the current event
   Ptr<FrameCaptureModel> m_frameCaptureModel;           //!< Frame capture model
   Ptr<PreambleDetectionModel> m_preambleDetectionModel; //!< Preamble detection model
   Ptr<WifiRadioEnergyModel> m_wifiRadioEnergyModel;     //!< Wifi radio energy model
@@ -2188,11 +2332,23 @@ private:
 
   std::vector <EventId> m_endOfMpduEvents; //!< the end of MPDU events (only used for A-MPDUs)
 
-  std::vector<bool> m_statusPerMpdu; //!<  current reception status per MPDU that is filled in as long as MPDUs are being processed by the PHY in case of an A-MPDU
-  SignalNoiseDbm m_signalNoise;      //!< latest signal power and noise power in dBm (noise power includes the noise figure)
+  /**
+   * A pair of a UID and STA_ID
+   */
+  typedef std::pair <uint64_t /* uid */, uint16_t /* staId */> UidStaIdPair;
 
-  Callback<void> m_capabilitiesChangedCallback;         //!< Callback when PHY capabilities changed
+  std::map<UidStaIdPair, std::vector<bool> > m_statusPerMpduMap; //!< Map of the current reception status per MPDU that is filled in as long as MPDUs are being processed by the PHY in case of an A-MPDU
+  std::map<UidStaIdPair, SignalNoiseDbm> m_signalNoiseMap; //!< Map of the latest signal power and noise power in dBm (noise power includes the noise figure)
+
+  Callback<void> m_capabilitiesChangedCallback; //!< Callback when PHY capabilities changed
 };
+
+/**
+ * \param os           output stream
+ * \param rxSignalInfo received signal info to stringify
+ * \return output stream
+ */
+std::ostream& operator<< (std::ostream& os, RxSignalInfo rxSignalInfo);
 
 } //namespace ns3
 

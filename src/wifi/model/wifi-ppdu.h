@@ -50,8 +50,9 @@ public:
    * \param txVector the TXVECTOR that was used for this PPDU
    * \param ppduDuration the transmission duration of this PPDU
    * \param band the WifiPhyBand used for the transmission of this PPDU
+   * \param uid the unique ID of this PPDU or of the triggering PPDU if this is an HE TB PPDU
    */
-  WifiPpdu (Ptr<const WifiPsdu> psdu, WifiTxVector txVector, Time ppduDuration, WifiPhyBand band);
+  WifiPpdu (Ptr<const WifiPsdu> psdu, WifiTxVector txVector, Time ppduDuration, WifiPhyBand band, uint64_t uid);
 
   /**
    * Create a MU PPDU storing a vector of PSDUs.
@@ -60,8 +61,9 @@ public:
    * \param txVector the TXVECTOR that was used for this PPDU
    * \param ppduDuration the transmission duration of this PPDU
    * \param band the WifiPhyBand used for the transmission of this PPDU
+   * \param uid the unique ID of this PPDU or of the triggering PPDU if this is an HE TB PPDU
    */
-  WifiPpdu (const WifiConstPsduMap & psdus, WifiTxVector txVector, Time ppduDuration, WifiPhyBand band);
+  WifiPpdu (const WifiConstPsduMap & psdus, WifiTxVector txVector, Time ppduDuration, WifiPhyBand band, uint64_t uid = 0);
 
   virtual ~WifiPpdu ();
 
@@ -77,7 +79,7 @@ public:
    * \param staId the staId of the PHY calling this function.
    * \return the PSDU
    */
-  Ptr<const WifiPsdu> GetPsdu (uint8_t bssColor = 64, uint16_t staId = SU_STA_ID) const;
+  Ptr<const WifiPsdu> GetPsdu (uint8_t bssColor = 0, uint16_t staId = SU_STA_ID) const;
 
   /**
    * Return true if the PPDU's transmission was aborted due to transmitter switch off
@@ -101,12 +103,40 @@ public:
    * \return true if the PPDU is a MU PPDU
    */
   bool IsMu (void) const;
+  /**
+   * Return true if the PPDU is a DL MU PPDU
+   * \return true if the PPDU is a DL MU PPDU
+   */
+  bool IsDlMu (void) const;
+  /**
+   * Return true if the PPDU is an UL MU PPDU
+   * \return true if the PPDU is an UL MU PPDU
+   */
+  bool IsUlMu (void) const;
 
   /**
    * Get the modulation used for the PPDU.
    * \return the modulation used for the PPDU
    */
   WifiModulationClass GetModulation (void) const;
+
+  /**
+   * Get the ID of the STA that transmitted the PPDU (for HE TB PPDU).
+   * \return the ID of the STA that transmitted the PPDU
+   */
+  uint16_t GetStaId (void) const;
+
+  /**
+   * Get the UID of the PPDU.
+   * \return the UID of the PPDU
+   */
+  uint64_t GetUid (void) const;
+
+  /**
+   * Get the preamble of the PPDU.
+   * \return the preamble of the PPDU
+   */
+  WifiPreamble GetPreamble (void) const;
 
   /**
    * \brief Print the PPDU contents.
@@ -138,6 +168,7 @@ private:
   uint16_t m_channelWidth;                     //!< the channel width used to transmit that PPDU in MHz
   uint8_t m_txPowerLevel;                      //!< the transmission power level (used only for TX and initializing the returned WifiTxVector)
   WifiTxVector::HeMuUserInfoMap m_muUserInfos; //!< the HE MU specific per-user information (to be removed once HE-SIG-B headers are implemented)
+  uint64_t m_uid;                              //!< the unique ID of this PPDU or of the triggering PPDU if this is an HE TB PPDU
 };
 
 /**

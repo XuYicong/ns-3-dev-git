@@ -38,6 +38,10 @@ enum
 enum
 {
   //Reserved: 0 - 6
+  //Xyct: add trigger frame
+  SUBTYPE_CTL_TF = 2,
+  SUBTYPE_CTL_TF_RESP = 3,
+  SUBTYPE_CTL_BSR_ACK = 4,
   SUBTYPE_CTL_CTLWRAPPER = 7,
   SUBTYPE_CTL_BACKREQ = 8,
   SUBTYPE_CTL_BACKRESP = 9,
@@ -145,6 +149,18 @@ WifiMacHeader::SetType (WifiMacType type, bool resetToDsFromDs)
       m_ctrlType = TYPE_CTL;
       m_ctrlSubtype = SUBTYPE_CTL_END_ACK;
       break;
+    case WIFI_MAC_CTL_BSR_ACK: //Xyct: change Mgt to Ctl. infocom: Type and subtype for TF beacon, TF response, TF 
+      m_ctrlType = TYPE_CTL;
+      m_ctrlSubtype = SUBTYPE_CTL_BSR_ACK;
+      break;
+    case WIFI_MAC_CTL_TF_RESP: //infocom: Type and subtype for TF beacon, TF response, TF
+      m_ctrlType = TYPE_CTL;
+      m_ctrlSubtype = SUBTYPE_CTL_TF_RESP;
+      break;
+    case WIFI_MAC_CTL_TF: //infocom: Type and subtype for TF beacon, TF response, TF
+      m_ctrlType = TYPE_CTL;
+      m_ctrlSubtype = SUBTYPE_CTL_TF;
+      break;
     case WIFI_MAC_MGT_ASSOCIATION_REQUEST:
       m_ctrlType = TYPE_MGT;
       m_ctrlSubtype = 0;
@@ -196,18 +212,6 @@ WifiMacHeader::SetType (WifiMacType type, bool resetToDsFromDs)
     case WIFI_MAC_MGT_MULTIHOP_ACTION:
       m_ctrlType = TYPE_MGT;
       m_ctrlSubtype = 15;
-      break;
-    case WIFI_MAC_CTL_BSR_ACK: //Xyct: change Mgt to Ctl. infocom: Type and subtype for TF beacon, TF response, TF 
-      m_ctrlType = TYPE_MGT;
-      m_ctrlSubtype = 10;
-      break;
-    case WIFI_MAC_CTL_TF_RESP: //infocom: Type and subtype for TF beacon, TF response, TF
-      m_ctrlType = TYPE_MGT;
-      m_ctrlSubtype = 11;
-      break;
-    case WIFI_MAC_CTL_TF: //infocom: Type and subtype for TF beacon, TF response, TF
-      m_ctrlType = TYPE_MGT;
-      m_ctrlSubtype = 12;
       break;
     case WIFI_MAC_DATA:
       m_ctrlType = TYPE_DATA;
@@ -447,12 +451,6 @@ WifiMacHeader::GetType (void) const
           return WIFI_MAC_MGT_PROBE_RESPONSE;
         case 8:
           return WIFI_MAC_MGT_BEACON;
-        case 10:
-          return WIFI_MAC_MGT_BSR_ACK; //GetType for TF
-        case 11:
-          return WIFI_MAC_MGT_TF_RESP;
-        case 12:
-          return WIFI_MAC_MGT_TF;
         case 13:
           return WIFI_MAC_MGT_ACTION;
         case 14:
@@ -470,6 +468,12 @@ WifiMacHeader::GetType (void) const
     case TYPE_CTL:
       switch (m_ctrlSubtype)
         {
+        case SUBTYPE_CTL_BSR_ACK:
+          return WIFI_MAC_CTL_BSR_ACK; //GetType for TF
+        case SUBTYPE_CTL_TF_RESP:
+          return WIFI_MAC_CTL_TF_RESP;//Xyct: change MGT to CTL
+        case SUBTYPE_CTL_TF:
+          return WIFI_MAC_CTL_TF;
         case SUBTYPE_CTL_BACKREQ:
           return WIFI_MAC_CTL_BACKREQ;
         case SUBTYPE_CTL_BACKRESP:
@@ -587,21 +591,21 @@ void
 WifiMacHeader::SetBsrAck (void) //infocom: set TF beacon, response and TF
 {
   m_ctrlType = TYPE_CTL;
-  m_ctrlSubtype = 10;
+  m_ctrlSubtype = SUBTYPE_CTL_BSR_ACK;
 }
 
 void
 WifiMacHeader::SetTriggerFrameResp (void) //Xyct: change MGT to CTL. infocom: set TF beacon, response and TF
 {
   m_ctrlType = TYPE_CTL;
-  m_ctrlSubtype = 11;
+  m_ctrlSubtype = SUBTYPE_CTL_TF_RESP;
 }
 
 void
 WifiMacHeader::SetTriggerFrame (void) //infocom: set TF beacon, response and TF
 {
   m_ctrlType = TYPE_CTL;
-  m_ctrlSubtype = 12;
+  m_ctrlSubtype = SUBTYPE_CTL_TF;
 }
 
 bool
@@ -957,6 +961,9 @@ WifiMacHeader::GetSize (void) const
         case SUBTYPE_CTL_BACKRESP:
         case SUBTYPE_CTL_END:
         case SUBTYPE_CTL_END_ACK:
+        case SUBTYPE_CTL_BSR_ACK:
+        case SUBTYPE_CTL_TF_RESP:
+        case SUBTYPE_CTL_TF://Xyct: change MGT to CTL
           size = 2 + 2 + 6 + 6;
           break;
         case SUBTYPE_CTL_CTS:
@@ -1000,11 +1007,11 @@ case WIFI_MAC_ ## x: \
       FOO (CTL_BACKRESP);
       FOO (CTL_END);
       FOO (CTL_END_ACK);
+      FOO (CTL_BSR_ACK);
+      FOO (CTL_TF_RESP);
+      FOO (CTL_TF);
 
       FOO (MGT_BEACON);
-      FOO (MGT_BSR_ACK);
-      FOO (MGT_TF_RESP);
-      FOO (MGT_TF);
       FOO (MGT_ASSOCIATION_REQUEST);
       FOO (MGT_ASSOCIATION_RESPONSE);
       FOO (MGT_DISASSOCIATION);
@@ -1079,6 +1086,9 @@ WifiMacHeader::Print (std::ostream &os) const
       os << "Duration/ID=" << m_duration << "us"
          << ", RA=" << m_addr1 << ", TA=" << m_addr2;
       break;
+    case WIFI_MAC_CTL_BSR_ACK: //infocom: TF
+    case WIFI_MAC_CTL_TF_RESP://Xyct: MGT to CTL
+    case WIFI_MAC_CTL_TF:
     case WIFI_MAC_CTL_CTS:
     case WIFI_MAC_CTL_ACK:
       os << "Duration/ID=" << m_duration << "us"
@@ -1094,9 +1104,6 @@ WifiMacHeader::Print (std::ostream &os) const
     case WIFI_MAC_MGT_PROBE_RESPONSE:
     case WIFI_MAC_MGT_AUTHENTICATION:
     case WIFI_MAC_MGT_DEAUTHENTICATION:
-    case WIFI_MAC_MGT_BSR_ACK: //infocom: TF
-    case WIFI_MAC_MGT_TF_RESP:
-    case WIFI_MAC_MGT_TF:
       PrintFrameControl (os);
       os << " Duration/ID=" << m_duration << "us"
          << ", DA=" << m_addr1 << ", SA=" << m_addr2
@@ -1192,6 +1199,9 @@ WifiMacHeader::Serialize (Buffer::Iterator i) const
         case SUBTYPE_CTL_BACKRESP:
         case SUBTYPE_CTL_END:
         case SUBTYPE_CTL_END_ACK:
+        case SUBTYPE_CTL_BSR_ACK:
+        case SUBTYPE_CTL_TF_RESP:
+        case SUBTYPE_CTL_TF://Xyct: change MGT to CTL
           WriteTo (i, m_addr2);
           break;
         case SUBTYPE_CTL_CTS:
