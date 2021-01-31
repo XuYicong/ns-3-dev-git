@@ -518,9 +518,9 @@ WifiPhy::WifiPhy ()
     m_endPhyRxEvent (),
     m_endTxEvent (),
     m_currentEvent (0),
-    m_currentHeTbPpduUid (UINT64_MAX),
     m_previouslyRxPpduUid (UINT64_MAX),
     m_previouslyTxPpduUid (UINT64_MAX),
+    m_currentHeTbPpduUid (UINT64_MAX),
     m_standard (WIFI_PHY_STANDARD_UNSPECIFIED),
     m_band (WIFI_PHY_BAND_UNSPECIFIED),
     m_isConstructed (false),
@@ -3205,15 +3205,6 @@ WifiPhy::StartReceivePreamble (Ptr<WifiPpdu> ppdu, RxPowerWattPerChannelBand rxP
   NS_LOG_FUNCTION (this << *ppdu << it->second);
   WifiTxVector txVector = ppdu->GetTxVector ();
   Time rxDuration = ppdu->GetTxDuration ();
-  //Ptr<Event> event = m_interference.Add (ppdu, txVector, rxDuration, rxPowersW);
-  //Time endRx = Simulator::Now () + rxDuration;
-  /*WifiMacHeader hdr;
-  psdu->PeekHeader (hdr);//Xyct: In 3.28, they added more exceptional conditions, I moved this down.
-  //Xyct: In 3.32, changed packet to psdu
-  if (hdr.IsTFResponse ())
-   {
-     m_killTfBReTxCallback ();
-   }*///Xyct: In 3.33, remove TF stuff from PHY
 
   Ptr<Event> event;
   //We store all incoming preamble events, and a decision is made at the end of the preamble detection window.
@@ -3635,6 +3626,81 @@ WifiPhy::ScheduleStartReceivePayload (Ptr<Event> event, Time timeToPayloadStart)
     }
   return success;
 }
+
+/*void
+WifiPhy::StartReceivePayload (Ptr<Event> event)
+{
+  NS_LOG_FUNCTION (this << *event);
+  NS_ASSERT (m_endPhyRxEvent.IsExpired ());
+  Ptr<const WifiPpdu> ppdu = event->GetPpdu ();
+  WifiTxVector txVector = event->GetTxVector ();
+  Time payloadDuration = ppdu->GetTxDuration () - CalculatePhyPreambleAndHeaderDuration (txVector);
+  m_state->SwitchToRx (payloadDuration);
+  m_phyRxPayloadBeginTrace (txVector, payloadDuration); //this callback (equivalent to PHY-RXSTART primitive) is triggered only if headers have been correctly decoded and that the mode within is supported
+
+  Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice> (GetDevice ());
+  bool isAp = device != 0 && (DynamicCast<ApWifiMac> (device->GetMac ()) != 0);
+  if (txVector.GetPreambleType () == WIFI_PREAMBLE_HE_TB && !isAp)
+    {
+      NS_LOG_DEBUG ("Ignore HE TB PPDU payload received by STA but keep state in Rx");
+      m_endRxEvents.push_back (Simulator::Schedule (payloadDuration,
+                                                    &WifiPhy::ResetReceive, this, event));
+      //Cancel all scheduled events for OFDMA payload reception
+      NS_ASSERT (!m_beginOfdmaPayloadRxEvents.empty () && m_beginOfdmaPayloadRxEvents.begin ()->second.IsRunning ());
+      for (auto & beginOfdmaPayloadRxEvent : m_beginOfdmaPayloadRxEvents)
+        {
+          beginOfdmaPayloadRxEvent.second.Cancel ();
+        }
+      m_beginOfdmaPayloadRxEvents.clear ();
+    }
+  else
+    {
+      NS_LOG_DEBUG ("Receiving PSDU");
+      uint16_t staId = GetStaId (ppdu);
+      m_signalNoiseMap.insert ({std::make_pair (ppdu->GetUid (), staId), SignalNoiseDbm ()});
+      m_statusPerMpduMap.insert ({std::make_pair (ppdu->GetUid (), staId), std::vector<bool> ()});
+      if (txVector.GetPreambleType () == WIFI_PREAMBLE_HE_TB)
+        {
+          //for HE TB PPDUs, ScheduleEndOfMpdus and EndReceive are scheduled by StartReceiveOfdmaPayload
+          NS_ASSERT (isAp);
+          NS_ASSERT (!m_beginOfdmaPayloadRxEvents.empty ());
+          for (auto & beginOfdmaPayloadRxEvent : m_beginOfdmaPayloadRxEvents)
+            {
+              NS_ASSERT (beginOfdmaPayloadRxEvent.second.IsRunning ());
+            }
+        }
+      else
+        {
+          ScheduleEndOfMpdus (event);
+          m_endRxEvents.push_back (Simulator::Schedule (payloadDuration, &WifiPhy::EndReceive, this, event));
+        }
+    }
+
+  bool success = false;
+  if (nss > GetMaxSupportedRxSpatialStreams ())
+    {
+      NS_LOG_DEBUG ("Packet reception could not be started because not enough RX antennas");
+      NotifyRxDrop (psdu, UNSUPPORTED_SETTINGS);
+    }
+  else if (IsModeSupported (txMode) || IsMcsSupported (txMode))
+    {
+      NS_LOG_INFO ("SIG correctly decoded and with supported settings. Schedule start of payload.");
+      m_endPhyRxEvent = Simulator::Schedule (timeToPayloadStart,
+                                             &WifiPhy::StartReceivePayload, this, event);
+
+      if (txVector.GetPreambleType () == WIFI_PREAMBLE_HE_TB)
+        {
+          m_currentHeTbPpduUid = ppdu->GetUid (); //to be able to correctly schedule start of OFDMA payload
+        }
+      success = true;
+    }
+  else //mode is not allowed
+    {
+      NS_LOG_DEBUG ("Drop packet because it was sent using an unsupported mode (" << txMode << ")");
+      NotifyRxDrop (psdu, UNSUPPORTED_SETTINGS);
+    }
+  return success;
+}*/
 
 void
 WifiPhy::StartReceivePayload (Ptr<Event> event)

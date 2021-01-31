@@ -368,7 +368,7 @@ ApWifiMac::ForwardDown (Ptr<Packet> packet, Mac48Address from,
     {
       //Sanity check that the TID is valid
       NS_ASSERT (tid < 8);
-      if (m_muModeToStart)
+      /*if (m_muModeToStart)
        {
          RegularWifiMac::RUAllocations::const_iterator it;
          it = m_tfAlloc.find (to);
@@ -382,9 +382,9 @@ ApWifiMac::ForwardDown (Ptr<Packet> packet, Mac48Address from,
           }
        }
       else if (!GetMuMode ())
-       {
+       {*/
          m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
-       }
+       /*}
       else 
        {
          RegularWifiMac::RUAllocations::const_iterator it;
@@ -398,11 +398,11 @@ ApWifiMac::ForwardDown (Ptr<Packet> packet, Mac48Address from,
             m_channelAccessManagerMu[it->second]->UpdateBusyDuration (); // Removes BUSY state from dcfManagerMu
             m_edcaMu[it->second][QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
           }
-       }
+       }*/
     }
   else
     {
-      if (m_muModeToStart)
+      /*if (m_muModeToStart)
        {
          RegularWifiMac::RUAllocations::const_iterator it;
          it = m_tfAlloc.find (to);
@@ -416,9 +416,9 @@ ApWifiMac::ForwardDown (Ptr<Packet> packet, Mac48Address from,
           }
        }
       else if (!GetMuMode ())
-       {
+       {*/
          m_txop->Queue (packet, hdr);
-       }
+       /*}
       else 
        {
          RegularWifiMac::RUAllocations::const_iterator it;
@@ -432,7 +432,7 @@ ApWifiMac::ForwardDown (Ptr<Packet> packet, Mac48Address from,
             m_channelAccessManagerMu[it->second]->UpdateBusyDuration ();
             m_txopMu[it->second]->Queue (packet, hdr);
           }
-       }
+       }*/
     }
 }
 
@@ -1929,7 +1929,7 @@ ApWifiMac::DoInitialize (void)
           NS_LOG_DEBUG ("Scheduling initial beacon for access point " << GetAddress () << " at time 0");
           m_beaconEvent = Simulator::ScheduleNow (&ApWifiMac::SendOneBeacon, this);
           NS_LOG_DEBUG ("Scheduling initial Trigger Frame beacon for access point " << GetAddress () << " at time 0");
-          Simulator::Schedule (MicroSeconds(999920), &ApWifiMac::StartMuModeUplink, this);
+          Simulator::Schedule (MicroSeconds(199920), &ApWifiMac::StartMuModeUplink, this);
         }
     }
   RegularWifiMac::DoInitialize ();

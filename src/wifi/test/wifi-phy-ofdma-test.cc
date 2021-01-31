@@ -192,18 +192,18 @@ OfdmaSpectrumWifiPhy::GetCurrentPreambleEvents (void)
   return m_currentPreambleEvents;
 }
 
-Ptr<Event>
-OfdmaSpectrumWifiPhy::GetCurrentEvent (void)
-{
-  return m_currentEvent;
-}
-
 uint16_t
 OfdmaSpectrumWifiPhy::GetGuardBandwidth (uint16_t currentChannelWidth) const
 {
   // return a small enough value to avoid having too much out of band transmission
   // knowing that slopes are not configurable yet.
   return 1;
+}
+
+Ptr<Event>
+OfdmaSpectrumWifiPhy::GetCurrentEvent (void)
+{
+  return m_currentEvent;
 }
 
 Time

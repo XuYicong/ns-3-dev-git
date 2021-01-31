@@ -1944,9 +1944,10 @@ protected:
   Ptr<Event> m_currentEvent; //!< Hold the current event
   std::map <std::pair<uint64_t /* UID*/, WifiPreamble>, Ptr<Event> > m_currentPreambleEvents; //!< store event associated to a PPDU (that has a unique ID and preamble combination) whose preamble is being received
 
-  uint64_t m_currentHeTbPpduUid;   //!< UID of the HE TB PPDU being received
-  uint64_t m_previouslyRxPpduUid;  //!< UID of the previously received PPDU (reused by HE TB PPDUs), reset to UINT64_MAX upon transmission
-  uint64_t m_previouslyTxPpduUid;  //!< UID of the previously sent PPDU, used by AP to recognize response HE TB PPDUs
+  uint64_t m_previouslyRxPpduUid;      //!< UID of the previously received PPDU (reused by HE TB PPDUs), reset to UINT64_MAX upon transmission
+  uint64_t m_previouslyTxPpduUid;      //!< UID of the previously sent PPDU, used by AP to recognize response HE TB PPDUs
+
+  uint64_t m_currentHeTbPpduUid;       //!< UID of the HE TB PPDU being received
 
   static uint64_t m_globalPpduUid;     //!< Global counter of the PPDU UID
 
@@ -2109,17 +2110,6 @@ private:
   Ptr<const WifiPsdu> GetAddressedPsduInPpdu (Ptr<const WifiPpdu> ppdu) const;
 
   /**
-   * Schedule StartReceivePayload if the mode in the SIG and the number of
-   * spatial streams are supported.
-   *
-   * \param event the event holding the incoming PPDU's information
-   * \param timeToPayloadStart the time left till payload start
-   * \return \c true if the reception of the payload has been scheduled,
-   *         \c false otherwise
-   */
-  bool ScheduleStartReceivePayload (Ptr<Event> event, Time timeToPayloadStart);
-
-  /**
    * Drop the PPDU and the corresponding preamble detection event, but keep CCA busy
    * state after the completion of the currently processed event.
    *
@@ -2129,6 +2119,17 @@ private:
    * \param measurementChannelWidth the measurement width (in MHz) to consider for the PPDU
    */
   void DropPreambleEvent (Ptr<const WifiPpdu> ppdu, WifiPhyRxfailureReason reason, Time endRx, uint16_t measurementChannelWidth);
+
+  /**
+   * Schedule StartReceivePayload if the mode in the SIG and the number of
+   * spatial streams are supported.
+   *
+   * \param event the event holding the incoming PPDU's information
+   * \param timeToPayloadStart the time left till payload start
+   * \return \c true if the reception of the payload has been scheduled,
+   *         \c false otherwise
+   */
+  bool ScheduleStartReceivePayload (Ptr<Event> event, Time timeToPayloadStart);
 
   /**
    * The trace source fired when a packet begins the transmission process on

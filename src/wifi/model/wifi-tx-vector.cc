@@ -118,6 +118,9 @@ WifiTxVector::GetMode (uint16_t staId) const
     }
   if (IsMu ())
     {
+        if(staId == SU_STA_ID){
+            staId = m_muUserInfos.begin()->first;
+        }//Xyct: Of course I mean the first one
       NS_ABORT_MSG_IF (staId > 2048, "STA-ID should be correctly set for HE MU (" << staId << ")");
       NS_ASSERT (m_muUserInfos.find (staId) != m_muUserInfos.end ());
       return m_muUserInfos.at (staId).mcs;
@@ -160,6 +163,9 @@ WifiTxVector::GetNss (uint16_t staId) const
 {
   if (IsMu ())
     {
+        NS_ASSERT(!m_muUserInfos.empty());
+        if(staId == SU_STA_ID) staId=m_muUserInfos.begin()->first;
+        //Xyct: default to the first
       NS_ABORT_MSG_IF (staId > 2048, "STA-ID should be correctly set for HE MU (" << staId << ")");
       NS_ASSERT (m_muUserInfos.find (staId) != m_muUserInfos.end ());
       return m_muUserInfos.at (staId).nss;
@@ -386,6 +392,9 @@ HeRu::RuSpec
 WifiTxVector::GetRu (uint16_t staId) const
 {
   NS_ABORT_MSG_IF (!IsMu (), "RU only available for MU");
+        NS_ASSERT(!m_muUserInfos.empty());
+        if(staId == SU_STA_ID) staId=m_muUserInfos.begin()->first;
+        //Xyct: default to the first
   NS_ABORT_MSG_IF (staId > 2048, "STA-ID should be correctly set for HE MU");
   return m_muUserInfos.at (staId).ru;
 }

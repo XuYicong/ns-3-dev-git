@@ -50,6 +50,7 @@ WifiPpdu::WifiPpdu (const WifiConstPsduMap & psdus, WifiTxVector txVector, Time 
     m_truncatedTx (false),
     m_band (band),
     m_channelWidth (txVector.GetChannelWidth ()),
+    m_txPowerLevel (txVector.GetTxPowerLevel ()),
     m_uid (uid)
 {
   NS_LOG_FUNCTION (this << psdus << txVector << ppduDuration << band << uid);

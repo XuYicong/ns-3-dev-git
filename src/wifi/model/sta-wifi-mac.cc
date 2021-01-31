@@ -587,7 +587,7 @@ StaWifiMac::Enqueue (Ptr<Packet> packet, Mac48Address to)
   hdr.SetDsTo ();
 
 
-  if (GetMuMode ())
+  /*if (GetMuMode ())
    {
      if (GetQosSupported ())
       {
@@ -610,11 +610,9 @@ StaWifiMac::Enqueue (Ptr<Packet> packet, Mac48Address to)
        {
 	 for (uint32_t i = 0; i < 9; i++)
           {
-	    /*
 	     * Send a copy of this packet to each of the queue
 	     * TODO: Need to fix this by maintaining ONE queue
 	     * for MU and non-MU mode
-	     */
             m_edcaMu[i][AC_BE]->QueueButDontSend (packet, hdr);
 	  }
        }
@@ -627,22 +625,22 @@ StaWifiMac::Enqueue (Ptr<Packet> packet, Mac48Address to)
        }
    }
   else 
-   {
+   {*/
      if (GetQosSupported ())
       {//Xyct: It's really buggy that non-mu packets are not sent too.
         //Sanity check that the TID is valid
-        //NS_ASSERT (tid < 8);
-        //m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
-        for (uint32_t i = 0; i < 9; i++)
+        NS_ASSERT (tid < 8);
+        m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+        /*for (uint32_t i = 0; i < 9; i++)
          {
            m_edcaMu[i][AC_BE]->QueueButDontSend (packet, hdr);
-         }
+         }*/
       }
      else
       {//Xyct: if sent, would conflict with AP who doesn't backoff
-	    //m_txop->Queue (packet, hdr);
+	    m_txop->Queue (packet, hdr);
       }
-   }
+  // }
   
 }
 

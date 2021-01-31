@@ -227,7 +227,7 @@ int main (int argc, char *argv[])
 {
   Packet::EnablePrinting ();
   Packet::EnableChecking ();
-  uint32_t noNodes = 6;
+  uint32_t noNodes = 8;
   uint32_t wifiDistance = 1;
   double simulationTime = 10; //seconds
   uint32_t wifiFreq = 5180;
@@ -244,7 +244,7 @@ int main (int argc, char *argv[])
   uint32_t tfCw = 7;
   uint32_t tfCwMin = 7;
   uint32_t tfCwMax = 63;
-  uint32_t nScheduled = 3;
+  uint32_t nScheduled = 1;
   double alpha = 0;
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
 

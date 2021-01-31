@@ -682,7 +682,6 @@ MgtTFHeader::Deserialize (Buffer::Iterator start)
   m_noSta = i.ReadNtohU32 ();
   m_ulFlag = i.ReadNtohU32 ();
   m_tfDuration = i.ReadNtohU32 ();
-  std::cout<<m_noSta<<m_ulFlag<<m_tfDuration<<std::endl;
   Mac48Address addr;
   uint32_t ru;
   

@@ -24,7 +24,9 @@
 #define MAC_LOW_H
 
 #include <map>
+#include <queue>
 #include "ns3/object.h"
+#include "regular-wifi-mac.h"//RUAllocations
 #include "ns3/nstime.h"
 #include "channel-access-manager.h"
 #include "block-ack-cache.h"
@@ -32,6 +34,7 @@
 #include "qos-utils.h"
 #include "wifi-mac-header.h"
 #include "wifi-tx-vector.h"
+#include "wifi-ppdu.h"
 #include "block-ack-type.h"
 #include "wifi-mpdu-type.h"
 
@@ -311,6 +314,11 @@ public:
   //Xyct: moved down from sta-wifi-mac
   void StaStopMuMode(void);
   void SendTriggerFrameResp(uint32_t ru, Mac48Address source);
+  void CacheDataPacket();
+  void CacheAckAfterData(Mac48Address source, Time duration, WifiMode dataTxMode, double dataSnr, std::pair<uint16_t,HeMuUserInfo> infoPair);
+  void SendTriggerFrame(bool flag,RegularWifiMac::RUAllocations alloc);
+  void SendCachedPacketUl(uint32_t ru, Mac48Address to);
+  void SendCachedPacketDl();
   /**
    * \param mpdu MPDU received
    * \param rxSignalInfo the info on the received signal (\see RxSignalInfo)
@@ -568,7 +576,7 @@ private:
    * \param ackTxVector the TXVECTOR used to transmit the Ack
    * \return the time required to transmit the Ack (including preamble and FCS)
    */
-  Time GetAckDuration (WifiTxVector ackTxVector) const;
+  Time GetAckDuration (WifiTxVector ackTxVector, uint16_t staId = SU_STA_ID) const;
   /**
    * Return the time required to transmit the Ack to the specified address
    * given the TXVECTOR of the Data (including preamble and FCS).
@@ -850,6 +858,10 @@ private:
     Mac48Address address; //!< Address of the station to be acknowledged
   };
 
+  uint32_t m_ruBits;
+  WifiConstPsduMap m_dlMuPsdus;
+  std::queue<Ptr<const ns3::WifiPsdu> >m_ulMuPsduQueue;
+  WifiTxVector m_dlMuTxVector;
   Callback<void> m_tfRespAccessGrantCallback;
   Callback<void> m_killTfBCallback;
   /**
@@ -919,7 +931,6 @@ private:
   WifiTxVector m_currentTxVector;        //!< TXVECTOR used for the current packet transmission
 
   CfAckInfo m_cfAckInfo; //!< Info about piggyback Acks used in PCF
-  uint32_t m_ruBits;
 };
 
 } //namespace ns3
