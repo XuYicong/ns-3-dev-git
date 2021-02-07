@@ -324,8 +324,8 @@ ChannelAccessManager::RequestAccess (Ptr<Txop> txop, bool isCfPeriod)
   UpdateBackoff ();
   NS_ASSERT (!txop->IsAccessRequested ());
   txop->NotifyAccessRequested ();
-  //DoGrantDcfAccess ();
-  Simulator::Schedule(MicroSeconds(16), &ChannelAccessManager::DoGrantDcfAccess, this);
+  DoGrantDcfAccess ();
+  //Simulator::Schedule(MicroSeconds(16), &ChannelAccessManager::DoGrantDcfAccess, this);
   //Xyct: I don't understand the delay
   DoRestartAccessTimeoutIfNeeded ();
 }
@@ -580,7 +580,7 @@ ChannelAccessManager::NotifyRxEndErrorNow (void)
 void
 ChannelAccessManager::NotifyTxStartNow (Time duration)
 {
-  std::cout<<"In NotifyTxStartNow\n";
+  //std::cout<<"In NotifyTxStartNow\n";
   NS_LOG_FUNCTION (this << duration);
   m_lastRxReceivedOk = true;
   Time now = Simulator::Now ();

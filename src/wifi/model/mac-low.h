@@ -312,6 +312,12 @@ public:
   void RxStartIndication (WifiTxVector txVector, Time psduDuration);
 
   //Xyct: moved down from sta-wifi-mac
+  uint32_t GetTfCw();
+  void SetTfCw(uint32_t);
+  uint32_t GetTfCwMax();
+  void SetTfCwMax(uint32_t);
+  uint32_t GetTfCwMin();
+  void SetTfCwMin(uint32_t);
   void StaStopMuMode(void);
   void SendTriggerFrameResp(uint32_t ru, Mac48Address source);
   void CacheDataPacket();
@@ -859,6 +865,11 @@ private:
   };
 
   uint32_t m_ruBits;
+  bool m_firstTf;
+  int32_t m_noSlots;
+  uint32_t m_tfCw;
+  uint32_t m_tfCwMax;
+  uint32_t m_tfCwMin;
   WifiConstPsduMap m_dlMuPsdus;
   std::queue<Ptr<const ns3::WifiPsdu> >m_ulMuPsduQueue;
   WifiTxVector m_dlMuTxVector;

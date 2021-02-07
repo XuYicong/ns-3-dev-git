@@ -247,37 +247,43 @@ RegularWifiMac::GetMaxTfSlots (void)
 void
 RegularWifiMac::SetTfCwMin (uint32_t q)
 {
-  m_tfCwMin = q;
+  //m_tfCwMin = q;
+  m_low->SetTfCwMin(q);
 }
 
 uint32_t 
 RegularWifiMac::GetTfCwMin (void)
 {
-  return m_tfCwMin;
+  //return m_tfCwMin;
+  return m_low->GetTfCwMin();
 }
 //Xyct: These should be set in mac low
 void
 RegularWifiMac::SetTfCwMax (uint32_t q)
 {
-  m_tfCwMax = q;
+  //m_tfCwMax = q;
+  m_low->SetTfCwMax(q);
 }
 
 uint32_t 
 RegularWifiMac::GetTfCwMax (void)
 {
-  return m_tfCwMax;
+  //return m_tfCwMax;
+  return m_low->GetTfCwMax();
 }
 
 void
 RegularWifiMac::SetTfCw (uint32_t q)
 {
-  m_tfCw = q;
+  //m_tfCw = q;
+  m_low->SetTfCw(q);
 }
 
 uint32_t 
 RegularWifiMac::GetTfCw (void)
 {
-  return m_tfCw;
+  //return m_tfCw;
+  return m_low->GetTfCw ();
 }
 
 void

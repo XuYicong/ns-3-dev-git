@@ -597,6 +597,7 @@ Txop::NotifyAccessGranted (void)
   if (m_currentHdr.IsTF ())
     {
       m_tfAccessGrantCallback ();
+      NS_LOG_DEBUG ("tx trigger frame");
     }
   if (m_currentHdr.GetAddr1 ().IsGroup ())
     {

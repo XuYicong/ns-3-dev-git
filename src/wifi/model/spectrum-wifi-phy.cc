@@ -548,7 +548,7 @@ SpectrumWifiPhy::GetCenterFrequencyForNonOfdmaPart (WifiTxVector txVector, uint1
 void
 SpectrumWifiPhy::StartTx (Ptr<WifiPpdu> ppdu, uint8_t txPowerLevel)
 {
-  std::cout<<"transmitting node = "<< this->GetDevice()->GetNode()->GetId () << " muMode = "<< m_muMode <<" ruBits = " << m_currentRu /*<< " packet size = "<< packet->GetSize ()*/ <<" time = " << Simulator::Now ().GetMicroSeconds ()<< std::endl;//Xyct: verbose and annoying
+  std::cout<<"transmitting node = "<< this->GetDevice()->GetNode()->GetId () << /*" muMode = "<< m_muMode <<" ruBits = " << m_currentRu << " packet size = "<<(*ppdu->GetPsdu(0,0)->begin())->GetPacket()->GetSize () <<*/ " time = " << Simulator::Now ().GetMicroSeconds ()<< std::endl;//Xyct: verbose and annoying
   //(*ppdu->GetPsdu(0,0)->begin())->GetPacket()->Print(std::cout<<"SpectrumWifiPhy::StartTx: ");
   std::cout<<"\n\n";
   /*NS_LOG_FUNCTION (this << ppdu);

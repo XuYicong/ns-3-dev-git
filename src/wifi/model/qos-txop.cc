@@ -535,7 +535,7 @@ QosTxop::NotifyAccessGranted (void)
           peekedItem = PeekNextFrame ();
           //item = m_queue->DequeueFirstAvailable (m_qosBlockedDestinations); 
           //item = m_queue->Dequeue (); //Hack: I want to dequeue the packet at the head of the queue, because it maybe TFResp
-          //Xyct: Disable the hack, cause it breaks a lot. TF is control frame, should not pass TXOP.
+          //Xyct: Disable the hack, cause it breaks the queue.
           if (peekedItem == 0)
             {
               NS_LOG_DEBUG ("no packets available for transmission");
@@ -597,6 +597,11 @@ QosTxop::NotifyAccessGranted (void)
                                                           m_currentPacketTimestamp);
   m_currentParams = GetTransmissionParameters (mpdu);
 
+  if (m_currentHdr.IsTF ())
+    {
+      NS_LOG_DEBUG ("tx trigger frame");
+      m_tfAccessGrantCallback ();
+    }
   if (m_currentHdr.GetAddr1 ().IsGroup ())
     {
       NS_LOG_DEBUG ("tx broadcast");
@@ -733,7 +738,8 @@ QosTxop::NotifyMissedCts (std::list<Ptr<WifiMacQueueItem>> mpduList)
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("missed cts");
   NS_ASSERT (!mpduList.empty ());
-  if (!NeedRtsRetransmission (m_currentPacket, m_currentHdr))
+  //Xyct: NeedRtsRetransmission() has no definition on broadcast packets
+  if (m_currentHdr.IsTF() || !NeedRtsRetransmission (m_currentPacket, m_currentHdr))
     {
       NS_LOG_DEBUG ("Cts Fail");
       m_stationManager->ReportFinalRtsFailed (m_currentHdr.GetAddr1 (), &m_currentHdr);

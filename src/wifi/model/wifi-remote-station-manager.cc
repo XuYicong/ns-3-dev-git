@@ -612,6 +612,15 @@ WifiRemoteStationManager::GetRtsTxVector (Mac48Address address)
 }
 
 void
+WifiRemoteStationManager::ReportMuRtsFailed (const WifiMacHeader *header)
+{
+  NS_LOG_FUNCTION (this << *header);
+  AcIndex ac = QosUtilsMapTidToAc ((header->IsQosData ()) ? header->GetQosTid () : 0);
+  m_ssrc[ac]++;
+  Mac48Address address = Mac48Address::GetBroadcast();
+  m_macTxRtsFailed (address);
+}
+void
 WifiRemoteStationManager::ReportRtsFailed (Mac48Address address, const WifiMacHeader *header)
 {
   NS_LOG_FUNCTION (this << address << *header);

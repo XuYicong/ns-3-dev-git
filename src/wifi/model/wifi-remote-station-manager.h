@@ -688,6 +688,7 @@ public:
    * \param header MAC header of the DATA packet
    */
   void ReportRtsFailed (Mac48Address address, const WifiMacHeader *header);
+  void ReportMuRtsFailed (const WifiMacHeader *header);
   /**
    * Should be invoked whenever the AckTimeout associated to a transmission
    * attempt expires.

@@ -14,7 +14,6 @@
 #include "ns3/position-allocator.h"
 using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("test");
-bool use_ax = true;
 bool g_verbose = false;
 double total_bytes_received = 0;
 double per_sta_bytes_received[200];
@@ -22,10 +21,11 @@ double total_latency=0;
 int total_packets_received=0;
 int n_tf_cycles=-1;
 int n_sa=0;
-void CountTfCycles (std::string context, Ptr<const Packet> p)
+void CountTfCycles (std::string context, Ptr<const Packet> p, double snr)
 {
-  bool isBsrReq=(p->GetSize()== (unsigned)50+10*n_sa || p->GetSize()== (unsigned)40+10*n_sa);
-  std::cout<<context<<"\t"<<" Packet length = "<<p->GetSize()<<" Is BSR Ruquest = "<<isBsrReq<<std::endl;
+  bool isBsrReq=(p->GetSize()== (unsigned)52 || p->GetSize()== (unsigned)40+10*n_sa);
+  //p->Print(std::cout);
+  //std::cout<<context<<"SINR: "<<snr<<"\t"<<" Packet length = "<<p->GetSize()<<" Is BSR Ruquest = "<<isBsrReq<<std::endl;
   n_tf_cycles+=isBsrReq;
 }
 void PrintTrace (std::string context, Ptr<const Packet> p)
@@ -46,14 +46,14 @@ void PrintTx (std::string context, Ptr< const Packet > packet, WifiMode mode, Wi
 class wifiNodes
 {
 public:
-  void Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, uint32_t distance, double interval, SpectrumWifiPhyHelper spectrumPhy, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled);
-  void SendPacketsUplink (double time, uint32_t seq, uint32_t node_id);
-  void SendPacketsDownlink (double time, uint32_t seq, uint32_t node_id);
+  void Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, uint32_t distance, double interval, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled);
+  void SendPacketsUplink (double time, uint32_t seq);
+  void SendPacketsDownlink (double time, uint32_t seq);
   bool Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mode, const Address &sender);
   void Configure ();
   SpectrumWifiPhyHelper m_spectrumPhy;
   NodeContainer GetStaNodes ();
-  NodeContainer GetApNode ();
+  NodeContainer GetApNodes ();
 
 private:
   uint32_t m_distance;
@@ -62,7 +62,8 @@ private:
   std::string m_errorModelType;
   uint32_t m_bw;
   uint32_t m_freq;
-  uint32_t m_noNodes;
+  uint32_t m_noStas;
+  uint32_t m_noAps;
   uint32_t m_tfDuration;
   uint32_t m_maxTfSlots;
   uint32_t m_tfCw;
@@ -70,12 +71,12 @@ private:
   uint32_t m_tfCwMax;
   double m_alpha;
   uint32_t m_nScheduled;
-  NodeContainer apNode;
+  NodeContainer apNodes;
   NodeContainer staNodes;
-  NetDeviceContainer apDevice;
+  NetDeviceContainer apDevices;
   NetDeviceContainer staDevices;
-  void SendOnePacketDownlink (uint32_t seq, uint32_t node_id);
-  void SendOnePacketUplink (uint32_t seq, uint32_t node_id);
+  void SendOnePacketDownlink (uint32_t seq, uint32_t ap_id,uint32_t node_id);
+  void SendOnePacketUplink (uint32_t seq, uint32_t ap_id,uint32_t node_id);
 };
 
 NodeContainer wifiNodes::GetStaNodes ()
@@ -83,12 +84,12 @@ NodeContainer wifiNodes::GetStaNodes ()
   return staNodes;
 }
 
-NodeContainer wifiNodes::GetApNode ()
+NodeContainer wifiNodes::GetApNodes ()
 {
-  return apNode;
+  return apNodes;
 }
 
-void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, uint32_t distance, double interval, SpectrumWifiPhyHelper spectrumPhy, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled)
+void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, uint32_t distance, double interval, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled)
 {
   m_interval = interval;
   m_spectrumChannel = spectrumChannel;
@@ -98,7 +99,8 @@ void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint
   m_distance = distance;
   m_interval = interval;  
   m_spectrumPhy = spectrumPhy;
-  m_noNodes = noNodes;
+  m_noStas = noNodes;
+  m_noAps = noAps;
   m_tfDuration = tfDuration;
   m_maxTfSlots = maxTfSlots;
   m_tfCw = tfCw;
@@ -110,19 +112,12 @@ void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint
 
 void wifiNodes::Configure ()
 {
-  staNodes.Create (m_noNodes);
-  apNode.Create (1);
+  staNodes.Create (m_noStas);
+  apNodes.Create (m_noAps);
   
   //Configure Wi-Fi 
   WifiHelper wifi;
-  if (use_ax) 
-   {
-     wifi.SetStandard (WIFI_STANDARD_80211ax_5GHZ);
-   }
-  else 
-   {
-     wifi.SetStandard (WIFI_STANDARD_80211ac);
-   }
+    wifi.SetStandard (WIFI_STANDARD_80211ax_5GHZ);
   WifiMacHelper mac;
   Ssid ssid = Ssid ("wifi");
   StringValue DataRate;
@@ -137,21 +132,26 @@ void wifiNodes::Configure ()
   //m_spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (false));//Xyct: to compile
   m_spectrumPhy.Set ("ChannelWidth", UintegerValue (m_bw));
 	
-  mac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid), "TfDuration", UintegerValue (m_tfDuration), "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue(m_alpha), "nScheduled", UintegerValue(m_nScheduled));
-  apDevice = wifi.Install (m_spectrumPhy, mac, apNode);
+  mac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid), "TfDuration", UintegerValue (m_tfDuration), 
+    "EnableBeaconJitter",BooleanValue(true),    
+    "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue(m_alpha), "nScheduled", UintegerValue(m_nScheduled));
+  apDevices = wifi.Install (m_spectrumPhy, mac, apNodes);
   mac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid),"ActiveProbing", BooleanValue (false), "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue (m_alpha), "nScheduled", UintegerValue (m_nScheduled));
   staDevices = wifi.Install (m_spectrumPhy, mac, staNodes);
     
   InternetStackHelper internet;
   internet.Install (staNodes);
-  internet.Install (apNode);
+  internet.Install (apNodes);
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("10.0.1.0", "255.255.255.0");
-  Ipv4InterfaceContainer apInterfaces = ipv4.Assign (apDevice);
+  Ipv4InterfaceContainer apInterfaces = ipv4.Assign (apDevices);
   Ipv4InterfaceContainer staInterfaces = ipv4.Assign (staDevices);
 
-  Ptr<WifiNetDevice> receiver = DynamicCast<WifiNetDevice> (apDevice.Get(0));
-  receiver->SetReceiveCallback (MakeCallback (&wifiNodes::Receive, this));
+  for (uint32_t i = 0; i < apDevices.GetN (); i++)
+  {
+    Ptr<WifiNetDevice> receiver = DynamicCast<WifiNetDevice> (apDevices.Get(i));
+    receiver->SetReceiveCallback (MakeCallback (&wifiNodes::Receive, this));
+  }
   for (uint32_t i = 0; i < staDevices.GetN (); i++)
     {
       Ptr<WifiNetDevice> receiver = DynamicCast<WifiNetDevice> (staDevices.Get(i));
@@ -159,10 +159,10 @@ void wifiNodes::Configure ()
     }
 }
 
-void wifiNodes::SendOnePacketUplink (uint32_t seq, uint32_t node_id)
+void wifiNodes::SendOnePacketUplink (uint32_t seq,uint32_t ap_id, uint32_t node_id)
 {
-  Ptr<WifiNetDevice> sender1 = DynamicCast<WifiNetDevice> (staDevices.Get(node_id)); //new
-  Ptr<WifiNetDevice> receiver1 = DynamicCast<WifiNetDevice> (apDevice.Get(0));
+  Ptr<WifiNetDevice> sender1 = DynamicCast<WifiNetDevice> (staDevices.Get(node_id)); 
+  Ptr<WifiNetDevice> receiver1 = DynamicCast<WifiNetDevice> (apDevices.Get(ap_id));
   Ptr<Packet> p = Create<Packet> (1023);
   SeqTsHeader seqTs;
   seqTs.SetSeq (seq);
@@ -171,10 +171,10 @@ void wifiNodes::SendOnePacketUplink (uint32_t seq, uint32_t node_id)
   sender1->Send (p, remoteAddress1, 1); // new
 }
 
-void wifiNodes::SendOnePacketDownlink (uint32_t seq, uint32_t node_id)
+void wifiNodes::SendOnePacketDownlink (uint32_t seq,uint32_t ap_id, uint32_t node_id)
 {
-  Ptr<WifiNetDevice> receiver1 = DynamicCast<WifiNetDevice> (staDevices.Get(node_id)); //new
-  Ptr<WifiNetDevice> sender1 = DynamicCast<WifiNetDevice> (apDevice.Get(0));
+  Ptr<WifiNetDevice> receiver1 = DynamicCast<WifiNetDevice> (staDevices.Get(node_id)); 
+  Ptr<WifiNetDevice> sender1 = DynamicCast<WifiNetDevice> (apDevices.Get(ap_id));
   Ptr<Packet> p = Create<Packet> (1023);
   SeqTsHeader seqTs;
   seqTs.SetSeq (seq);
@@ -183,19 +183,23 @@ void wifiNodes::SendOnePacketDownlink (uint32_t seq, uint32_t node_id)
   sender1->Send (p, remoteAddress1, 1); // new
 }
 
-void wifiNodes::SendPacketsDownlink (double time, uint32_t seq, uint32_t node_id)
+void wifiNodes::SendPacketsDownlink (double time, uint32_t seq)
 {
-  for (uint32_t i = 0; i < m_noNodes; i++)
+  double stasPerAp = m_noStas/(double)m_noAps;
+  for (uint32_t i = 0, j= 0; i < m_noStas; i++)
    {
-     Simulator::Schedule (Seconds(time), &wifiNodes::SendOnePacketDownlink, this, seq, i);
+       if(i > (1+j) * stasPerAp-1)++j;
+        Simulator::Schedule (Seconds(time), &wifiNodes::SendOnePacketDownlink, this, seq, j, i);
    }
 }
 
-void wifiNodes::SendPacketsUplink (double time, uint32_t seq, uint32_t node_id)
+void wifiNodes::SendPacketsUplink (double time, uint32_t seq)
 {
-  for (uint32_t i = 0; i < m_noNodes; i++)
+  double stasPerAp = m_noStas/(double)m_noAps;
+  for (uint32_t i = 0, j= 0; i < m_noStas; i++)
    {
-     Simulator::Schedule (Seconds(time), &wifiNodes::SendOnePacketUplink, this, seq, i);
+       if(i > (1+j) * stasPerAp-1)++j;
+        Simulator::Schedule (Seconds(time), &wifiNodes::SendOnePacketUplink, this, seq, j, i);
    }
 }
 
@@ -227,7 +231,8 @@ int main (int argc, char *argv[])
 {
   Packet::EnablePrinting ();
   Packet::EnableChecking ();
-  uint32_t noNodes = 8;
+  uint32_t noNodes = 9;
+  uint32_t noAps = 3;
   uint32_t wifiDistance = 1;
   double simulationTime = 10; //seconds
   uint32_t wifiFreq = 5180;
@@ -255,7 +260,8 @@ int main (int argc, char *argv[])
 
   CommandLine cmd;
   cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
-  cmd.AddValue ("noNodes", "Number of WiFi nodes", noNodes);
+  cmd.AddValue ("noNodes", "Number of non-AP stations", noNodes);
+  cmd.AddValue ("noAps", "Number of WiFi APs", noAps);
   cmd.AddValue ("wifiDistance", "meters separation between nodes", wifiDistance);
   cmd.AddValue ("errorModelType", "select ns3::NistErrorRateModel or ns3::YansErrorRateModel", errorModelType);
   cmd.AddValue ("verbose","Print Traces",g_verbose);
@@ -265,7 +271,6 @@ int main (int argc, char *argv[])
   cmd.AddValue ("packets", "Number of packets", n_packets);
   cmd.AddValue ("wifiOn", "", wifiOn);
   cmd.AddValue ("wifiFreq", "WiFi operating frequency in MHz", wifiFreq);
-  cmd.AddValue ("use_ax", "AX is used if true, AC used otherwise", use_ax);
   cmd.AddValue ("ulMode", "UL if 1, DL if 0", ulMode);
   cmd.AddValue ("tfDuration", "tf Duration in units of slot_time", tfDuration);
   cmd.AddValue ("maxTfSlots", "maximum time slots for BSR expiry", maxTfSlots);
@@ -291,7 +296,7 @@ int main (int argc, char *argv[])
   SpectrumWifiPhyHelper spectrumPhy /*= SpectrumWifiPhyHelper::Default ()*/;
   
   wifiNodes wifi;
-  wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, wifiDistance, interval, spectrumPhy, noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled);
+  wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, wifiDistance, interval, spectrumPhy, noAps, noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled);
   wifi.Configure ();
   
   RngSeedManager::SetSeed (seed);  // Changes seed from default of 1 to 3
@@ -304,31 +309,36 @@ int main (int argc, char *argv[])
   { 
     if (ulMode == 1)
      {
-       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i, 0);
+       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i);
      }
     else if (ulMode == 0)
      {
-       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i, 0);
+       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i);
      }
     else if (ulMode == 2)
     {
-       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i, 0);
-       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i, 0);
+       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i);
+       for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i);
     }
   }
 
   MobilityHelper mobility;
   mobility.SetPositionAllocator (positionAlloc);
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  positionAlloc->Add (Vector (0.0, 0.0, 0.0));
-  for (uint32_t i = 0; i < noNodes; i++)
+  for(uint32_t i = 0; i <= noAps; i++)
+  {
+     positionAlloc->Add (Vector (cos(2 * M_PI * i/noAps), sin(2 * M_PI * i/noAps), 0.0));
+  }
+  float nodesPerAp = noNodes/(double)noAps;
+  for (uint32_t i = 0, j=0; i <= noNodes; i++)
    {
-     positionAlloc->Add (Vector (cos(2 * M_PI * i/noNodes), sin(2 * M_PI * i/noNodes), 0.0));
+       if(i > (1+j) * nodesPerAp-1)++j;
+     positionAlloc->Add (Vector (cos(2 * M_PI * j/noAps), sin(2 * M_PI * j/noAps), 0.0));
    }
-  mobility.Install (wifi.GetApNode());
+  mobility.Install (wifi.GetApNodes());
   mobility.Install (wifi.GetStaNodes());
   
-  //Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&CountTfCycles));
+  Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&CountTfCycles));
   if (g_verbose) {
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&PrintTrace));//Xyct: for compile
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxBegin",MakeCallback(&PrintTrace));
