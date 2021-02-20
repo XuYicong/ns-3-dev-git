@@ -988,7 +988,7 @@ MacLow::CacheDataPacket(){
   //m_dlMuPsdus.insert(std::make_pair(staId, m_currentPacket));
   //TODO: really cache it
   m_ulMuPsduQueue. push( m_currentPacket);
-  std::cout<<"UL MU queue size: "<<m_ulMuPsduQueue.size()<<std::endl;
+  NS_LOG_INFO("UL MU queue size: "<<m_ulMuPsduQueue.size());
 }
 void
 MacLow::SendCachedPacketUl(uint32_t index, Mac48Address source){
@@ -1251,14 +1251,14 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
   }
   else if(hdr.IsTF() || hdr.IsBsrAck() ){
     if(GetBssid() != from){
-        NS_LOG_DEBUG("rx Trigger Frame from BSS "<<from<<" which is not the one we belong to");
+        NS_LOG_UNCOND("rx Trigger Frame from BSS "<<from<<" which is not the one we belong to");
         return;
     }
       //Time m_lastTfTxStart = CalculateTfBeaconDuration (packet, hdr); // hack
       MgtTFHeader tf;
       packet->RemoveHeader (tf);
 
-      std::cout<<"STA received TF"<<std::endl;
+      std::cout<<GetAddress()<<" received TF"<<std::endl;
       RegularWifiMac::RUAllocations alloc = tf.GetRUAllocations ();
       uint32_t ulFlag = tf.GetUplinkFlag ();
       //m_muUlFlag = ulFlag;
@@ -1462,16 +1462,21 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
               else
                 {
                   NS_LOG_DEBUG ("rx unicast/sendAck from=" << hdr.GetAddr2 ());
+                if(txVector.IsMu()){//MuAck
+                    m_sendAckEvent = Simulator::ScheduleNow (&MacLow::CacheAckAfterData, this,
+                                                        hdr.GetAddr2 (),
+                                                        hdr.GetDuration (),
+                                                        txVector.GetMode (),
+                                                        rxSnr, *(txVector.GetHeMuUserInfoMap().begin()));
+                }else{
                   NS_ASSERT (m_sendAckEvent.IsExpired ());
-                  //if (!hdr.IsTFResponse () && !hdr.IsBsrAck ())
-                    //{//Xyct: changed to CTL, then the if becomes aleays true
                       m_sendAckEvent = Simulator::Schedule (GetSifs (),
                                                             &MacLow::SendAckAfterData, this,
                                                             hdr.GetAddr2 (),
                                                             hdr.GetDuration (),
                                                             txVector.GetMode (),
                                                             rxSnr);
-                    //}
+                    }
                 }
             }
         }

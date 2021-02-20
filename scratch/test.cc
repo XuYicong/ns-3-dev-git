@@ -136,7 +136,10 @@ void wifiNodes::Configure ()
     "EnableBeaconJitter",BooleanValue(true),    
     "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue(m_alpha), "nScheduled", UintegerValue(m_nScheduled));
   apDevices = wifi.Install (m_spectrumPhy, mac, apNodes);
-  mac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid),"ActiveProbing", BooleanValue (false), "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue (m_alpha), "nScheduled", UintegerValue (m_nScheduled));
+  mac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid),
+    "ActiveProbing", BooleanValue (false),
+    "MaxMissedBeacons", UintegerValue (10000),
+    "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue (m_alpha), "nScheduled", UintegerValue (m_nScheduled));
   staDevices = wifi.Install (m_spectrumPhy, mac, staNodes);
     
   InternetStackHelper internet;
@@ -185,20 +188,19 @@ void wifiNodes::SendOnePacketDownlink (uint32_t seq,uint32_t ap_id, uint32_t nod
 
 void wifiNodes::SendPacketsDownlink (double time, uint32_t seq)
 {
-  double stasPerAp = m_noStas/(double)m_noAps;
-  for (uint32_t i = 0, j= 0; i < m_noStas; i++)
+  for (uint32_t j= 0; j < m_noAps; j++)
+  for (uint32_t i = 0; i < m_noStas; i++)
    {
-       if(i > (1+j) * stasPerAp-1)++j;
         Simulator::Schedule (Seconds(time), &wifiNodes::SendOnePacketDownlink, this, seq, j, i);
    }
 }
 
 void wifiNodes::SendPacketsUplink (double time, uint32_t seq)
 {
-  double stasPerAp = m_noStas/(double)m_noAps;
-  for (uint32_t i = 0, j= 0; i < m_noStas; i++)
+    uint32_t stasPerAp = m_noStas/m_noAps;
+  for (uint32_t j = 0, i = 0; i < m_noStas; i++)
    {
-       if(i > (1+j) * stasPerAp-1)++j;
+        if((1+j) * stasPerAp<= i) j++;
         Simulator::Schedule (Seconds(time), &wifiNodes::SendOnePacketUplink, this, seq, j, i);
    }
 }
@@ -231,8 +233,8 @@ int main (int argc, char *argv[])
 {
   Packet::EnablePrinting ();
   Packet::EnableChecking ();
-  uint32_t noNodes = 9;
-  uint32_t noAps = 3;
+  uint32_t noNodes = 4;
+  uint32_t noAps = 9;
   uint32_t wifiDistance = 1;
   double simulationTime = 10; //seconds
   uint32_t wifiFreq = 5180;
@@ -260,7 +262,7 @@ int main (int argc, char *argv[])
 
   CommandLine cmd;
   cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
-  cmd.AddValue ("noNodes", "Number of non-AP stations", noNodes);
+  cmd.AddValue ("noNodes", "Number of non-AP stations of each AP", noNodes);
   cmd.AddValue ("noAps", "Number of WiFi APs", noAps);
   cmd.AddValue ("wifiDistance", "meters separation between nodes", wifiDistance);
   cmd.AddValue ("errorModelType", "select ns3::NistErrorRateModel or ns3::YansErrorRateModel", errorModelType);
@@ -296,7 +298,7 @@ int main (int argc, char *argv[])
   SpectrumWifiPhyHelper spectrumPhy /*= SpectrumWifiPhyHelper::Default ()*/;
   
   wifiNodes wifi;
-  wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, wifiDistance, interval, spectrumPhy, noAps, noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled);
+  wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, wifiDistance, interval, spectrumPhy, noAps, noAps*noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled);
   wifi.Configure ();
   
   RngSeedManager::SetSeed (seed);  // Changes seed from default of 1 to 3
@@ -325,15 +327,14 @@ int main (int argc, char *argv[])
   MobilityHelper mobility;
   mobility.SetPositionAllocator (positionAlloc);
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  for(uint32_t i = 0; i <= noAps; i++)
+  for(uint32_t i = 0; i < noAps; i++)
   {
-     positionAlloc->Add (Vector (cos(2 * M_PI * i/noAps), sin(2 * M_PI * i/noAps), 0.0));
+     positionAlloc->Add (Vector (.0, .0, .1*i));
   }
-  float nodesPerAp = noNodes/(double)noAps;
-  for (uint32_t i = 0, j=0; i <= noNodes; i++)
+  for(uint32_t j = 0; j < noAps; j++)
+  for (uint32_t i = 0; i < noNodes; i++)
    {
-       if(i > (1+j) * nodesPerAp-1)++j;
-     positionAlloc->Add (Vector (cos(2 * M_PI * j/noAps), sin(2 * M_PI * j/noAps), 0.0));
+     positionAlloc->Add (Vector (5*cos(2 * M_PI * i/noNodes), 5*sin(2 * M_PI * i/noNodes), .1*j));
    }
   mobility.Install (wifi.GetApNodes());
   mobility.Install (wifi.GetStaNodes());

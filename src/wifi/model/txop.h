@@ -244,7 +244,6 @@ public:
    */
   virtual void Queue (Ptr<Packet> packet, const WifiMacHeader &hdr);
   virtual void QueueButDontSend (Ptr<Packet> packet, const WifiMacHeader &hdr);
-  virtual void QueueTFResp (Ptr<Packet> packet, const WifiMacHeader &hdr);
   void CancelTFRespIfNotSent (void);
   void CancelNextPacket (void);
 
@@ -367,6 +366,7 @@ public:
 protected:
   ///< ChannelAccessManager associated class
   friend class ChannelAccessManager;
+  friend class MacLow;//Xyct: UL OFDMA
 
   virtual void DoDispose (void);
   virtual void DoInitialize (void);

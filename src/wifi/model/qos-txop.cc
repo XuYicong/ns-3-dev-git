@@ -501,6 +501,18 @@ QosTxop::UpdateCurrentPacket (Ptr<WifiMacQueueItem> mpdu)
 }
 
 void
+QosTxop::QueueOfdmaData (Ptr<Packet> packet, const WifiMacHeader &hdr)
+{
+  NS_LOG_FUNCTION (this << packet << &hdr);
+  //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
+  //m_queue->PushFront (Create<WifiMacQueueItem> (packet, hdr));
+  //m_queue->Enqueue (Create<WifiMacQueueItem> (packet, hdr));
+  UpdateCurrentPacket(Create<WifiMacQueueItem>(packet, hdr));
+  NotifyAccessRequested();
+  NotifyAccessGranted();
+  //Queue in OFDMA queue rather than this queue
+}
+void
 QosTxop::NotifyAccessGranted (void)
 {
   NS_LOG_FUNCTION (this);

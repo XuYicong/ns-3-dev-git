@@ -372,13 +372,6 @@ Txop::CancelNextPacket (void)
 {//Xyct: not the fk understand what this function does
   //CancelAccessRequested ();
 }
-void
-Txop::QueueTFResp (Ptr<Packet> packet, const WifiMacHeader &hdr)
-{
-  NS_LOG_FUNCTION (this << packet << &hdr);
-  //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
-  m_queue->PushFront (Create<WifiMacQueueItem> (packet, hdr));
-}
 
 int64_t
 Txop::AssignStreams (int64_t stream)

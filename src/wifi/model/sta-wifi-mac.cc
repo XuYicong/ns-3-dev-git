@@ -282,7 +282,7 @@ StaWifiMac::SendTriggerFrameResp (uint32_t ru)
   m_edcaMu[ru][AC_BE]->SetAifsn (0);
   m_edcaMu[ru][AC_BE]->SetMinCw (0);
   m_edcaMu[ru][AC_BE]->SetMaxCw (0);
-  m_edcaMu[ru][AC_BE]->QueueTFResp (packet, hdr); // Push TF Response at the front of the queue
+  m_edcaMu[ru][AC_BE]->QueueOfdmaData (packet, hdr); // Push TF Response at the front of the queue
   m_channelAccessManagerMu[ru]->UpdateBusyDuration ();
   m_edcaMu[ru][AC_BE]->StartAccessIfNeeded ();
   m_channelAccessManagerMu[ru]->DoRestartAccessTimeoutIfNeeded ();
@@ -582,6 +582,7 @@ StaWifiMac::Enqueue (Ptr<Packet> packet, Mac48Address to)
 
   hdr.SetAddr1 (GetBssid ());
   hdr.SetAddr2 (m_low->GetAddress ());
+  to = GetBssid();//Force to the AP
   hdr.SetAddr3 (to);
   hdr.SetDsNotFrom ();
   hdr.SetDsTo ();
@@ -630,14 +631,14 @@ StaWifiMac::Enqueue (Ptr<Packet> packet, Mac48Address to)
       {//Xyct: It's really buggy that non-mu packets are not sent too.
         //Sanity check that the TID is valid
         NS_ASSERT (tid < 8);
-        m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+        m_edca[QosUtilsMapTidToAc (tid)]->QueueOfdmaData (packet, hdr);
         /*for (uint32_t i = 0; i < 9; i++)
          {
            m_edcaMu[i][AC_BE]->QueueButDontSend (packet, hdr);
          }*/
       }
      else
-      {//Xyct: if sent, would conflict with AP who doesn't backoff
+      {
 	    m_txop->Queue (packet, hdr);
       }
   // }

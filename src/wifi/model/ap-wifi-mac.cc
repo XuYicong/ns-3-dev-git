@@ -1033,7 +1033,7 @@ ApWifiMac::TriggerFrameExpire ()
    //m_tfBeaconExpire = Simulator::Schedule (timeToExpire, &ApWifiMac::StartMuModeUplink, this);
    //std::cout<<"DIFS canceling scheduled at "<<(Now () + timeToExpire).GetMicroSeconds () << std::endl;
    m_channelAccessManager->NotifyMaybeCcaBusyStartNow (GetTfDuration () * m_low->GetSlotTime ()); // Tell the 20 MHz channelAccessManager that you are busy until MU mode ends  
-   std::cout<<"Trigger frame cca busy until "<<(Now()+GetTfDuration () * m_low->GetSlotTime()).GetMicroSeconds () << std::endl;
+   std::cout<<GetAddress()<<" CCA busy until "<<(Now()+GetTfDuration () * m_low->GetSlotTime()).GetMicroSeconds () << std::endl;
    m_muModeExpireEvent = Simulator::Schedule (GetTfDuration () * m_low->GetSlotTime (), &ApWifiMac::StopMuMode, this);
    if (!m_muUlFlag) // Don't start MU Mode at AP if this is a UL TF
     {
@@ -1154,7 +1154,7 @@ ApWifiMac::SendTriggerFrame(bool flag)
   tf.SetTfDuration (GetTfDuration ());
   packet->AddHeader (tf);
   //packet->Print(std::cout);
-  std::cout<<"Node "<<m_phy->GetDevice ()->GetNode ()->GetId () <<" sending TF, time = "<< Simulator::Now ().GetMicroSeconds ()<<std::endl;
+  std::cout<<"AP "<<GetAddress() <<" sending TF, time = "<< Simulator::Now ().GetMicroSeconds ()<<std::endl;
   std::cout<<"Number of STAs allocated = " << m_tfAlloc.size () <<std::endl;
   std::cout<<"Number of STAs associated = " << m_staList.size () <<std::endl;
   for (RegularWifiMac::RUAllocations::iterator it = m_tfAlloc.begin (); it!=m_tfAlloc.end (); ++it)
@@ -1162,6 +1162,7 @@ ApWifiMac::SendTriggerFrame(bool flag)
 	std::cout <<"STA = "<<it->first <<"\t RU = "<<it->second<<std::endl;
    }
   //std::cout<<m_txop<<std::endl;
+  m_channelAccessManager->NotifyMaybeCcaBusyStartNow (MicroSeconds(1));
   if (GetQosSupported ()){
     m_edca[QosUtilsMapTidToAc (0)]->Queue (packet, hdr);
   }else{
@@ -1359,11 +1360,11 @@ ApWifiMac::CalculateTfDuration (void)
    { //Xyct: GetSifs() compiles error 
      total = t1 + m_low->GetSifs ();
    }
-  std::cout<<"t1 = "<<t1.GetMicroSeconds () << std::endl;
-  std::cout<<"t2 = "<<t2.GetMicroSeconds () << std::endl;
-  std::cout<<"total = "<<total.GetMicroSeconds () << std::endl;
+  //std::cout<<"t1 = "<<t1.GetMicroSeconds () << std::endl;
+  //std::cout<<"t2 = "<<t2.GetMicroSeconds () << std::endl;
+  //std::cout<<"total = "<<total.GetMicroSeconds () << std::endl;
   uint32_t tfDuration = total.GetMicroSeconds () / m_low->GetSlotTime ().GetMicroSeconds ();
-  std::cout<<"tfDuration = "<<tfDuration + 1 << std::endl;
+  //std::cout<<"tfDuration = "<<tfDuration + 1 << std::endl;
   SetTfDuration (tfDuration + 1);
 }
 
@@ -1933,7 +1934,7 @@ ApWifiMac::DoInitialize (void)
           NS_LOG_DEBUG ("Scheduling initial beacon for access point " << GetAddress () << " at time " << jitter);
           m_beaconEvent = Simulator::Schedule (jitter, &ApWifiMac::SendOneBeacon, this);
 
-          jitter = MicroSeconds (static_cast<int64_t> (m_beaconJitter->GetValue (1, 2) * (GetBeaconInterval ().GetMicroSeconds ())));
+          jitter = MicroSeconds (static_cast<int64_t> (m_beaconJitter->GetValue (2, 3) * (GetBeaconInterval ().GetMicroSeconds ())));
           NS_LOG_DEBUG ("Scheduling initial Trigger Frame beacon for access point " << GetAddress () << " at time "<< jitter);
           Simulator::Schedule (jitter, &ApWifiMac::StartMuModeUplink, this);
         }
