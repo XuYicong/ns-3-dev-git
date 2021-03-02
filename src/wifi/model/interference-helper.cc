@@ -413,6 +413,8 @@ InterferenceHelper::CalculatePayloadPer (Ptr<const Event> event, uint16_t channe
   Time previous = j->first;
   WifiMode payloadMode = txVector.GetMode (staId);
   WifiPreamble preamble = txVector.GetPreambleType ();
+  double noiseInterferenceW = m_firstPowerPerBand.find (band)->second;
+  double powerW = event->GetRxPowerW (band);
   Time phyPayloadStart;
   if (!event->GetPpdu ()->IsUlMu ())
     {
@@ -425,11 +427,15 @@ InterferenceHelper::CalculatePayloadPer (Ptr<const Event> event, uint16_t channe
     {
       //j->first corresponds to the start of the UL-OFDMA payload
       phyPayloadStart = j->first;
+      auto ni_it = m_niChangesPerBand.find (band);
+  auto it = ni_it->second.find (event->GetStartTime ());
+  NS_ASSERT (it != ni_it->second.end ());
+  for (; it != ni_it->second.end () && it->second.GetEvent () != event; ++it);
+  noiseInterferenceW = it->second.GetPower() - powerW;
+  NS_LOG_DEBUG("Xyct set initial noise interference to "<<noiseInterferenceW<<" Watts");
     }
   Time windowStart = phyPayloadStart + window.first;
   Time windowEnd = phyPayloadStart + window.second;
-  double noiseInterferenceW = m_firstPowerPerBand.find (band)->second;
-  double powerW = event->GetRxPowerW (band);
   while (++j != ni_it.end ())
     {
       Time current = j->first;

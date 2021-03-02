@@ -18,6 +18,7 @@ bool g_verbose = false;
 double total_bytes_received = 0;
 double per_sta_bytes_received[200];
 double total_latency=0;
+char ssidName[200][10];
 int total_packets_received=0;
 int n_tf_cycles=-1;
 int n_sa=0;
@@ -119,7 +120,6 @@ void wifiNodes::Configure ()
   WifiHelper wifi;
     wifi.SetStandard (WIFI_STANDARD_80211ax_5GHZ);
   WifiMacHelper mac;
-  Ssid ssid = Ssid ("wifi");
   StringValue DataRate;
   //DataRate = StringValue ("HeMcs0"); // PhyRate = 58.5 Mbps
   DataRate = StringValue ("OfdmRate6Mbps"); // PhyRate = 58.5 Mbps
@@ -132,15 +132,29 @@ void wifiNodes::Configure ()
   //m_spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (false));//Xyct: to compile
   m_spectrumPhy.Set ("ChannelWidth", UintegerValue (m_bw));
 	
-  mac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid), "TfDuration", UintegerValue (m_tfDuration), 
+  mac.SetType ("ns3::ApWifiMac", "TfDuration", UintegerValue (m_tfDuration), 
+    "BeaconGeneration", BooleanValue(false),
     "EnableBeaconJitter",BooleanValue(true),    
     "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue(m_alpha), "nScheduled", UintegerValue(m_nScheduled));
-  apDevices = wifi.Install (m_spectrumPhy, mac, apNodes);
-  mac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid),
+  for (uint32_t i = 0; i < m_noAps; ++i){
+    Ssid ssid = Ssid (ssidName[i]);
+    mac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid));
+    apDevices.Add( wifi.Install (m_spectrumPhy, mac, apNodes.Get(i)));
+  }
+
+  mac.SetType ("ns3::StaWifiMac",
     "ActiveProbing", BooleanValue (false),
-    "MaxMissedBeacons", UintegerValue (10000),
+    "ProbeRequestTimeout", TimeValue(MilliSeconds(m_noStas)),
+    "MaxMissedBeacons", UintegerValue (20000),
     "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue (m_alpha), "nScheduled", UintegerValue (m_nScheduled));
-  staDevices = wifi.Install (m_spectrumPhy, mac, staNodes);
+
+    uint32_t stasPerAp = m_noStas/m_noAps;
+  for (uint32_t i = 0, j=0; i < m_noAps;++i){
+    Ssid ssid = Ssid (ssidName[i]);
+    mac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid));
+    for(uint32_t k=0; k<stasPerAp; ++k,++j)
+        staDevices.Add( wifi.Install (m_spectrumPhy, mac, staNodes.Get(j)));
+  }
     
   InternetStackHelper internet;
   internet.Install (staNodes);
@@ -233,17 +247,17 @@ int main (int argc, char *argv[])
 {
   Packet::EnablePrinting ();
   Packet::EnableChecking ();
-  uint32_t noNodes = 4;
-  uint32_t noAps = 9;
+  uint32_t noNodes = 12;
+  uint32_t noAps = 13;
   uint32_t wifiDistance = 1;
   double simulationTime = 10; //seconds
   uint32_t wifiFreq = 5180;
   uint32_t wifiBw = 20;
-  std::string errorModelType = "ns3::NistErrorRateModel";
+  std::string errorModelType = "ns3::TableBasedErrorRateModel";
   uint32_t seed = 110;
   uint32_t run = 11;
-  double interval = 0.0001;
-  uint32_t n_packets = 10000 * simulationTime;
+  double interval = 0.001;
+  uint32_t n_packets = 1000 * simulationTime;
   bool wifiOn = true;
   uint32_t ulMode = 1;
   uint32_t tfDuration = 168;
@@ -259,6 +273,10 @@ int main (int argc, char *argv[])
    {
      per_sta_bytes_received [i] = 0;
    }
+  for (uint32_t i = 0; i < 200; i++)
+  {
+    sprintf(ssidName[i],"%x",i); 
+  }
 
   CommandLine cmd;
   cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
@@ -283,7 +301,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("alpha", "fraction of DL traffic", alpha);
   cmd.Parse (argc,argv);
 
-  n_packets = 10000 * simulationTime;
+  n_packets = 1000 * simulationTime;
   n_sa = nScheduled;
   ConfigStore config;
   config.ConfigureDefaults ();
@@ -334,7 +352,7 @@ int main (int argc, char *argv[])
   for(uint32_t j = 0; j < noAps; j++)
   for (uint32_t i = 0; i < noNodes; i++)
    {
-     positionAlloc->Add (Vector (5*cos(2 * M_PI * i/noNodes), 5*sin(2 * M_PI * i/noNodes), .1*j));
+     positionAlloc->Add (Vector (10*cos(2 * M_PI * i/noNodes), 10*sin(2 * M_PI * i/noNodes), .1*j));
    }
   mobility.Install (wifi.GetApNodes());
   mobility.Install (wifi.GetStaNodes());

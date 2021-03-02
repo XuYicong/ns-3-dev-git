@@ -501,18 +501,6 @@ QosTxop::UpdateCurrentPacket (Ptr<WifiMacQueueItem> mpdu)
 }
 
 void
-QosTxop::QueueOfdmaData (Ptr<Packet> packet, const WifiMacHeader &hdr)
-{
-  NS_LOG_FUNCTION (this << packet << &hdr);
-  //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
-  //m_queue->PushFront (Create<WifiMacQueueItem> (packet, hdr));
-  //m_queue->Enqueue (Create<WifiMacQueueItem> (packet, hdr));
-  UpdateCurrentPacket(Create<WifiMacQueueItem>(packet, hdr));
-  NotifyAccessRequested();
-  NotifyAccessGranted();
-  //Queue in OFDMA queue rather than this queue
-}
-void
 QosTxop::NotifyAccessGranted (void)
 {
   NS_LOG_FUNCTION (this);
@@ -1054,7 +1042,8 @@ QosTxop::RestartAccessIfNeeded (void)
   bool queueIsNotEmpty = !m_queue->IsEmpty ();
 
   if ((m_currentPacket != 0 || baManagerHasPackets || queueIsNotEmpty)
-      && !IsAccessRequested ())
+      && !IsAccessRequested ()
+      && !GetMuMode())
     {
       Ptr<const WifiMacQueueItem> item;
       if (m_currentPacket != 0)
@@ -1091,7 +1080,8 @@ QosTxop::StartAccessIfNeeded (void)
 
   if (m_currentPacket == 0
       && (baManagerHasPackets || queueIsNotEmpty)
-      && !IsAccessRequested ())
+      && !IsAccessRequested ()
+      && !GetMuMode())
     {
       Ptr<const WifiMacQueueItem> item = PeekNextFrame ();
       if (item != 0)
@@ -1595,6 +1585,7 @@ bool
 QosTxop::SetupBlockAckIfNeeded (void)
 {
   NS_LOG_FUNCTION (this);
+  if(GetMuMode()) return false;//Xyct: BA is too complicated to us
   uint8_t tid = m_currentHdr.GetQosTid ();
   Mac48Address recipient = m_currentHdr.GetAddr1 ();
   uint32_t packets = m_queue->GetNPacketsByTidAndAddress (tid, recipient);

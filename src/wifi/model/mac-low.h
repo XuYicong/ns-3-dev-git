@@ -320,11 +320,10 @@ public:
   void SetTfCwMin(uint32_t);
   void StaStopMuMode(void);
   void SendTriggerFrameResp(uint32_t ru, Mac48Address source);
-  void CacheDataPacket();
   void CacheAckAfterData(Mac48Address source, Time duration, WifiMode dataTxMode, double dataSnr, std::pair<uint16_t,HeMuUserInfo> infoPair);
   void SendTriggerFrame(bool flag,RegularWifiMac::RUAllocations alloc);
-  void SendCachedPacketUl(uint32_t ru, Mac48Address to);
-  void SendCachedPacketDl();
+  void SendMuPacketUl();
+  void SendMuPacketDl();
   /**
    * \param mpdu MPDU received
    * \param rxSignalInfo the info on the received signal (\see RxSignalInfo)
@@ -468,6 +467,8 @@ public:
 
   uint32_t GetRuBits (void) const; 
   void SetRuBits (uint32_t ruBits);
+  Ptr<Txop> GetMuTxop (void) const; 
+  void SetMuTxop (Ptr<Txop> txop);
 
 private:
   /**
@@ -870,8 +871,8 @@ private:
   uint32_t m_tfCw;
   uint32_t m_tfCwMax;
   uint32_t m_tfCwMin;
+  Ptr<Txop> m_muTxop;                  //!< TXOP for ul ofdma
   WifiConstPsduMap m_dlMuPsdus;
-  std::queue<Ptr<const ns3::WifiPsdu> >m_ulMuPsduQueue;
   WifiTxVector m_dlMuTxVector;
   Callback<void> m_tfRespAccessGrantCallback;
   Callback<void> m_killTfBCallback;

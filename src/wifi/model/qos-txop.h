@@ -114,7 +114,6 @@ public:
   bool IsQosTxop (void) const;
   void SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> remoteManager);
   virtual bool HasFramesToTransmit (void);
-  virtual void QueueOfdmaData (Ptr<Packet> packet, const WifiMacHeader &hdr);
   void NotifyAccessGranted (void);
   void NotifyInternalCollision (void);
   void GotAck (void);

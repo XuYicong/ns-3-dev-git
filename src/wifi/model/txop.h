@@ -244,6 +244,7 @@ public:
    */
   virtual void Queue (Ptr<Packet> packet, const WifiMacHeader &hdr);
   virtual void QueueButDontSend (Ptr<Packet> packet, const WifiMacHeader &hdr);
+  void NotifyGotTrigger (void);
   void CancelTFRespIfNotSent (void);
   void CancelNextPacket (void);
 

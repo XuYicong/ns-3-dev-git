@@ -343,6 +343,16 @@ Txop::QueueButDontSend (Ptr<Packet> packet, const WifiMacHeader &hdr)
   NS_LOG_FUNCTION (this << packet << &hdr);
   //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
   m_queue->Enqueue (Create<WifiMacQueueItem> (packet, hdr));
+  m_low->SetMuTxop(this);
+}
+
+void
+Txop::NotifyGotTrigger (void)
+{
+  NS_LOG_FUNCTION (this);
+        NotifyAccessRequested();
+        SetMuMode(1);
+        NotifyAccessGranted();
 }
 
 void
