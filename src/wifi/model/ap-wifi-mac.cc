@@ -83,6 +83,11 @@ ApWifiMac::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&ApWifiMac::m_enableNonErpProtection),
                    MakeBooleanChecker ())
+    .AddTraceSource ("tfCycleSuccess",
+                     "Trace source indicating an AP "
+                     "has successfully received data in a trigger frame cycle",
+                     MakeTraceSourceAccessor (&ApWifiMac::m_tfCycleSuccessTrace),
+                     "ns3::ApWifiMac::SummarizeTfCycleCallback")
   ;
   return tid;
 }
@@ -104,6 +109,7 @@ ApWifiMac::ApWifiMac ()
   //Let the lower layers know that we are acting as an AP.
   SetTypeOfStation (AP);
 
+  m_low->SetSummarizeTfCycleCallback(MakeCallback(&ApWifiMac::SummarizeTfCycle,this));
   m_tfPacketDuration = 1032;
   m_muModeToStart = false;
   for (int ru = 0; ru < 9; ru++)
@@ -1364,9 +1370,16 @@ ApWifiMac::CalculateTfDuration (void)
   std::cout<<"t1 = "<<t1.GetMicroSeconds () << std::endl;
   std::cout<<"t2 = "<<t2.GetMicroSeconds () << std::endl;
   std::cout<<"total = "<<total.GetMicroSeconds () << std::endl;
+  std::cout<<"SIFS="<<m_low->GetSifs().GetNanoSeconds()<<" Slot Time="<<m_low->GetSlotTime ().GetNanoSeconds()<<" DIFS="<<m_low->GetSifs().GetNanoSeconds()+m_low->GetSlotTime ().GetNanoSeconds()+m_low->GetSlotTime().GetNanoSeconds()<<std::endl;
   uint32_t tfDuration = total.GetMicroSeconds () / m_low->GetSlotTime ().GetMicroSeconds ();
   std::cout<<"tfDuration = "<<tfDuration + 1 << std::endl;
   SetTfDuration (tfDuration + 1);
+}
+
+void
+ApWifiMac::SummarizeTfCycle(uint16_t numReceived)
+{
+    m_tfCycleSuccessTrace(GetTfDuration(),  numReceived);
 }
 
 void

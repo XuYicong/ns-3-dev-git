@@ -310,6 +310,9 @@ private:
   bool m_muModeToStart;
   uint32_t m_repInterval;
   RUAllocations m_tfAlloc;                   //!< infocom: Allocations sent in the TF Beacon 
+  typedef void (*  SummarizeTfCycleCallback)(uint16_t tfDuration, uint16_t numReceived);
+  TracedCallback<uint16_t,uint16_t> m_tfCycleSuccessTrace;
+  void SummarizeTfCycle(uint16_t numRxSuccess);
   /**
    * \return the next Association ID to be allocated by the AP
    */

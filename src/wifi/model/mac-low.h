@@ -80,6 +80,7 @@ public:
 
   void SetTfRespAccessGrantCallback (Callback<void> callback);
   void SetKillTriggerFrameBeaconRetransmissionCallback (Callback<void> callback);
+  void SetSummarizeTfCycleCallback (Callback<void,uint16_t> callback);
   /**
    * Set up WifiPhy associated with this MacLow.
    *
@@ -876,6 +877,7 @@ private:
   WifiTxVector m_dlMuTxVector;
   Callback<void> m_tfRespAccessGrantCallback;
   Callback<void> m_killTfBCallback;
+  Callback<void,uint16_t> m_summarizeTfCycleCallback;
   /**
    * typedef for an iterator for a list of ChannelAccessManager.
    */

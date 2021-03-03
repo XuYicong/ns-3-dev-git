@@ -1019,7 +1019,13 @@ MacLow::SendMuPacketDl(){
     for(auto pair:m_dlMuPsdus)
         ForwardDown(pair.second, m_dlMuTxVector);
     m_phy->Send(m_dlMuPsdus, m_dlMuTxVector);
+    m_summarizeTfCycleCallback(m_dlMuPsdus.size());
     m_dlMuPsdus.clear();
+}
+void
+MacLow::SetSummarizeTfCycleCallback (Callback<void, uint16_t> callback)
+{
+    m_summarizeTfCycleCallback=callback;
 }
 
 void
@@ -1259,7 +1265,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
   }
   else if(hdr.IsTF() || hdr.IsBsrAck() ){
     if(GetBssid() != from){
-        NS_LOG_UNCOND("rx Trigger Frame from BSS "<<from<<" which is not the one we belong to");
+        NS_LOG_DEBUG("rx Trigger Frame from BSS "<<from<<" which is not the one we belong to");
         return;
     }
       //Time m_lastTfTxStart = CalculateTfBeaconDuration (packet, hdr); // hack

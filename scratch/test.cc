@@ -1,6 +1,7 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
+#include "ns3/gnuplot.h"
 #include "ns3/core-module.h"
 #include "ns3/config-store-module.h"
 #include "ns3/network-module.h"
@@ -19,15 +20,17 @@ double total_bytes_received = 0;
 double per_sta_bytes_received[200];
 double total_latency=0;
 char ssidName[200][10];
+uint32_t successDuration=0;
 int total_packets_received=0;
-int n_tf_cycles=-1;
+int n_tf_cycles=0;
 int n_sa=0;
-void CountTfCycles (std::string context, Ptr<const Packet> p, double snr)
+const uint32_t sifs = 16, slotTime= 9, difs= 34;//in micro seconds
+void CountTfCycles (std::string context, uint16_t cycleDuration, uint16_t numReceived)
 {
-  bool isBsrReq=(p->GetSize()== (unsigned)52 || p->GetSize()== (unsigned)40+10*n_sa);
-  //p->Print(std::cout);
-  //std::cout<<context<<"SINR: "<<snr<<"\t"<<" Packet length = "<<p->GetSize()<<" Is BSR Ruquest = "<<isBsrReq<<std::endl;
-  n_tf_cycles+=isBsrReq;
+  //NS_LOG_UNCOND(context);
+  successDuration += cycleDuration;
+  total_packets_received += numReceived;
+  n_tf_cycles++;
 }
 void PrintTrace (std::string context, Ptr<const Packet> p)
 {
@@ -47,7 +50,7 @@ void PrintTx (std::string context, Ptr< const Packet > packet, WifiMode mode, Wi
 class wifiNodes
 {
 public:
-  void Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, uint32_t distance, double interval, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled);
+  void Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType,  double interval, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled, uint32_t noRus);
   void SendPacketsUplink (double time, uint32_t seq);
   void SendPacketsDownlink (double time, uint32_t seq);
   bool Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mode, const Address &sender);
@@ -57,7 +60,6 @@ public:
   NodeContainer GetApNodes ();
 
 private:
-  uint32_t m_distance;
   uint32_t m_interval;
   Ptr<MultiModelSpectrumChannel> m_spectrumChannel;
   std::string m_errorModelType;
@@ -72,6 +74,7 @@ private:
   uint32_t m_tfCwMax;
   double m_alpha;
   uint32_t m_nScheduled;
+  uint32_t m_noRus;
   NodeContainer apNodes;
   NodeContainer staNodes;
   NetDeviceContainer apDevices;
@@ -90,14 +93,13 @@ NodeContainer wifiNodes::GetApNodes ()
   return apNodes;
 }
 
-void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, uint32_t distance, double interval, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled)
+void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, double interval, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled, uint32_t noRus)
 {
   m_interval = interval;
   m_spectrumChannel = spectrumChannel;
   m_bw = bw;
   m_freq = freq;
   m_errorModelType = errorModelType;
-  m_distance = distance;
   m_interval = interval;  
   m_spectrumPhy = spectrumPhy;
   m_noStas = noNodes;
@@ -109,6 +111,7 @@ void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint
   m_tfCwMin = tfCwMin;
   m_alpha = alpha; 
   m_nScheduled = nScheduled;
+  m_noRus = noRus;
 }
 
 void wifiNodes::Configure ()
@@ -224,7 +227,6 @@ bool wifiNodes::Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mod
   SeqTsHeader seqTs;
   Ptr<Packet> p = pkt->Copy ();
      //NS_LOG_UNCOND("Packet Size = "<<p->GetSize());
-  total_packets_received++;
   total_bytes_received += p->GetSize ();
   per_sta_bytes_received [dev->GetNode ()->GetId ()] += p->GetSize ();
 
@@ -242,15 +244,59 @@ bool wifiNodes::Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mod
    }
   return true;
 }
-
+double runOnce(uint32_t,uint32_t);
 int main (int argc, char *argv[])
+{
+    Gnuplot gnuplot = Gnuplot ("Multiple AP UORA");
+    gnuplot.SetTerminal ("canvas");
+  for (uint32_t i = 0; i < 200; i++)
+  {
+    sprintf(ssidName[i],"%x",i); 
+  }
+  gnuplot.SetLegend ("Number of competing stations", "Normalized throughput");
+  int minSta = 1, maxSta = 10, step = 1;
+  std::stringstream ss;
+    ss.str ("");
+  ss << "set xrange [" << minSta << ":" << maxSta << "]\n"
+     << "set xtics " << step << "\n"
+     << "set grid xtics ytics\n"
+     << "set mytics\n"
+     << "set style line 1 linewidth 3\n"
+     << "set style line 2 linewidth 3\n"
+     << "set style line 3 linewidth 3\n"
+     << "set style line 4 linewidth 3\n"
+     << "set style line 5 linewidth 3\n"
+     << "set style line 6 linewidth 3\n"
+     << "set style line 7 linewidth 3\n"
+     << "set style line 8 linewidth 3\n"
+     << "set style increment user";
+  gnuplot.SetExtra (ss.str ());
+    for(int noAps = 2; noAps<=10; noAps+=2)
+    {
+        ss.str("");
+        Gnuplot2dDataset dataset;
+    ss<<"Number of AP = "<<noAps;
+        for(int noNodes = minSta; noNodes<=maxSta; noNodes+=step)
+        {
+  total_latency=successDuration=total_packets_received=total_bytes_received=n_tf_cycles=0;
+            double eff=runOnce(noAps, noNodes);
+            dataset.Add(noNodes, eff);
+        }
+        dataset.SetTitle(ss.str());
+        gnuplot.AddDataset (dataset);
+    }
+    std::ofstream pltFile("multi-AP-uora.plt");
+        gnuplot.GenerateOutput (pltFile);
+        pltFile.close();
+}
+double runOnce (uint32_t noAps, uint32_t noNodes) 
 {
   Packet::EnablePrinting ();
   Packet::EnableChecking ();
-  uint32_t noNodes = 12;
-  uint32_t noAps = 13;
-  uint32_t wifiDistance = 1;
-  double simulationTime = 10; //seconds
+  uint32_t noRus = 9;
+  //uint32_t noNodes = 3;
+  //uint32_t noAps = 3;
+  double simulationTime = 11; //seconds
   uint32_t wifiFreq = 5180;
   uint32_t wifiBw = 20;
   std::string errorModelType = "ns3::TableBasedErrorRateModel";
@@ -258,14 +304,14 @@ int main (int argc, char *argv[])
   uint32_t run = 11;
   double interval = 0.001;
   uint32_t n_packets = 1000 * simulationTime;
-  bool wifiOn = true;
   uint32_t ulMode = 1;
   uint32_t tfDuration = 168;
   uint32_t maxTfSlots = 16;
+  uint32_t cw = 15;
   uint32_t tfCw = 7;
   uint32_t tfCwMin = 7;
   uint32_t tfCwMax = 63;
-  uint32_t nScheduled = 1;
+  uint32_t nScheduled = 0;
   double alpha = 0;
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
 
@@ -273,23 +319,18 @@ int main (int argc, char *argv[])
    {
      per_sta_bytes_received [i] = 0;
    }
-  for (uint32_t i = 0; i < 200; i++)
-  {
-    sprintf(ssidName[i],"%x",i); 
-  }
 
-  CommandLine cmd;
+  /*CommandLine cmd;
   cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
   cmd.AddValue ("noNodes", "Number of non-AP stations of each AP", noNodes);
   cmd.AddValue ("noAps", "Number of WiFi APs", noAps);
-  cmd.AddValue ("wifiDistance", "meters separation between nodes", wifiDistance);
   cmd.AddValue ("errorModelType", "select ns3::NistErrorRateModel or ns3::YansErrorRateModel", errorModelType);
   cmd.AddValue ("verbose","Print Traces",g_verbose);
   cmd.AddValue ("seed","seed",seed);
   cmd.AddValue ("run","run",run);
   cmd.AddValue ("interval", "The inter-packet interval", interval);
   cmd.AddValue ("packets", "Number of packets", n_packets);
-  cmd.AddValue ("wifiOn", "", wifiOn);
+  cmd.AddValue ("cw", "Contention window among APs", cw);
   cmd.AddValue ("wifiFreq", "WiFi operating frequency in MHz", wifiFreq);
   cmd.AddValue ("ulMode", "UL if 1, DL if 0", ulMode);
   cmd.AddValue ("tfDuration", "tf Duration in units of slot_time", tfDuration);
@@ -300,7 +341,8 @@ int main (int argc, char *argv[])
   cmd.AddValue ("nScheduled", "number of scheduled users", nScheduled);
   cmd.AddValue ("alpha", "fraction of DL traffic", alpha);
   cmd.Parse (argc,argv);
-
+*/
+  Config::SetDefault ("ns3::Txop::MinCw",UintegerValue(cw));
   n_packets = 1000 * simulationTime;
   n_sa = nScheduled;
   ConfigStore config;
@@ -316,7 +358,7 @@ int main (int argc, char *argv[])
   SpectrumWifiPhyHelper spectrumPhy /*= SpectrumWifiPhyHelper::Default ()*/;
   
   wifiNodes wifi;
-  wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, wifiDistance, interval, spectrumPhy, noAps, noAps*noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled);
+  wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, interval, spectrumPhy, noAps, noAps*noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled, noRus);
   wifi.Configure ();
   
   RngSeedManager::SetSeed (seed);  // Changes seed from default of 1 to 3
@@ -325,8 +367,6 @@ int main (int argc, char *argv[])
   startTimeSeconds->SetAttribute ("Min", DoubleValue (0.0));
   startTimeSeconds->SetAttribute ("Max", DoubleValue (0.01));
 
-  if (wifiOn) 
-  { 
     if (ulMode == 1)
      {
        for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i);
@@ -340,7 +380,6 @@ int main (int argc, char *argv[])
        for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i);
        for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i);
     }
-  }
 
   MobilityHelper mobility;
   mobility.SetPositionAllocator (positionAlloc);
@@ -357,7 +396,7 @@ int main (int argc, char *argv[])
   mobility.Install (wifi.GetApNodes());
   mobility.Install (wifi.GetStaNodes());
   
-  //Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&CountTfCycles));
+  Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/$ns3::ApWifiMac/tfCycleSuccess",MakeCallback(&CountTfCycles));
   if (g_verbose) {
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&PrintTrace));//Xyct: for compile
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxBegin",MakeCallback(&PrintTrace));
@@ -378,8 +417,8 @@ int main (int argc, char *argv[])
   Simulator::Destroy ();
 
   std::cout<<"Total Packets Received = "<<total_packets_received<<std::endl;
-  std::cout<<"Total latency = "<<total_latency<<std::endl;
-  std::cout<<"Average latency = "<< total_latency/total_packets_received <<std::endl;
+  //std::cout<<"Total latency = "<<total_latency<<std::endl;
+  //std::cout<<"Average latency = "<< total_latency/total_packets_received <<std::endl;
   std::cout<<"Number of TF cycles = "<<n_tf_cycles<<std::endl;
   int n_scheduled_packets = n_tf_cycles * nScheduled;
   std::cout<<"Number of scheduled packets = "<<n_scheduled_packets<<std::endl;
@@ -390,12 +429,16 @@ int main (int argc, char *argv[])
   std::cout<<"Aggregate Throughput = "<<total_throughput<< " Mbps\n";
   double beta = (double)n_uora_packets/n_tf_cycles;
   std::cout<<"BSR delivery rate = "<<beta<<std::endl;
-  std::cout<<"Efficiency = "<<beta/(9-nScheduled)<<std::endl;
+  double ofdmaEfficiency = beta/(std::min(noNodes,noRus)-nScheduled);
+  std::cout<<"OFDMA efficiency = "<<ofdmaEfficiency<<std::endl;
+  double bianchiEfficiency = successDuration/(1e6*(simulationTime-1))*slotTime;
+  std::cout<<"Bianchi efficiency = "<<bianchiEfficiency<<std::endl;
+  std::cout<<"total efficiency = "<<ofdmaEfficiency * bianchiEfficiency<<std::endl;
 
-  std::ofstream outfile("../experiments-3.28.txt",std::ios::app);
-  outfile<<"cwmax:"<<tfCwMax<<", cwmin:"<<tfCwMin<<", noNodes:"<<noNodes<<", N_ra:"<<(9-nScheduled)<<", BSR_delivery_rate:"<<beta<<", Efficiency = "<<beta/(9-nScheduled)<<", average latency(seconds):"<<total_latency/total_packets_received<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets<<std::endl;
+  std::ofstream outfile("../experiments-3.33.txt",std::ios::app);
+  outfile<<"cwmax:"<<tfCwMax<<", cwmin:"<<tfCwMin<<", noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", OFDMA Efficiency:"<<ofdmaEfficiency<<", Bianchi Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets<<std::endl;
 
-  return 0;
+  return ofdmaEfficiency * bianchiEfficiency;
 }
 
 
