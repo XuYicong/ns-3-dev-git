@@ -585,7 +585,7 @@ StaWifiMac::Enqueue (Ptr<Packet> packet, Mac48Address to)
 
   hdr.SetAddr1 (GetBssid ());
   hdr.SetAddr2 (m_low->GetAddress ());
-  to = GetBssid();//Force to the AP
+  //to = GetBssid();//Force to the AP
   hdr.SetAddr3 (to);
   hdr.SetDsNotFrom ();
   hdr.SetDsTo ();

@@ -25,12 +25,12 @@ int total_packets_received=0;
 int n_tf_cycles=0;
 int n_sa=0;
 const uint32_t sifs = 16, slotTime= 9, difs= 34;//in micro seconds
-void CountTfCycles (std::string context, uint16_t cycleDuration, uint16_t numReceived)
+void CountTfCycles (std::string context, uint16_t packetDuration, uint16_t numReceived)
 {
   //NS_LOG_UNCOND(context);
-  successDuration += cycleDuration;
   total_packets_received += numReceived;
-  n_tf_cycles++;
+    n_tf_cycles++;
+    successDuration += packetDuration;
 }
 void PrintTrace (std::string context, Ptr<const Packet> p)
 {
@@ -124,20 +124,23 @@ void wifiNodes::Configure ()
     wifi.SetStandard (WIFI_STANDARD_80211ax_5GHZ);
   WifiMacHelper mac;
   StringValue DataRate;
-  //DataRate = StringValue ("HeMcs0"); // PhyRate = 58.5 Mbps
-  DataRate = StringValue ("OfdmRate6Mbps"); // PhyRate = 58.5 Mbps
-  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager","DataMode", DataRate,"ControlMode", DataRate);
+  DataRate = StringValue ("HeMcs3");
+  //DataRate = StringValue ("OfdmRate6Mbps"); // PhyRate = 58.5 Mbps
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager","DataMode", DataRate,"ControlMode", DataRate,"NonUnicastMode",DataRate);
   
   //Config::SetDefault ("ns3::WifiPhy::CcaMode1Threshold", DoubleValue (-62.0));
   m_spectrumPhy.SetChannel (m_spectrumChannel);
   m_spectrumPhy.SetErrorRateModel (m_errorModelType);
-  m_spectrumPhy.Set ("Frequency", UintegerValue (m_freq)); // channel 36 at 20 MHz
+  m_spectrumPhy.Set ("Frequency", UintegerValue (m_freq)); //Note: to change channel width, either frequency or channel number should be changed as well
   //m_spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (false));//Xyct: to compile
   m_spectrumPhy.Set ("ChannelWidth", UintegerValue (m_bw));
+  m_spectrumPhy.Set ("TxPowerStart", DoubleValue (26));
+  m_spectrumPhy.Set ("TxPowerEnd", DoubleValue (26));
 	
   mac.SetType ("ns3::ApWifiMac", "TfDuration", UintegerValue (m_tfDuration), 
     "BeaconGeneration", BooleanValue(false),
     "EnableBeaconJitter",BooleanValue(true),    
+    "RuNumber", UintegerValue(m_noRus),
     "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue(m_alpha), "nScheduled", UintegerValue(m_nScheduled));
   for (uint32_t i = 0; i < m_noAps; ++i){
     Ssid ssid = Ssid (ssidName[i]);
@@ -244,7 +247,7 @@ bool wifiNodes::Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mod
    }
   return true;
 }
-double runOnce(uint32_t,uint32_t);
+double runOnce(uint32_t,uint32_t,uint32_t);
 int main (int argc, char *argv[])
 {
     Gnuplot gnuplot = Gnuplot ("Multiple AP UORA");
@@ -253,10 +256,10 @@ int main (int argc, char *argv[])
   {
     sprintf(ssidName[i],"%x",i); 
   }
-  gnuplot.SetLegend ("Number of competing stations", "Normalized throughput");
-  int minSta = 1, maxSta = 10, step = 1;
+  gnuplot.SetLegend ("Number of stations per AP", "Normalized MAC layer throughput");
   std::stringstream ss;
     ss.str ("");
+  int trials = 3, minSta = 4, maxSta = 5, step = 1;
   ss << "set xrange [" << minSta << ":" << maxSta << "]\n"
      << "set xtics " << step << "\n"
      << "set grid xtics ytics\n"
@@ -271,34 +274,49 @@ int main (int argc, char *argv[])
      << "set style line 8 linewidth 3\n"
      << "set style increment user";
   gnuplot.SetExtra (ss.str ());
-    for(int noAps = 2; noAps<=10; noAps+=2)
+  for(int noRus = 10; noRus<=18; noRus*=2)
+    for(int noAps = 3; noAps<=4; noAps+=2)
     {
-        ss.str("");
         Gnuplot2dDataset dataset;
-    ss<<"Number of AP = "<<noAps;
+        dataset.SetErrorBars (Gnuplot2dDataset::Y);
+        dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
         for(int noNodes = minSta; noNodes<=maxSta; noNodes+=step)
         {
-  total_latency=successDuration=total_packets_received=total_bytes_received=n_tf_cycles=0;
-            double eff=runOnce(noAps, noNodes);
-            dataset.Add(noNodes, eff);
+            double stDev = 0, avgEff=0, eff[233]={0};
+            for (int i = 0; i < trials; ++i)
+            {
+                total_latency = successDuration = total_packets_received
+                    =total_bytes_received = n_tf_cycles=0;
+                eff[i] = runOnce(noAps, noNodes, noRus);
+                avgEff += eff[i];
+            }
+            avgEff /= trials;
+            for (int i = 0; i < trials; ++i)
+            {
+                stDev += pow (eff[i] - avgEff, 2);
+            }
+            stDev = sqrt (stDev / (trials - 1));
+            dataset.Add(noNodes, avgEff, stDev);
         }
+        ss.str("");
+        ss<<noAps<<" APs, "<<noRus<<" RUs";
         dataset.SetTitle(ss.str());
         gnuplot.AddDataset (dataset);
     }
-    std::ofstream pltFile("multi-AP-uora.plt");
-        gnuplot.GenerateOutput (pltFile);
-        pltFile.close();
+  std::ofstream pltFile("multi-AP-variable-RU.plt");
+    gnuplot.GenerateOutput (pltFile);
+    pltFile.close();
 }
-double runOnce (uint32_t noAps, uint32_t noNodes) 
+double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus) 
 {
   Packet::EnablePrinting ();
   Packet::EnableChecking ();
-  uint32_t noRus = 9;
+  //uint32_t noRus = 9;
   //uint32_t noNodes = 3;
   //uint32_t noAps = 3;
-  double simulationTime = 11; //seconds
-  uint32_t wifiFreq = 5180;
-  uint32_t wifiBw = 20;
+  double simulationTime = 3; //seconds
+  uint32_t wifiFreq = 5590;
+  uint32_t wifiBw = 40;
   std::string errorModelType = "ns3::TableBasedErrorRateModel";
   uint32_t seed = 110;
   uint32_t run = 11;
@@ -313,7 +331,6 @@ double runOnce (uint32_t noAps, uint32_t noNodes)
   uint32_t tfCwMax = 63;
   uint32_t nScheduled = 0;
   double alpha = 0;
-  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
 
   for (uint32_t i = 0; i < 200; i++)
    {
@@ -380,22 +397,36 @@ double runOnce (uint32_t noAps, uint32_t noNodes)
        for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsUplink (0.1 + interval * i, i);
        for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i);
     }
-
+    {//Set mobility
+  uint32_t width = 20, n = sqrt(noAps-1)+1, delta = width/(n-1?n-1:n), row = 0, col = 0;
   MobilityHelper mobility;
-  mobility.SetPositionAllocator (positionAlloc);
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  for(uint32_t i = 0; i < noAps; i++)
-  {
-     positionAlloc->Add (Vector (.0, .0, .1*i));
-  }
+  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+    Ptr<RandomDiscPositionAllocator> disc = CreateObject<RandomDiscPositionAllocator> ();
+    Ptr<UniformRandomVariable> radius = CreateObject<UniformRandomVariable> ();
+    radius->SetAttribute ("Min", DoubleValue (20));
+    radius->SetAttribute ("Max", DoubleValue (25));//This distance, every sta is interferenced
+    //radius->SetAttribute ("Max", DoubleValue (30));//This distance, some sta are not interferenced
+    disc->SetRho(radius);
+    mobility.SetPositionAllocator (disc);
   for(uint32_t j = 0; j < noAps; j++)
-  for (uint32_t i = 0; i < noNodes; i++)
-   {
-     positionAlloc->Add (Vector (10*cos(2 * M_PI * i/noNodes), 10*sin(2 * M_PI * i/noNodes), .1*j));
-   }
+  {
+     positionAlloc->Add (Vector (row, col, 0));
+    disc->SetX(row); disc->SetY(col); disc->SetZ(0);
+    std::cout<<row<<" "<<col<<std::endl;
+    row += delta;
+    if(row>width){
+        row=0;
+        col+=delta;
+    }
+    for (uint32_t i = 0; i < noNodes; i++)
+    {
+        mobility.Install (wifi.GetStaNodes().Get(i+j*noNodes));
+    }
+  }
+  mobility.SetPositionAllocator (positionAlloc);
   mobility.Install (wifi.GetApNodes());
-  mobility.Install (wifi.GetStaNodes());
-  
+    }
   Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/$ns3::ApWifiMac/tfCycleSuccess",MakeCallback(&CountTfCycles));
   if (g_verbose) {
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&PrintTrace));//Xyct: for compile
@@ -428,16 +459,16 @@ double runOnce (uint32_t noAps, uint32_t noNodes)
   double total_throughput = total_bytes_received * 8/(6000000 * (simulationTime - 1));
   std::cout<<"Aggregate Throughput = "<<total_throughput<< " Mbps\n";
   double beta = (double)n_uora_packets/n_tf_cycles;
-  std::cout<<"BSR delivery rate = "<<beta<<std::endl;
-  double ofdmaEfficiency = beta/(std::min(noNodes,noRus)-nScheduled);
-  std::cout<<"OFDMA efficiency = "<<ofdmaEfficiency<<std::endl;
-  double bianchiEfficiency = successDuration/(1e6*(simulationTime-1))*slotTime;
-  std::cout<<"Bianchi efficiency = "<<bianchiEfficiency<<std::endl;
-  std::cout<<"total efficiency = "<<ofdmaEfficiency * bianchiEfficiency<<std::endl;
+  std::cout<<"Avg. N Packet per cycle = "<<beta<<std::endl;
+  double ofdmaEfficiency = beta/(noRus-nScheduled);
+  std::cout<<"Frequency Efficiency = "<<ofdmaEfficiency<<std::endl;
+  double bianchiEfficiency = successDuration/(1e6*(simulationTime-1));
+  std::cout<<"Time Efficiency = "<<bianchiEfficiency<<std::endl;
+  std::cout<<"Total Efficiency = "<<ofdmaEfficiency * bianchiEfficiency<<std::endl;
 
   std::ofstream outfile("../experiments-3.33.txt",std::ios::app);
-  outfile<<"cwmax:"<<tfCwMax<<", cwmin:"<<tfCwMin<<", noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", OFDMA Efficiency:"<<ofdmaEfficiency<<", Bianchi Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets<<std::endl;
-
+  outfile<<"noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", Frequency Efficiency:"<<ofdmaEfficiency<<", Time Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets<<std::endl;
+    outfile.close();
   return ofdmaEfficiency * bianchiEfficiency;
 }
 

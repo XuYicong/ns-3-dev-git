@@ -325,6 +325,7 @@ private:
   Time m_lastTfAccessStart; 
   Time m_tfBeaconDuration;
   uint32_t m_tfPacketDuration;
+  uint32_t m_ruNumber;                       //!< Xyct: the number of Resource Units for OFDMA
   bool m_enableBeaconGeneration;             //!< Flag whether beacons are being generated
   EventId m_beaconEvent;                     //!< Event to generate one beacon
   EventId m_cfpEvent;                        //!< Event to generate one PCF frame

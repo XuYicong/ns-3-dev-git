@@ -324,9 +324,10 @@ ChannelAccessManager::RequestAccess (Ptr<Txop> txop, bool isCfPeriod)
   UpdateBackoff ();
   NS_ASSERT (!txop->IsAccessRequested ());
   txop->NotifyAccessRequested ();
-  DoGrantDcfAccess ();
-  //Simulator::Schedule(MicroSeconds(16), &ChannelAccessManager::DoGrantDcfAccess, this);
+  //DoGrantDcfAccess ();
+  Simulator::Schedule(MicroSeconds(16), &ChannelAccessManager::DoGrantDcfAccess, this);
   //Xyct: I don't understand the delay
+  //Xyct: Now I do: you sense idle but others can sense busy
   DoRestartAccessTimeoutIfNeeded ();
 }
 

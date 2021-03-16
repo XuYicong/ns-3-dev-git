@@ -499,7 +499,7 @@ WifiRemoteStationManager::RecordDisassociated (Mac48Address address)
   NS_ASSERT (!address.IsGroup ());
   LookupState (address)->m_state = WifiRemoteStationState::DISASSOC;
 }
-//Xyct: TF is homogeneouos with CTS and RTS, is not Data, should be GetTfTxVector
+
 WifiTxVector
 WifiRemoteStationManager::GetDataTxVector (const WifiMacHeader &header)
 {
@@ -518,7 +518,6 @@ WifiRemoteStationManager::GetDataTxVector (const WifiMacHeader &header)
       v.SetNss (1);
       v.SetNess (0);
       //v.SetMuMode (0); //infocom: This is what is used for management frames, disabling MU mode
-      //Xyct: mu mode is unnecessary, ru selection should be handled in mac low
       //v.SetRuBits (1);
       return v;
     }

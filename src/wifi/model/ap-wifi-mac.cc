@@ -83,6 +83,11 @@ ApWifiMac::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&ApWifiMac::m_enableNonErpProtection),
                    MakeBooleanChecker ())
+    .AddAttribute ("RuNumber",
+                   "The number of resource units for OFDMA",
+                   UintegerValue (9),
+                   MakeUintegerAccessor (&ApWifiMac::m_ruNumber),
+                   MakeUintegerChecker<uint32_t> ())
     .AddTraceSource ("tfCycleSuccess",
                      "Trace source indicating an AP "
                      "has successfully received data in a trigger frame cycle",
@@ -110,9 +115,9 @@ ApWifiMac::ApWifiMac ()
   SetTypeOfStation (AP);
 
   m_low->SetSummarizeTfCycleCallback(MakeCallback(&ApWifiMac::SummarizeTfCycle,this));
-  m_tfPacketDuration = 1032;
+  m_tfPacketDuration = 1032;//This is useless
   m_muModeToStart = false;
-  for (int ru = 0; ru < 9; ru++)
+  for (int ru = 0; 0&&ru < 9; ru++)
    {
      m_lowMu[ru]->SetKillTriggerFrameBeaconRetransmissionCallback (MakeCallback (&ApWifiMac::KillTriggerFrameBeaconRetransmission, this));
    }
@@ -1040,6 +1045,7 @@ ApWifiMac::TriggerFrameExpire ()
    //std::cout<<"DIFS canceling scheduled at "<<(Now () + timeToExpire).GetMicroSeconds () << std::endl;
    m_channelAccessManager->NotifyMaybeCcaBusyStartNow (GetTfDuration () * m_low->GetSlotTime ()); // Tell the 20 MHz channelAccessManager that you are busy until MU mode ends  
    std::cout<<GetAddress()<<" gain access. Next trigger scheduled at "<<(Now()+m_low->GetSlotTime()).GetMicroSeconds () << std::endl;
+    m_tfCycleSuccessTrace(0/*depracated*/, 1);
    m_muModeExpireEvent = Simulator::Schedule (m_low->GetSlotTime (), &ApWifiMac::StopMuMode, this);
    if (!m_muUlFlag) // Don't start MU Mode at AP if this is a UL TF
     {
@@ -1126,7 +1132,7 @@ ApWifiMac::SendTriggerFrame(bool flag)
         return; 
       }
    }
-  if (!flag)
+  if (0&&!flag)
    {
     for (uint32_t ru = 0; ru < 9; ru++)
      {
@@ -1192,14 +1198,14 @@ ApWifiMac::StartMuModeUplink (void) //starts the OFDMA based MU Mode
    {
      if (j >= n_sc)
       {
-	alloc.insert (std::pair<Mac48Address, uint32_t>(Mac48Address::GetBroadcast(), 9-n_sc));        
+	alloc.insert (std::pair<Mac48Address, uint32_t>(Mac48Address::GetBroadcast(), m_ruNumber-n_sc));        
       }
      else 
       {
-        alloc.insert (std::pair<Mac48Address, uint32_t>(i->second, j%9)); 
+        alloc.insert (std::pair<Mac48Address, uint32_t>(i->second, j%m_ruNumber)); 
       }
      j++;
-     if (j == 9)
+     if (j == m_ruNumber)
       {
         break;
       }
@@ -1358,7 +1364,7 @@ ApWifiMac::CalculateTfDuration (void)
       }
      else if (GetNScheduled () == 9)
       {*/
-	total = t1 + m_low->GetSifs () + t2 /**/+ m_low->GetSifs () + MicroSeconds (20);
+	total = t1 + m_low->GetSifs () + t2 /**/+ m_low->GetSifs () + MicroSeconds (920);
       //}
      // Not this: AP ----TF----> STA ----TFResp----> AP ----BSRACK----> STA ----Payload----> AP ----ACK----> STA
       //But this: AP ----TF----> STA ----Payload----> AP ----ACK----> STA
@@ -1379,7 +1385,7 @@ ApWifiMac::CalculateTfDuration (void)
 void
 ApWifiMac::SummarizeTfCycle(uint16_t numReceived)
 {
-    m_tfCycleSuccessTrace(GetTfDuration(),  numReceived);
+    m_tfCycleSuccessTrace(m_tfPacketDuration, numReceived);
 }
 
 void
@@ -2004,7 +2010,7 @@ ApWifiMac::StopMuMode (void)
    }
   else
    {
-     m_tfPacketDuration = 1022;
+     m_tfPacketDuration = 752;
      Simulator::ScheduleNow (&ApWifiMac::StartMuModeUplink, this);
    }
 }

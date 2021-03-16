@@ -995,19 +995,19 @@ MacLow::SendMuPacketUl(){
   Ptr<const ns3::WifiPsdu> psdu=m_currentPacket;
   Mac48Address source = psdu->GetAddr1();
   std::cout<<"Inside node "<<m_phy->GetDevice ()->GetNode ()->GetId () <<"\tru = "<<GetRuBits()<<"\tSendMuPacketUl to "<<source<<std::endl;
-  WifiTxVector txVector = GetDataTxVector(Create<WifiMacQueueItem>(psdu->GetPayload(0),psdu->GetHeader(0)));
+  WifiTxVector txVector = m_currentTxVector;//GetDataTxVector(Create<WifiMacQueueItem>(psdu->GetPayload(0),psdu->GetHeader(0)));
   StartDataTxTimers (txVector);
   txVector.SetPreambleType(WIFI_PREAMBLE_HE_TB);
   HeRu::RuSpec ru;
-      //ru.primary80MHz = false;
     ru.ruType=HeRu::RU_26_TONE;
     ru.index=GetRuBits();//Starting at 1
-      Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice> (m_phy->GetDevice ());
+    ru.primary80MHz = ru.index<= HeRu::GetNRus(80,ru.ruType);
+    Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice> (m_phy->GetDevice ());
     Ptr<StaWifiMac> mac = DynamicCast<StaWifiMac>(device->GetMac());
     uint16_t txStaId=mac->GetAssociationId();
     std::cout<<"StaId: "<<txStaId<<std::endl; 
   txVector.SetRu (ru, txStaId);
-  txVector.SetMode (WifiPhy::GetHeMcs7 (), txStaId);
+  txVector.SetMode (WifiPhy::GetHeMcs2 (), txStaId);
   txVector.SetNss (1, txStaId);
   Time txDuration = m_phy->CalculateTxDuration (psdu->GetSize (), txVector, m_phy->GetPhyBand (), txStaId);
   txVector.SetLength (m_phy->ConvertHeTbPpduDurationToLSigLength (txDuration, m_phy->GetPhyBand ()));
@@ -1025,7 +1025,7 @@ MacLow::SendMuPacketDl(){
 void
 MacLow::SetSummarizeTfCycleCallback (Callback<void, uint16_t> callback)
 {
-    m_summarizeTfCycleCallback=callback;
+    MacLow::m_summarizeTfCycleCallback=callback;
 }
 
 void
@@ -1171,7 +1171,10 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
       m_normalAckTimeoutEvent.Cancel ();
       NotifyAckTimeoutResetNow ();
       m_currentTxop->GotAck ();
-
+      //if(txVector.GetPreambleType () == WIFI_PREAMBLE_HE_MU){
+        SetTfCw(GetTfCwMin());
+        m_firstTf=true;
+      //}
       if (m_txParams.HasNextPacket ())
         {
           m_waitIfsEvent = Simulator::Schedule (GetSifs (), &MacLow::WaitIfsAfterEndTxFragment, this);
@@ -1265,7 +1268,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
   }
   else if(hdr.IsTF() || hdr.IsBsrAck() ){
     if(GetBssid() != from){
-        NS_LOG_DEBUG("rx Trigger Frame from BSS "<<from<<" which is not the one we belong to");
+        NS_LOG_UNCOND("rx Trigger Frame from BSS "<<from<<" which is not the one we belong to");
         return;
     }
       //Time m_lastTfTxStart = CalculateTfBeaconDuration (packet, hdr); // hack
@@ -1305,7 +1308,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
          m_bsrAckRecvd = false;
        }*/
       
-      uint32_t ru;
+      uint32_t ru, ruNumber=0;
 
       for (RegularWifiMac::RUAllocations::const_iterator it = alloc.begin (); it != alloc.end (); it++)
        {
@@ -1328,7 +1331,8 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
            }
           if (it->first == Mac48Address::GetBroadcast ())
            {
-	     ru = ruNum->GetInteger (9-it->second+1, 9);
+	     ru = ruNumber+ ruNum->GetInteger (1, it->second);
+               //ruNumber+= it->second;//nScheduledRUs + nUORA rus
 	     m_noSlots -= it->second;
 	     std::cout<<"Node "<<m_phy->GetDevice ()->GetNode ()->GetId ()<<"\tm_noSlots =  "<<m_noSlots << "\tSelected RU = "<<ru<<"\tTfCw = "<<GetTfCw ()<< "\ttime = "<< Simulator::Now ().GetMicroSeconds ()<<std::endl;
          //std::cout<<"noSlots: "<<m_noSlots<<std::endl;
@@ -1338,7 +1342,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
 	        Simulator::Schedule (GetSifs(),&Txop::NotifyGotTrigger, GetMuTxop());
 		for(auto m_channelAccessManager:m_channelAccessManagers)Simulator::Schedule(GetSifs(), &ChannelAccessManager::NotifyMaybeCcaBusyStartNow, m_channelAccessManager, Seconds (1)); 
               }
-           }
+           }else ruNumber++;
        }
   }
   else if (hdr.IsCtl ())
@@ -1841,7 +1845,7 @@ MacLow::GetAckTxVector (Mac48Address to, WifiMode dataTxMode) const
   v.SetMode (ackMode);
   v.SetPreambleType (GetPreambleForTransmission (ackMode.GetModulationClass (), m_stationManager->GetShortPreambleEnabled (), m_stationManager->UseGreenfieldForDestination (to)));
   v.SetTxPowerLevel (m_stationManager->GetDefaultTxPowerLevel ());
-  v.SetChannelWidth (GetChannelWidthForTransmission (ackMode, m_phy->GetChannelWidth ()));
+  v.SetChannelWidth (m_phy->GetChannelWidth()/*GetChannelWidthForTransmission (ackMode, m_phy->GetChannelWidth ())*/);//Xyct: to let ack send in the same ru
    uint16_t ackTxGuardInterval = ConvertGuardIntervalToNanoSeconds (ackMode, DynamicCast<WifiNetDevice> (m_phy->GetDevice ()));
   v.SetGuardInterval (ackTxGuardInterval);
   v.SetNss (1);
@@ -2290,16 +2294,12 @@ MacLow::StartDataTxTimers (WifiTxVector dataTxVector)
       // aRxPHYStartDelay equals the time to transmit the PHY header.
       WifiTxVector ackTxVector = GetAckTxVector (m_currentPacket->GetAddr1 (),
                                                  dataTxVector.GetMode ());
-      Time timerDelay = GetSifs () + GetSlotTime ()
+      Time timerDelay = txDuration + GetSifs () + GetSlotTime ()
                         + m_phy->CalculatePhyPreambleAndHeaderDuration (ackTxVector);//Xyct: since already multi-ed by 9, ackTxVector not set mu.
-     if (m_phy->GetMuMode ())//Xyct: original hack multi-ed "m_ackTimeout" by 9. I regard it as all left
-      {
-        timerDelay = txDuration + 9 * timerDelay;
-      }
-      else 
-      {
-        timerDelay = txDuration + timerDelay;
-      }
+     //if (m_phy->GetMuMode ())//Xyct: original hack multi-ed "m_ackTimeout" by 9. I regard it as all left
+      //{
+        timerDelay = HeRu::GetNRus(m_phy->GetChannelWidth(),HeRu::RU_26_TONE) * timerDelay;
+      //}
       NS_ASSERT (m_normalAckTimeoutEvent.IsExpired ());
       NotifyAckTimeoutStartNow (timerDelay);
       m_normalAckTimeoutEvent = Simulator::Schedule (timerDelay, &MacLow::NormalAckTimeout, this);
@@ -2604,8 +2604,6 @@ MacLow::EndTxNoAck (void)
 void
 MacLow::CacheAckAfterData (Mac48Address source, Time duration, WifiMode dataTxMode, double dataSnr, std::pair<uint16_t,HeMuUserInfo> infoPair)
 {
-    m_firstTf=true;
-    SetTfCw(GetTfCwMin());
     //Prepare for another round of contention
   NS_LOG_FUNCTION (this << Simulator::Now ().GetSeconds ());
   uint16_t staId = infoPair.first;
@@ -2640,7 +2638,7 @@ MacLow::CacheAckAfterData (Mac48Address source, Time duration, WifiMode dataTxMo
   duration -= MicroSeconds(844);
   duration -= GetAckDuration (m_dlMuTxVector, staId);
   duration -= GetSifs ();
-  duration = MicroSeconds(224);
+  duration = MicroSeconds(90);
   NS_ASSERT_MSG (duration.IsPositive (), "ACK duration is not positive");
   //FIXME: calculate duration
   NS_LOG_UNCOND("ACK duration: "<<duration);
