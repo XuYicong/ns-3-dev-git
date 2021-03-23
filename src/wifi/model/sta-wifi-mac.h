@@ -184,6 +184,7 @@ public:
   static bool m_bsrTx7;
   static bool m_bsrTx8;
   void UpdateSlots (uint32_t ru);
+  void CountTrigger(uint16_t isDataSent);
 private:
   /**
    * The current MAC state of the STA.
@@ -378,6 +379,8 @@ private:
   TracedCallback<Mac48Address> m_assocLogger;   ///< association logger
   TracedCallback<Mac48Address> m_deAssocLogger; ///< disassociation logger
   TracedCallback<Time>         m_beaconArrival; ///< beacon arrival logger
+  typedef void (*  CountTriggerCallback)(bool isDataSent);
+  TracedCallback<bool> m_receiveTriggerTrace;
 };
 
 } //namespace ns3

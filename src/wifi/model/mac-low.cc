@@ -1006,6 +1006,7 @@ MacLow::SendMuPacketUl(){
     Ptr<StaWifiMac> mac = DynamicCast<StaWifiMac>(device->GetMac());
     uint16_t txStaId=mac->GetAssociationId();
     std::cout<<"StaId: "<<txStaId<<std::endl; 
+    //m_summarizeTfCycleCallback(0);
   txVector.SetRu (ru, txStaId);
   txVector.SetMode (WifiPhy::GetHeMcs2 (), txStaId);
   txVector.SetNss (1, txStaId);
@@ -1074,6 +1075,7 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
 
   bool isPrevNavZero = IsNavZero ();
   NS_LOG_DEBUG ("duration/id=" << hdr.GetDuration ());
+  NS_LOG_UNCOND("Receive OK at"<<Simulator::Now().GetMicroSeconds());
   NotifyNav (packet, hdr);
   double rxSnr = rxSignalInfo.snr;
   Mac48Address from = hdr.GetAddr2 ();
@@ -1289,19 +1291,19 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
       if (m_firstTf)
        {
          m_firstTf = false;
-         m_noSlots = rv->GetInteger (1, GetTfCw ());
+         m_noSlots = rv->GetInteger (0, GetTfCw ());
        }
       else if (m_noSlots <= 0) 
        {
          //if (!m_bsrAckRecvd)
           //{
-            SetTfCw (2 * GetTfCw () + 1); //Xyct: Added plus one
+            SetTfCw (2 * GetTfCw () +1);
 	    if (GetTfCw () > GetTfCwMax ())
              {
                SetTfCw (GetTfCwMax ());
              }
           //}
-         m_noSlots = rv->GetInteger (1, GetTfCw ());
+         m_noSlots = rv->GetInteger (0, GetTfCw ());
        }
       /*if (m_bsrAckRecvd)
        {
@@ -1322,9 +1324,12 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
 	     std::cout<<"Node "<<m_phy->GetDevice ()->GetNode ()->GetId ()<<"\tm_noSlots =  "<<m_noSlots << "\tScheduled RU = "<<it->second<<"\tTfCw = "<<GetTfCw ()<< "\ttime = "<< Simulator::Now ().GetMicroSeconds ()<<std::endl;
 		 for(auto m_channelAccessManager:m_channelAccessManagers)Simulator::Schedule(GetSifs(), &ChannelAccessManager::NotifyMaybeCcaBusyStartNow, m_channelAccessManager, Seconds (1)); 
 	        Simulator::Schedule (GetSifs(), &Txop::NotifyGotTrigger, GetMuTxop());
+            //Notify received TF, to count TF in case no STA transmits
+            m_summarizeTfCycleCallback(1); 
                }
              else
                {
+                m_summarizeTfCycleCallback(0); 
                  NS_LOG_UNCOND("Received Trigger Frame for DL, time = "<<Simulator::Now ().GetMicroSeconds ());
                }
 		    return;
@@ -1337,11 +1342,12 @@ MacLow::ReceiveOk (Ptr<WifiMacQueueItem> mpdu, RxSignalInfo rxSignalInfo, WifiTx
 	     std::cout<<"Node "<<m_phy->GetDevice ()->GetNode ()->GetId ()<<"\tm_noSlots =  "<<m_noSlots << "\tSelected RU = "<<ru<<"\tTfCw = "<<GetTfCw ()<< "\ttime = "<< Simulator::Now ().GetMicroSeconds ()<<std::endl;
          //std::cout<<"noSlots: "<<m_noSlots<<std::endl;
              if (m_noSlots <= 0)
-	      {
-		    SetRuBits (ru); 
-	        Simulator::Schedule (GetSifs(),&Txop::NotifyGotTrigger, GetMuTxop());
-		for(auto m_channelAccessManager:m_channelAccessManagers)Simulator::Schedule(GetSifs(), &ChannelAccessManager::NotifyMaybeCcaBusyStartNow, m_channelAccessManager, Seconds (1)); 
-              }
+	        {
+		        SetRuBits (ru); 
+	            Simulator::Schedule (GetSifs(),&Txop::NotifyGotTrigger, GetMuTxop());
+		        for(auto m_channelAccessManager:m_channelAccessManagers)Simulator::Schedule(GetSifs(), &ChannelAccessManager::NotifyMaybeCcaBusyStartNow, m_channelAccessManager, Seconds (1)); 
+                m_summarizeTfCycleCallback(1);//Do send  
+            }else m_summarizeTfCycleCallback(0); //Do not send
            }else ruNumber++;
        }
   }

@@ -18,19 +18,39 @@ NS_LOG_COMPONENT_DEFINE ("test");
 bool g_verbose = false;
 double total_bytes_received = 0;
 double per_sta_bytes_received[200];
-double total_latency=0;
+double total_latency=0, result_normalized_throughput=0, result_colliding_rate_trigger=0, result_colliding_rate_data=0;
 char ssidName[200][10];
 uint32_t successDuration=0;
-int total_packets_received=0;
-int n_tf_cycles=0;
-int n_sa=0;
+int total_packets_received=0, total_packets_sent=0;
+int n_tf_cycles=0, n_tf_sent=0;
+int n_sta_per_ap=0, time_tf_received;
 const uint32_t sifs = 16, slotTime= 9, difs= 34;//in micro seconds
 void CountTfCycles (std::string context, uint16_t packetDuration, uint16_t numReceived)
 {
-  //NS_LOG_UNCOND(context);
+    if(numReceived==0){
+        n_tf_sent++;//Sent trigger frame
+        return;
+    }
+    uint16_t n_tf_passed = time_tf_received / n_sta_per_ap;
+    time_tf_received =0;
+    //Reason of using extra variable: there may be collided TFs received
+    n_tf_cycles+=n_tf_passed;
+  //NS_LOG_UNCOND(context<<" "<<numReceived<<" packets received, "<<"tfCycle No."<<n_tf_cycles);
   total_packets_received += numReceived;
-    n_tf_cycles++;
-    successDuration += packetDuration;
+  /* When calculating RU efficiency, should consider no-data-cycle 
+   * which means n_tf_cycles plus n_tf_passed
+   * When calculating Bianchi efficiency, n_tf_passed are successful periods
+   * contributing an RU efficiency of 0
+   * so success duration contains n_tf_passed
+   */
+    successDuration += packetDuration * n_tf_passed;
+}
+void TriggerReceived(std::string context, bool isDataSent)
+{
+    time_tf_received++;
+    if(isDataSent){
+        total_packets_sent++;//Sent data
+    }
 }
 void PrintTrace (std::string context, Ptr<const Packet> p)
 {
@@ -145,7 +165,9 @@ void wifiNodes::Configure ()
   for (uint32_t i = 0; i < m_noAps; ++i){
     Ssid ssid = Ssid (ssidName[i]);
     mac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid));
-    apDevices.Add( wifi.Install (m_spectrumPhy, mac, apNodes.Get(i)));
+    auto tmp = wifi.Install (m_spectrumPhy, mac, apNodes.Get(i));
+    wifi.AssignStreams(tmp, i);
+    apDevices.Add(tmp );
   }
 
   mac.SetType ("ns3::StaWifiMac",
@@ -158,8 +180,11 @@ void wifiNodes::Configure ()
   for (uint32_t i = 0, j=0; i < m_noAps;++i){
     Ssid ssid = Ssid (ssidName[i]);
     mac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid));
-    for(uint32_t k=0; k<stasPerAp; ++k,++j)
-        staDevices.Add( wifi.Install (m_spectrumPhy, mac, staNodes.Get(j)));
+    for(uint32_t k=0; k<stasPerAp; ++k,++j){
+        auto tmp = wifi.Install (m_spectrumPhy, mac, staNodes.Get(j));
+        wifi.AssignStreams(tmp, j);
+        staDevices.Add(tmp );
+    }
   }
     
   InternetStackHelper internet;
@@ -247,7 +272,7 @@ bool wifiNodes::Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mod
    }
   return true;
 }
-double runOnce(uint32_t,uint32_t,uint32_t);
+double runOnce(uint32_t,uint32_t,uint32_t,uint32_t);
 int main (int argc, char *argv[])
 {
     Gnuplot gnuplot = Gnuplot ("Multiple AP UORA");
@@ -259,7 +284,7 @@ int main (int argc, char *argv[])
   gnuplot.SetLegend ("Number of stations per AP", "Normalized MAC layer throughput");
   std::stringstream ss;
     ss.str ("");
-  int trials = 3, minSta = 4, maxSta = 5, step = 1;
+  int trials = 3, minSta = 1, maxSta = 5, step = 2;
   ss << "set xrange [" << minSta << ":" << maxSta << "]\n"
      << "set xtics " << step << "\n"
      << "set grid xtics ytics\n"
@@ -285,9 +310,10 @@ int main (int argc, char *argv[])
             double stDev = 0, avgEff=0, eff[233]={0};
             for (int i = 0; i < trials; ++i)
             {
-                total_latency = successDuration = total_packets_received
-                    =total_bytes_received = n_tf_cycles=0;
-                eff[i] = runOnce(noAps, noNodes, noRus);
+                total_latency = successDuration =time_tf_received
+                    =total_packets_sent = total_packets_received
+                    =total_bytes_received = n_tf_cycles = n_tf_sent =0;
+                eff[i] = runOnce(noAps, noNodes, noRus,i);
                 avgEff += eff[i];
             }
             avgEff /= trials;
@@ -307,7 +333,7 @@ int main (int argc, char *argv[])
     gnuplot.GenerateOutput (pltFile);
     pltFile.close();
 }
-double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus) 
+double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run) 
 {
   Packet::EnablePrinting ();
   Packet::EnableChecking ();
@@ -319,16 +345,16 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus)
   uint32_t wifiBw = 40;
   std::string errorModelType = "ns3::TableBasedErrorRateModel";
   uint32_t seed = 110;
-  uint32_t run = 11;
+  //uint32_t run = 11;
   double interval = 0.001;
   uint32_t n_packets = 1000 * simulationTime;
-  uint32_t ulMode = 1;
+  uint32_t ulMode = 1;//Only UL is supported
   uint32_t tfDuration = 168;
   uint32_t maxTfSlots = 16;
   uint32_t cw = 15;
-  uint32_t tfCw = 7;
-  uint32_t tfCwMin = 7;
-  uint32_t tfCwMax = 63;
+  uint32_t tfCw = 8;
+  uint32_t tfCwMin = 8;
+  uint32_t tfCwMax = 64;
   uint32_t nScheduled = 0;
   double alpha = 0;
 
@@ -361,7 +387,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus)
 */
   Config::SetDefault ("ns3::Txop::MinCw",UintegerValue(cw));
   n_packets = 1000 * simulationTime;
-  n_sa = nScheduled;
+  n_sta_per_ap =noNodes;
   ConfigStore config;
   config.ConfigureDefaults ();
   
@@ -380,9 +406,6 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus)
   
   RngSeedManager::SetSeed (seed);  // Changes seed from default of 1 to 3
   RngSeedManager::SetRun (run);   // Changes run number from default of 1 to 7
-  Ptr<UniformRandomVariable> startTimeSeconds = CreateObject<UniformRandomVariable> ();
-  startTimeSeconds->SetAttribute ("Min", DoubleValue (0.0));
-  startTimeSeconds->SetAttribute ("Max", DoubleValue (0.01));
 
     if (ulMode == 1)
      {
@@ -428,6 +451,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus)
   mobility.Install (wifi.GetApNodes());
     }
   Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/$ns3::ApWifiMac/tfCycleSuccess",MakeCallback(&CountTfCycles));
+  Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/$ns3::StaWifiMac/TriggerReceived",MakeCallback(&TriggerReceived));
   if (g_verbose) {
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",MakeCallback(&PrintTrace));//Xyct: for compile
   	//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxBegin",MakeCallback(&PrintTrace));
@@ -461,15 +485,26 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus)
   double beta = (double)n_uora_packets/n_tf_cycles;
   std::cout<<"Avg. N Packet per cycle = "<<beta<<std::endl;
   double ofdmaEfficiency = beta/(noRus-nScheduled);
-  std::cout<<"Frequency Efficiency = "<<ofdmaEfficiency<<std::endl;
+  std::cout<<"RU Efficiency = "<<ofdmaEfficiency<<std::endl;
   double bianchiEfficiency = successDuration/(1e6*(simulationTime-1));
   std::cout<<"Time Efficiency = "<<bianchiEfficiency<<std::endl;
   std::cout<<"Total Efficiency = "<<ofdmaEfficiency * bianchiEfficiency<<std::endl;
+  std::cout<<"N data packets sent = "<<total_packets_sent<<std::endl;
+  std::cout<<"N trigger sent = "<<n_tf_sent<<std::endl;
+  result_normalized_throughput = ofdmaEfficiency * bianchiEfficiency;
+  long double data_lost = total_packets_sent - total_packets_received,
+           trigger_lost = n_tf_sent - n_tf_cycles;
+  result_colliding_rate_data = data_lost / total_packets_sent,
+    result_colliding_rate_trigger = trigger_lost / n_tf_sent;
+  std::cout<<"data colliding rate= "<<result_colliding_rate_data<<std::endl;
+  std::cout<<"trigger colliding rate = "<<result_colliding_rate_trigger<<std::endl;
 
-  std::ofstream outfile("../experiments-3.33.txt",std::ios::app);
-  outfile<<"noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", Frequency Efficiency:"<<ofdmaEfficiency<<", Time Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets<<std::endl;
+  std::ofstream outfile("../experiments-uora.txt",std::ios::app);
+  outfile<<"noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", RU Efficiency:"<<ofdmaEfficiency<<", CSMA/CA Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets;
+  outfile<<", data colliding rate= "<<result_colliding_rate_data;
+  outfile<<", trigger colliding rate = "<<result_colliding_rate_trigger<<std::endl;
     outfile.close();
-  return ofdmaEfficiency * bianchiEfficiency;
+  return result_normalized_throughput;
 }
 
 

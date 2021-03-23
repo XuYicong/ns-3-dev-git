@@ -1045,7 +1045,7 @@ ApWifiMac::TriggerFrameExpire ()
    //std::cout<<"DIFS canceling scheduled at "<<(Now () + timeToExpire).GetMicroSeconds () << std::endl;
    m_channelAccessManager->NotifyMaybeCcaBusyStartNow (GetTfDuration () * m_low->GetSlotTime ()); // Tell the 20 MHz channelAccessManager that you are busy until MU mode ends  
    std::cout<<GetAddress()<<" gain access. Next trigger scheduled at "<<(Now()+m_low->GetSlotTime()).GetMicroSeconds () << std::endl;
-    m_tfCycleSuccessTrace(0/*depracated*/, 1);
+    m_tfCycleSuccessTrace(0, 0);//Indicating sending TF
    m_muModeExpireEvent = Simulator::Schedule (m_low->GetSlotTime (), &ApWifiMac::StopMuMode, this);
    if (!m_muUlFlag) // Don't start MU Mode at AP if this is a UL TF
     {
@@ -1364,7 +1364,7 @@ ApWifiMac::CalculateTfDuration (void)
       }
      else if (GetNScheduled () == 9)
       {*/
-	total = t1 + m_low->GetSifs () + t2 /**/+ m_low->GetSifs () + MicroSeconds (920);
+	total = t1 + m_low->GetSifs () + t2 /**/+ m_low->GetSifs () + MicroSeconds (120);
       //}
      // Not this: AP ----TF----> STA ----TFResp----> AP ----BSRACK----> STA ----Payload----> AP ----ACK----> STA
       //But this: AP ----TF----> STA ----Payload----> AP ----ACK----> STA
@@ -2010,7 +2010,7 @@ ApWifiMac::StopMuMode (void)
    }
   else
    {
-     m_tfPacketDuration = 752;
+     m_tfPacketDuration = 3888; //This takes effect
      Simulator::ScheduleNow (&ApWifiMac::StartMuModeUplink, this);
    }
 }

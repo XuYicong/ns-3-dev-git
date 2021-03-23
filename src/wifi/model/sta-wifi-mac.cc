@@ -82,6 +82,10 @@ StaWifiMac::GetTypeId (void)
                      "Time of beacons arrival from associated AP",
                      MakeTraceSourceAccessor (&StaWifiMac::m_beaconArrival),
                      "ns3::Time::TracedCallback")
+    .AddTraceSource ("TriggerReceived",
+                     "Sta receives a Trigger Frame",
+                     MakeTraceSourceAccessor (&StaWifiMac::m_receiveTriggerTrace),
+                     "ns3::StaWifiMac::CountTriggerCallback")
   ;
   return tid;
 }
@@ -106,12 +110,13 @@ StaWifiMac::StaWifiMac ()
   m_firstTf = true;
   m_bsrAckRecvd = true;
   //Ptr<UniformRandomVariable> rv = CreateObject<UniformRandomVariable> ();
-  for (uint32_t ru = 0; ru < 9; ru++)
+  m_low->SetSummarizeTfCycleCallback(MakeCallback(&StaWifiMac::CountTrigger,this));
+  /*for (uint32_t ru = 0; ru < 9; ru++)
    {
      m_lowMu[ru]->SetTfRespAccessGrantCallback (MakeCallback (&StaWifiMac::TriggerFrameRespAccess, this));
      m_lowMu[ru]->SetKillTriggerFrameBeaconRetransmissionCallback (MakeCallback (&StaWifiMac::KillTriggerFrameBeaconRetransmission, this));
    }
-  RegularWifiMac::RegisterTfListener (this);
+  RegularWifiMac::RegisterTfListener (this);*/
 }
 
 void
@@ -134,6 +139,12 @@ StaWifiMac::GetAssociationId (void) const
 {
   NS_ASSERT_MSG (IsAssociated (), "This station is not associated to any AP");
   return m_aid;
+}
+
+void
+StaWifiMac::CountTrigger(uint16_t isDataSent)
+{
+    m_receiveTriggerTrace(isDataSent!=0);
 }
 
 void
