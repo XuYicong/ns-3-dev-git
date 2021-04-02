@@ -147,7 +147,7 @@ def register_types(module):
     ## nstime.h (module 'core'): ns3::Time [class]
     module.add_class('Time')
     ## nstime.h (module 'core'): ns3::Time::Unit [enumeration]
-    module.add_enum('Unit', ['Y', 'D', 'H', 'MIN', 'S', 'MS', 'US', 'NS', 'PS', 'FS', 'LAST'], outer_class=root_module['ns3::Time'])
+    module.add_enum('Unit', ['Y', 'D', 'H', 'MIN', 'S', 'MS', 'US', 'NS', 'PS', 'FS', 'LAST', 'AUTO'], outer_class=root_module['ns3::Time'])
     typehandlers.add_type_alias('void ( * ) ( ns3::Time )', 'ns3::Time::TracedCallback')
     typehandlers.add_type_alias('void ( * ) ( ns3::Time )*', 'ns3::Time::TracedCallback*')
     typehandlers.add_type_alias('void ( * ) ( ns3::Time )&', 'ns3::Time::TracedCallback&')
@@ -161,6 +161,8 @@ def register_types(module):
     module.add_enum('State', ['RUNNING', 'EXPIRED', 'SUSPENDED'], outer_class=root_module['ns3::Timer'])
     ## timer-impl.h (module 'core'): ns3::TimerImpl [class]
     module.add_class('TimerImpl', allow_subclassing=True)
+    ## trickle-timer.h (module 'core'): ns3::TrickleTimer [class]
+    module.add_class('TrickleTimer')
     ## type-id.h (module 'core'): ns3::TypeId [class]
     module.add_class('TypeId')
     ## type-id.h (module 'core'): ns3::TypeId::AttributeFlag [enumeration]
@@ -604,6 +606,7 @@ def register_methods(root_module):
     register_Ns3TimeWithUnit_methods(root_module, root_module['ns3::TimeWithUnit'])
     register_Ns3Timer_methods(root_module, root_module['ns3::Timer'])
     register_Ns3TimerImpl_methods(root_module, root_module['ns3::TimerImpl'])
+    register_Ns3TrickleTimer_methods(root_module, root_module['ns3::TrickleTimer'])
     register_Ns3TypeId_methods(root_module, root_module['ns3::TypeId'])
     register_Ns3TypeIdAttributeInformation_methods(root_module, root_module['ns3::TypeId::AttributeInformation'])
     register_Ns3TypeIdTraceSourceInformation_methods(root_module, root_module['ns3::TypeId::TraceSourceInformation'])
@@ -1833,10 +1836,10 @@ def register_Ns3Time_methods(root_module, cls):
     cls.add_constructor([param('ns3::int64x64_t const &', 'v')])
     ## nstime.h (module 'core'): ns3::Time::Time(std::string const & s) [constructor]
     cls.add_constructor([param('std::string const &', 's')])
-    ## nstime.h (module 'core'): ns3::TimeWithUnit ns3::Time::As(ns3::Time::Unit const unit) const [member function]
+    ## nstime.h (module 'core'): ns3::TimeWithUnit ns3::Time::As(ns3::Time::Unit const unit=::ns3::Time::Unit::AUTO) const [member function]
     cls.add_method('As', 
                    'ns3::TimeWithUnit', 
-                   [param('ns3::Time::Unit const', 'unit')], 
+                   [param('ns3::Time::Unit const', 'unit', default_value='::ns3::Time::Unit::AUTO')], 
                    is_const=True)
     ## nstime.h (module 'core'): int ns3::Time::Compare(ns3::Time const & o) const [member function]
     cls.add_method('Compare', 
@@ -2090,6 +2093,73 @@ def register_Ns3TimerImpl_methods(root_module, cls):
                    'ns3::EventId', 
                    [param('ns3::Time const &', 'delay')], 
                    is_pure_virtual=True, is_virtual=True)
+    return
+
+def register_Ns3TrickleTimer_methods(root_module, cls):
+    ## trickle-timer.h (module 'core'): ns3::TrickleTimer::TrickleTimer(ns3::TrickleTimer const & arg0) [constructor]
+    cls.add_constructor([param('ns3::TrickleTimer const &', 'arg0')])
+    ## trickle-timer.h (module 'core'): ns3::TrickleTimer::TrickleTimer() [constructor]
+    cls.add_constructor([])
+    ## trickle-timer.h (module 'core'): ns3::TrickleTimer::TrickleTimer(ns3::Time minInterval, uint8_t doublings, uint16_t redundancy) [constructor]
+    cls.add_constructor([param('ns3::Time', 'minInterval'), param('uint8_t', 'doublings'), param('uint16_t', 'redundancy')])
+    ## trickle-timer.h (module 'core'): int64_t ns3::TrickleTimer::AssignStreams(int64_t streamNum) [member function]
+    cls.add_method('AssignStreams', 
+                   'int64_t', 
+                   [param('int64_t', 'streamNum')])
+    ## trickle-timer.h (module 'core'): void ns3::TrickleTimer::ConsistentEvent() [member function]
+    cls.add_method('ConsistentEvent', 
+                   'void', 
+                   [])
+    ## trickle-timer.h (module 'core'): void ns3::TrickleTimer::Enable() [member function]
+    cls.add_method('Enable', 
+                   'void', 
+                   [])
+    ## trickle-timer.h (module 'core'): ns3::Time ns3::TrickleTimer::GetDelayLeft() const [member function]
+    cls.add_method('GetDelayLeft', 
+                   'ns3::Time', 
+                   [], 
+                   is_const=True)
+    ## trickle-timer.h (module 'core'): uint8_t ns3::TrickleTimer::GetDoublings() const [member function]
+    cls.add_method('GetDoublings', 
+                   'uint8_t', 
+                   [], 
+                   is_const=True)
+    ## trickle-timer.h (module 'core'): ns3::Time ns3::TrickleTimer::GetIntervalLeft() const [member function]
+    cls.add_method('GetIntervalLeft', 
+                   'ns3::Time', 
+                   [], 
+                   is_const=True)
+    ## trickle-timer.h (module 'core'): ns3::Time ns3::TrickleTimer::GetMaxInterval() const [member function]
+    cls.add_method('GetMaxInterval', 
+                   'ns3::Time', 
+                   [], 
+                   is_const=True)
+    ## trickle-timer.h (module 'core'): ns3::Time ns3::TrickleTimer::GetMinInterval() const [member function]
+    cls.add_method('GetMinInterval', 
+                   'ns3::Time', 
+                   [], 
+                   is_const=True)
+    ## trickle-timer.h (module 'core'): uint16_t ns3::TrickleTimer::GetRedundancy() const [member function]
+    cls.add_method('GetRedundancy', 
+                   'uint16_t', 
+                   [], 
+                   is_const=True)
+    ## trickle-timer.h (module 'core'): void ns3::TrickleTimer::InconsistentEvent() [member function]
+    cls.add_method('InconsistentEvent', 
+                   'void', 
+                   [])
+    ## trickle-timer.h (module 'core'): void ns3::TrickleTimer::Reset() [member function]
+    cls.add_method('Reset', 
+                   'void', 
+                   [])
+    ## trickle-timer.h (module 'core'): void ns3::TrickleTimer::SetParameters(ns3::Time minInterval, uint8_t doublings, uint16_t redundancy) [member function]
+    cls.add_method('SetParameters', 
+                   'void', 
+                   [param('ns3::Time', 'minInterval'), param('uint8_t', 'doublings'), param('uint16_t', 'redundancy')])
+    ## trickle-timer.h (module 'core'): void ns3::TrickleTimer::Stop() [member function]
+    cls.add_method('Stop', 
+                   'void', 
+                   [])
     return
 
 def register_Ns3TypeId_methods(root_module, cls):
@@ -5778,6 +5848,11 @@ def register_functions(root_module):
     return
 
 def register_functions_ns3_CommandLineHelper(module, root_module):
+    ## command-line.h (module 'core'): std::string ns3::CommandLineHelper::GetDefault(ns3::Time const & val) [free function]
+    module.add_function('GetDefault', 
+                        'std::string', 
+                        [param('ns3::Time const &', 'val')], 
+                        template_parameters=['ns3::Time'])
     ## command-line.h (module 'core'): std::string ns3::CommandLineHelper::GetDefault(bool const & val) [free function]
     module.add_function('GetDefault', 
                         'std::string', 

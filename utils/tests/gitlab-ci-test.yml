@@ -12,8 +12,10 @@
     - export CCACHE_BASEDIR=${PWD}
     - export CCACHE_DIR=${PWD}/$CCACHE_BASEDIR_VALUE
     - CXX="ccache $COMPILER" ./waf configure --enable-examples --enable-tests --disable-gtk --disable-python -d $MODE
-    - ./test.py $VALGRIND_FLAG $FULLNESS
+    - ./waf
+    - ./test.py --nowaf $VALGRIND_FLAG $FULLNESS
   cache:
+    key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
     paths:
       - $CCACHE_BASEDIR_VALUE/
   variables:
@@ -31,6 +33,9 @@ daily-test-debug:
   only:
     variables:
       - $RELEASE == "daily"
+  tags:
+    - nsnam
+    - linux
   before_script:
     - pacman -Syu --noconfirm
     - pacman -Sy base-devel python ccache gsl libgcrypt gtk3 boost valgrind --noconfirm
@@ -64,8 +69,26 @@ daily-test-optimized:
     - pacman -Sy base-devel python ccache gsl libgcrypt gtk3 boost valgrind --noconfirm
 
 ### Valgrind tests
+# Run the test.py script with files compiled in optimized mode + valgrind (daily)
+daily-test-optimized-valgrind:
+  extends: .base-test
+  image: archlinux/base
+  variables:
+    COMPILER: g++
+    MODE: optimized
+    VALGRIND_FLAG: -g
+  only:
+    variables:
+      - $RELEASE == "daily"
+  tags:
+    - nsnam
+    - linux
+  before_script:
+    - pacman -Syu --noconfirm
+    - pacman -Sy base-devel python ccache gsl libgcrypt gtk3 boost valgrind --noconfirm
+
 # Run the test.py script with files compiled in debug mode
-weekly-test-debug:
+weekly-test-debug-valgrind:
   extends: .base-test
   image: archlinux/base
   variables:
@@ -83,7 +106,7 @@ weekly-test-debug:
     - pacman -Sy base-devel python ccache gsl libgcrypt gtk3 boost valgrind --noconfirm
 
 # Run the test.py script with files compiled in release mode
-weekly-test-release:
+weekly-test-release-valgrind:
   extends: .base-test
   image: archlinux/base
   variables:
@@ -101,7 +124,7 @@ weekly-test-release:
     - pacman -Sy base-devel python ccache gsl libgcrypt gtk3 boost valgrind --noconfirm
 
 # Run the test.py script with files compiled in optimized mode
-weekly-test-optimized:
+weekly-test-optimized-valgrind:
   extends: .base-test
   image: archlinux/base
   variables:
