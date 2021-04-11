@@ -273,18 +273,43 @@ bool wifiNodes::Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mod
   return true;
 }
 double runOnce(uint32_t,uint32_t,uint32_t,uint32_t);
+void runTrials(Gnuplot2dDataset &dataset,uint32_t noAps,uint32_t noNodes,uint32_t noRus, int trials, uint16_t graph_type){
+    double stDev = 0, avgEff=0, eff[233]={0};
+    for (int i = 0; i < trials; ++i)
+    {
+        total_latency = successDuration =time_tf_received
+            =total_packets_sent = total_packets_received
+            =total_bytes_received = n_tf_cycles = n_tf_sent =0;
+        eff[i] = runOnce(noAps, noNodes, noRus,i);
+        avgEff += eff[i];
+    }
+    avgEff /= trials;
+    for (int i = 0; i < trials; ++i)
+    {
+        stDev += pow (eff[i] - avgEff, 2);
+    }
+    stDev = sqrt (stDev / (trials - 1));
+    switch(graph_type){
+	    case 1:dataset.Add(noNodes, avgEff, stDev);break;
+	    case 2:dataset.Add(noAps, avgEff, stDev);break;
+	    case 3:dataset.Add(noRus, avgEff, stDev);break;
+	    default: std::cerr<<"Wrong graph type when trying to add data point";
+    }
+    
+}
 int main (int argc, char *argv[])
 {
-    Gnuplot gnuplot = Gnuplot ("Multiple AP UORA");
-    gnuplot.SetTerminal ("canvas");
   for (uint32_t i = 0; i < 200; i++)
   {
     sprintf(ssidName[i],"%x",i); 
   }
-  gnuplot.SetLegend ("Number of stations per AP", "Normalized MAC layer throughput");
+  {//Draw sta graph
+    Gnuplot gnuplot = Gnuplot ("Multiple AP UORA");
+    gnuplot.SetTerminal ("canvas");
+  gnuplot.SetLegend ("Number of stations per AP", "MAC layer success rate");
   std::stringstream ss;
     ss.str ("");
-  int trials = 3, minSta = 1, maxSta = 5, step = 2;
+  int trials = 3, minSta = 1, maxSta = 9, step = 2;
   ss << "set xrange [" << minSta << ":" << maxSta << "]\n"
      << "set xtics " << step << "\n"
      << "set grid xtics ytics\n"
@@ -298,40 +323,66 @@ int main (int argc, char *argv[])
      << "set style line 7 linewidth 3\n"
      << "set style line 8 linewidth 3\n"
      << "set style increment user";
-  gnuplot.SetExtra (ss.str ());
-  for(int noRus = 10; noRus<=18; noRus*=2)
-    for(int noAps = 3; noAps<=4; noAps+=2)
+    gnuplot.SetExtra (ss.str ());
+    for(int noRus = 5; noRus<=18; noRus*=2)
+    for(int noAps = 1; noAps<=3; noAps+=2)
     {
         Gnuplot2dDataset dataset;
         dataset.SetErrorBars (Gnuplot2dDataset::Y);
         dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
         for(int noNodes = minSta; noNodes<=maxSta; noNodes+=step)
         {
-            double stDev = 0, avgEff=0, eff[233]={0};
-            for (int i = 0; i < trials; ++i)
-            {
-                total_latency = successDuration =time_tf_received
-                    =total_packets_sent = total_packets_received
-                    =total_bytes_received = n_tf_cycles = n_tf_sent =0;
-                eff[i] = runOnce(noAps, noNodes, noRus,i);
-                avgEff += eff[i];
-            }
-            avgEff /= trials;
-            for (int i = 0; i < trials; ++i)
-            {
-                stDev += pow (eff[i] - avgEff, 2);
-            }
-            stDev = sqrt (stDev / (trials - 1));
-            dataset.Add(noNodes, avgEff, stDev);
+        	runTrials(dataset, noAps, noNodes, noRus, trials, 1);
         }
         ss.str("");
         ss<<noAps<<" APs, "<<noRus<<" RUs";
         dataset.SetTitle(ss.str());
         gnuplot.AddDataset (dataset);
     }
-  std::ofstream pltFile("multi-AP-variable-RU.plt");
+    std::ofstream pltFile("X-is-sta.plt");
     gnuplot.GenerateOutput (pltFile);
     pltFile.close();
+    }
+    {//Draw ap graph
+    Gnuplot gnuplot = Gnuplot ("Multiple AP UORA");
+    gnuplot.SetTerminal ("canvas");
+  gnuplot.SetLegend ("Number of AP", "MAC layer success rate");
+  std::stringstream ss;
+    ss.str ("");
+  int trials = 3, minSta = 1, maxSta = 3, step = 2;
+  ss << "set xrange [" << minSta << ":" << maxSta << "]\n"
+     << "set xtics " << step << "\n"
+     << "set grid xtics ytics\n"
+     << "set mytics\n"
+     << "set style line 1 linewidth 3\n"
+     << "set style line 2 linewidth 3\n"
+     << "set style line 3 linewidth 3\n"
+     << "set style line 4 linewidth 3\n"
+     << "set style line 5 linewidth 3\n"
+     << "set style line 6 linewidth 3\n"
+     << "set style line 7 linewidth 3\n"
+     << "set style line 8 linewidth 3\n"
+     << "set style increment user";
+    gnuplot.SetExtra (ss.str ());
+    for(int noRus = 5; noRus<=18; noRus*=2)
+    for(int noNodes = minSta; noNodes<=maxSta; noNodes+=step)
+    {
+        Gnuplot2dDataset dataset;
+        dataset.SetErrorBars (Gnuplot2dDataset::Y);
+        dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+    	for(int noAps = 1; noAps<=9; noAps+=2)
+        {
+        	runTrials(dataset, noAps, noNodes, noRus, trials, 2);
+        }
+        ss.str("");
+        ss<<noNodes<<" STAs, "<<noRus<<" RUs";
+        dataset.SetTitle(ss.str());
+        gnuplot.AddDataset (dataset);
+    }
+    std::ofstream pltFile("X-is-AP.plt");
+    gnuplot.GenerateOutput (pltFile);
+    pltFile.close();
+    }
 }
 double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run) 
 {
@@ -500,7 +551,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run)
   std::cout<<"trigger colliding rate = "<<result_colliding_rate_trigger<<std::endl;
 
   std::ofstream outfile("../experiments-uora.txt",std::ios::app);
-  outfile<<"noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", RU Efficiency:"<<ofdmaEfficiency<<", CSMA/CA Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets;
+  outfile<<"noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", RU Efficiency:"<<ofdmaEfficiency<<", CSMA/CA Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency;//<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets;
   outfile<<", data colliding rate= "<<result_colliding_rate_data;
   outfile<<", trigger colliding rate = "<<result_colliding_rate_trigger<<std::endl;
     outfile.close();
