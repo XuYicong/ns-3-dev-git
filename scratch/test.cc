@@ -18,7 +18,8 @@ NS_LOG_COMPONENT_DEFINE ("test");
 bool g_verbose = false;
 double total_bytes_received = 0;
 double per_sta_bytes_received[200];
-double total_latency=0, result_normalized_throughput=0, result_colliding_rate_trigger=0, result_colliding_rate_data=0;
+double total_latency=0, result_normalized_throughput=0, result_colliding_rate_trigger=0, 
+       result_colliding_rate_data=0, result_success_rate=0;
 char ssidName[200][10];
 uint32_t successDuration=0;
 int total_packets_received=0, total_packets_sent=0;
@@ -70,7 +71,7 @@ void PrintTx (std::string context, Ptr< const Packet > packet, WifiMode mode, Wi
 class wifiNodes
 {
 public:
-  void Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType,  double interval, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled, uint32_t noRus);
+  void Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled, uint32_t noRus, uint32_t packetSize);
   void SendPacketsUplink (double time, uint32_t seq);
   void SendPacketsDownlink (double time, uint32_t seq);
   bool Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mode, const Address &sender);
@@ -80,7 +81,6 @@ public:
   NodeContainer GetApNodes ();
 
 private:
-  uint32_t m_interval;
   Ptr<MultiModelSpectrumChannel> m_spectrumChannel;
   std::string m_errorModelType;
   uint32_t m_bw;
@@ -95,6 +95,7 @@ private:
   double m_alpha;
   uint32_t m_nScheduled;
   uint32_t m_noRus;
+  uint32_t m_packetSize;
   NodeContainer apNodes;
   NodeContainer staNodes;
   NetDeviceContainer apDevices;
@@ -113,14 +114,12 @@ NodeContainer wifiNodes::GetApNodes ()
   return apNodes;
 }
 
-void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, double interval, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled, uint32_t noRus)
+void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint32_t bw, uint32_t freq, std::string errorModelType, SpectrumWifiPhyHelper spectrumPhy,uint32_t noAps, uint32_t noNodes, uint32_t tfDuration, uint32_t maxTfSlots, uint32_t tfCw, uint32_t tfCwMin, uint32_t tfCwMax, double alpha, uint32_t nScheduled, uint32_t noRus, uint32_t packetSize)
 {
-  m_interval = interval;
   m_spectrumChannel = spectrumChannel;
   m_bw = bw;
   m_freq = freq;
   m_errorModelType = errorModelType;
-  m_interval = interval;  
   m_spectrumPhy = spectrumPhy;
   m_noStas = noNodes;
   m_noAps = noAps;
@@ -132,6 +131,7 @@ void wifiNodes::Initialize (Ptr<MultiModelSpectrumChannel> spectrumChannel, uint
   m_alpha = alpha; 
   m_nScheduled = nScheduled;
   m_noRus = noRus;
+  m_packetSize = packetSize;
 }
 
 void wifiNodes::Configure ()
@@ -144,14 +144,15 @@ void wifiNodes::Configure ()
     wifi.SetStandard (WIFI_STANDARD_80211ax_5GHZ);
   WifiMacHelper mac;
   StringValue DataRate;
-  DataRate = StringValue ("HeMcs3");
-  //DataRate = StringValue ("OfdmRate6Mbps"); // PhyRate = 58.5 Mbps
+  DataRate = StringValue ("HeMcs2");
+  //DataRate = StringValue ("OfdmRate6Mbps"); 
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager","DataMode", DataRate,"ControlMode", DataRate,"NonUnicastMode",DataRate);
   
   //Config::SetDefault ("ns3::WifiPhy::CcaMode1Threshold", DoubleValue (-62.0));
   m_spectrumPhy.SetChannel (m_spectrumChannel);
   m_spectrumPhy.SetErrorRateModel (m_errorModelType);
   m_spectrumPhy.Set ("Frequency", UintegerValue (m_freq)); //Note: to change channel width, either frequency or channel number should be changed as well
+  //MCS2 + 40MHz + short GI = 45Mbps, + long GI = 40.5Mbps
   //m_spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (false));//Xyct: to compile
   m_spectrumPhy.Set ("ChannelWidth", UintegerValue (m_bw));
   m_spectrumPhy.Set ("TxPowerStart", DoubleValue (26));
@@ -211,7 +212,7 @@ void wifiNodes::SendOnePacketUplink (uint32_t seq,uint32_t ap_id, uint32_t node_
 {
   Ptr<WifiNetDevice> sender1 = DynamicCast<WifiNetDevice> (staDevices.Get(node_id)); 
   Ptr<WifiNetDevice> receiver1 = DynamicCast<WifiNetDevice> (apDevices.Get(ap_id));
-  Ptr<Packet> p = Create<Packet> (1023);
+  Ptr<Packet> p = Create<Packet> (m_packetSize);
   SeqTsHeader seqTs;
   seqTs.SetSeq (seq);
   p->AddHeader (seqTs);
@@ -223,7 +224,7 @@ void wifiNodes::SendOnePacketDownlink (uint32_t seq,uint32_t ap_id, uint32_t nod
 {
   Ptr<WifiNetDevice> receiver1 = DynamicCast<WifiNetDevice> (staDevices.Get(node_id)); 
   Ptr<WifiNetDevice> sender1 = DynamicCast<WifiNetDevice> (apDevices.Get(ap_id));
-  Ptr<Packet> p = Create<Packet> (1023);
+  Ptr<Packet> p = Create<Packet> (m_packetSize);
   SeqTsHeader seqTs;
   seqTs.SetSeq (seq);
   p->AddHeader (seqTs);
@@ -263,7 +264,7 @@ bool wifiNodes::Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mod
   latency/=1e6;
   latency-= seqTs.GetTs().GetSeconds();
   total_latency += latency;
-  if (true)
+  if (false)
    {
      NS_LOG_UNCOND("Packet Size = "<<p->GetSize());
      NS_LOG_UNCOND("####################################################################################");
@@ -272,30 +273,43 @@ bool wifiNodes::Receive (Ptr<NetDevice> dev, Ptr<const Packet> pkt, uint16_t mod
    }
   return true;
 }
-double runOnce(uint32_t,uint32_t,uint32_t,uint32_t);
-void runTrials(Gnuplot2dDataset &dataset,uint32_t noAps,uint32_t noNodes,uint32_t noRus, int trials, uint16_t graph_type){
-    double stDev = 0, avgEff=0, eff[233]={0};
+double runOnce(uint32_t,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t);
+void runTrials(Gnuplot2dDataset &throughputDataset, Gnuplot2dDataset &succRateDataset,uint32_t noAps,uint32_t noNodes,uint32_t noRus, uint32_t load, uint32_t packetSize, int trials, uint16_t graph_type){
+    double stDev = 0, avgTh=0, throughput[9]={0}, avgRate=0, succRate[9]={0};
     for (int i = 0; i < trials; ++i)
     {
         total_latency = successDuration =time_tf_received
             =total_packets_sent = total_packets_received
             =total_bytes_received = n_tf_cycles = n_tf_sent =0;
-        eff[i] = runOnce(noAps, noNodes, noRus,i);
-        avgEff += eff[i];
+        throughput[i] = runOnce(noAps, noNodes, noRus, load, packetSize, i);
+        succRate[i] = result_success_rate;
+        avgTh += throughput[i];
+        avgRate += succRate[i];
     }
-    avgEff /= trials;
+    avgTh /= trials;
+    avgRate /= trials;
+    int x=0;
+    switch(graph_type){
+	    case 2:x=noNodes;break;
+	    case 3:x=packetSize;break;
+	    case 4:x=load;break;
+	    case 0:x=noAps;break;
+	    case 1:x=noRus;break;
+	    default: std::cerr<<"Unrecognised graph type when trying to add data point";
+    }
     for (int i = 0; i < trials; ++i)
     {
-        stDev += pow (eff[i] - avgEff, 2);
+        stDev += pow (throughput[i] - avgTh, 2);
     }
     stDev = sqrt (stDev / (trials - 1));
-    switch(graph_type){
-	    case 1:dataset.Add(noNodes, avgEff, stDev);break;
-	    case 2:dataset.Add(noAps, avgEff, stDev);break;
-	    case 3:dataset.Add(noRus, avgEff, stDev);break;
-	    default: std::cerr<<"Wrong graph type when trying to add data point";
+	throughputDataset.Add(x, avgTh, stDev);
+    stDev = 0
+    for (int i = 0; i < trials; ++i)
+    {
+        stDev += pow (succRate[i] - avgRate, 2);
     }
-    
+    stDev = sqrt (stDev / (trials - 1));
+    succRateDataset.Add(x, avgRate, stDev);
 }
 int main (int argc, char *argv[])
 {
@@ -303,15 +317,53 @@ int main (int argc, char *argv[])
   {
     sprintf(ssidName[i],"%x",i); 
   }
-  {//Draw sta graph
-    Gnuplot gnuplot = Gnuplot ("Multiple AP UORA");
+  //parameters controlling the simulation process
+  std::string name[]={"AP","RU","STA","Packet_Size","load"};
+  //a row means a graph with the same x-axis. A column means an argument in this graph
+    int min[5][5]={
+        {1,10,2,128,1000},
+        {1,10,1,128,1000},
+        {2,2,5,1024,10},
+        {1,10,3,128,1000},
+        {1,10,1,128,10}};
+    int max[5][5]={
+        {11, 18, 13, 1024, 1000},
+        {3, 18, 11, 1024, 1000},
+        {3, 12, 10, 1024, 1000},
+        {10, 18, 3, 1024, 1000},
+        {3, 18, 3, 1024, 1000}};
+    int step[5][5]={
+    {2, 2, 8, 8, 10},
+    {2, 2, 2, 4, 10},
+    {2, 2, 5, 2, 10},
+    {3, 2, 2, 128, 10},
+    {2, 2, 2, 2, 10}};
+    bool isMultiply[5][5]={//is the "step" applied by multiply or addition
+        {0,1,0,1,1},
+        {0,1,0,1,1},
+        {0,0,0,1,1},
+        {0,1,0,0,1},
+        {0,1,0,1,1}};
+    //numbers are enum of argument type
+    int order[5][5]={
+    {4,3,1,2,0},
+    {4,3,1,0,2},
+    {4,3,0,2,1},
+    {4,1,2,0,3},
+    {0,1,2,3,4}};
+    int arg[5]={0};
+    for(unsigned dia_idx=0; dia_idx<3; dia_idx++)
+    {//10 graphs in total
+    Gnuplot gnuplot = Gnuplot ("throughput diagram"), succRatePlot= Gnuplot("success rate diagram");
     gnuplot.SetTerminal ("canvas");
-  gnuplot.SetLegend ("Number of stations per AP", "MAC layer success rate");
+    succRatePlot.SetTerminal ("canvas");
+  gnuplot.SetLegend (name[order[dia_idx][4]], "throughput");
+  succRatePlot.SetLegend (name[order[dia_idx][4]], "MAC layer contention success rate");
   std::stringstream ss;
     ss.str ("");
-  int trials = 3, minSta = 1, maxSta = 9, step = 2;
-  ss << "set xrange [" << minSta << ":" << maxSta << "]\n"
-     << "set xtics " << step << "\n"
+  int trials = 3;
+  ss << "set xrange [" << min[dia_idx][order[dia_idx][4]] << ":" << max[dia_idx][order[dia_idx][4]] << "]\n"
+     << "set xtics " << step[dia_idx][order[dia_idx][4]] << "\n"
      << "set grid xtics ytics\n"
      << "set mytics\n"
      << "set style line 1 linewidth 3\n"
@@ -324,67 +376,44 @@ int main (int argc, char *argv[])
      << "set style line 8 linewidth 3\n"
      << "set style increment user";
     gnuplot.SetExtra (ss.str ());
-    for(int noRus = 5; noRus<=18; noRus*=2)
-    for(int noAps = 1; noAps<=3; noAps+=2)
+    succRatePlot.SetExtra (ss.str ());
+    for(arg[0] = min[dia_idx][order[dia_idx][0]]; arg[0]<=max[dia_idx][order[dia_idx][0]]; (isMultiply[dia_idx][order[dia_idx][0]]?arg[0]*=step[dia_idx][order[dia_idx][0]]:arg[0]+=step[dia_idx][order[dia_idx][0]]))
+    for(arg[1] = min[dia_idx][order[dia_idx][1]]; arg[1]<=max[dia_idx][order[dia_idx][1]]; (isMultiply[dia_idx][order[dia_idx][1]]?arg[1]*=step[dia_idx][order[dia_idx][1]]:arg[1]+=step[dia_idx][order[dia_idx][1]]))
+    for(arg[2] = min[dia_idx][order[dia_idx][2]]; arg[2]<=max[dia_idx][order[dia_idx][2]]; (isMultiply[dia_idx][order[dia_idx][2]]?arg[2]*=step[dia_idx][order[dia_idx][2]]:arg[2]+=step[dia_idx][order[dia_idx][2]]))
+    for(arg[3] = min[dia_idx][order[dia_idx][3]]; arg[3]<=max[dia_idx][order[dia_idx][3]]; (isMultiply[dia_idx][order[dia_idx][3]]?arg[3]*=step[dia_idx][order[dia_idx][3]]:arg[3]+=step[dia_idx][order[dia_idx][3]]))
     {
-        Gnuplot2dDataset dataset;
-        dataset.SetErrorBars (Gnuplot2dDataset::Y);
-        dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-        for(int noNodes = minSta; noNodes<=maxSta; noNodes+=step)
+        Gnuplot2dDataset throughputDataset, succRateDataset;
+        throughputDataset.SetErrorBars (Gnuplot2dDataset::Y);
+        succRateDataset.SetErrorBars (Gnuplot2dDataset::Y);
+        throughputDataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+        succRateDataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+        for(arg[4] = min[dia_idx][order[dia_idx][4]]; arg[4]<=max[dia_idx][order[dia_idx][4]]; (isMultiply[dia_idx][order[dia_idx][4]]?arg[4]*=step[dia_idx][order[dia_idx][4]]:arg[4]+=step[dia_idx][order[dia_idx][4]]))
         {
-        	runTrials(dataset, noAps, noNodes, noRus, trials, 1);
+            int nextArg[5];
+            //arg[n] is in the order of iteration, while nextArg[n] should be the original order
+            for(int tmp=0;tmp<5;tmp++) nextArg[order[dia_idx][tmp]]=arg[tmp];
+            // AP, STA, RU, load, packetSize
+        for(int tmp=0;tmp<5;tmp++) std::cout<<name[order[dia_idx][tmp]]<<": "<<arg[tmp]<<" ";
+        std::cout<<std::endl;
+        	runTrials(throughputDataset, succRateDataset, nextArg[0], nextArg[2], nextArg[1], nextArg[4], nextArg[3]-1, trials, order[dia_idx][4]);
         }
         ss.str("");
-        ss<<noAps<<" APs, "<<noRus<<" RUs";
-        dataset.SetTitle(ss.str());
-        gnuplot.AddDataset (dataset);
+        for(int tmp=0;tmp<4;tmp++) ss<<name[order[dia_idx][tmp]]<<": "<<arg[tmp]<<" ";
+        throughputDataset.SetTitle(ss.str());
+        succRateDataset.SetTitle(ss.str());
+        gnuplot.AddDataset (throughputDataset);
+        succRatePlot.AddDataset (succRateDataset);
     }
-    std::ofstream pltFile("X-is-sta.plt");
-    gnuplot.GenerateOutput (pltFile);
-    pltFile.close();
-    }
-    {//Draw ap graph
-    Gnuplot gnuplot = Gnuplot ("Multiple AP UORA");
-    gnuplot.SetTerminal ("canvas");
-  gnuplot.SetLegend ("Number of AP", "MAC layer success rate");
-  std::stringstream ss;
-    ss.str ("");
-  int trials = 3, minSta = 1, maxSta = 3, step = 2;
-  ss << "set xrange [" << minSta << ":" << maxSta << "]\n"
-     << "set xtics " << step << "\n"
-     << "set grid xtics ytics\n"
-     << "set mytics\n"
-     << "set style line 1 linewidth 3\n"
-     << "set style line 2 linewidth 3\n"
-     << "set style line 3 linewidth 3\n"
-     << "set style line 4 linewidth 3\n"
-     << "set style line 5 linewidth 3\n"
-     << "set style line 6 linewidth 3\n"
-     << "set style line 7 linewidth 3\n"
-     << "set style line 8 linewidth 3\n"
-     << "set style increment user";
-    gnuplot.SetExtra (ss.str ());
-    for(int noRus = 5; noRus<=18; noRus*=2)
-    for(int noNodes = minSta; noNodes<=maxSta; noNodes+=step)
-    {
-        Gnuplot2dDataset dataset;
-        dataset.SetErrorBars (Gnuplot2dDataset::Y);
-        dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-    	for(int noAps = 1; noAps<=9; noAps+=2)
-        {
-        	runTrials(dataset, noAps, noNodes, noRus, trials, 2);
-        }
-        ss.str("");
-        ss<<noNodes<<" STAs, "<<noRus<<" RUs";
-        dataset.SetTitle(ss.str());
-        gnuplot.AddDataset (dataset);
-    }
-    std::ofstream pltFile("X-is-AP.plt");
-    gnuplot.GenerateOutput (pltFile);
-    pltFile.close();
+    std::ofstream throughputFile(name[order[dia_idx][3]]+"-"+name[order[dia_idx][4]]+"-throughput.plt");
+    gnuplot.GenerateOutput (throughputFile);
+    throughputFile.close();
+    std::ofstream succRateFile(name[order[dia_idx][3]]+"-"+name[order[dia_idx][4]]+"-succRate.plt");
+    succRatePlot.GenerateOutput (succRateFile);
+    succRateFile.close();
     }
 }
-double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run) 
+//load: maximum is 1000
+double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t load, uint32_t packetSize, uint32_t run) 
 {
   Packet::EnablePrinting ();
   Packet::EnableChecking ();
@@ -397,7 +426,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run)
   std::string errorModelType = "ns3::TableBasedErrorRateModel";
   uint32_t seed = 110;
   //uint32_t run = 11;
-  double interval = 0.001;
+  double interval = 1.0/load;
   uint32_t n_packets = 1000 * simulationTime;
   uint32_t ulMode = 1;//Only UL is supported
   uint32_t tfDuration = 168;
@@ -437,7 +466,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run)
   cmd.Parse (argc,argv);
 */
   Config::SetDefault ("ns3::Txop::MinCw",UintegerValue(cw));
-  n_packets = 1000 * simulationTime;
+  n_packets = load * simulationTime;
   n_sta_per_ap =noNodes;
   ConfigStore config;
   config.ConfigureDefaults ();
@@ -452,7 +481,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run)
   SpectrumWifiPhyHelper spectrumPhy /*= SpectrumWifiPhyHelper::Default ()*/;
   
   wifiNodes wifi;
-  wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, interval, spectrumPhy, noAps, noAps*noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled, noRus);
+  wifi.Initialize (spectrumChannel, wifiBw, wifiFreq, errorModelType, spectrumPhy, noAps, noAps*noNodes, tfDuration, maxTfSlots, tfCw, tfCwMin, tfCwMax, alpha, nScheduled, noRus, packetSize);//1023
   wifi.Configure ();
   
   RngSeedManager::SetSeed (seed);  // Changes seed from default of 1 to 3
@@ -472,7 +501,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run)
        for (uint32_t i = 0; i <= n_packets; i++) wifi.SendPacketsDownlink (0.1 + interval * i, i);
     }
     {//Set mobility
-  uint32_t width = 20, n = sqrt(noAps-1)+1, delta = width/(n-1?n-1:n), row = 0, col = 0;
+  uint32_t width = 2, n = sqrt(noAps-1)+1, delta = width/(n-1?n-1:n), row = 0, col = 0;
   MobilityHelper mobility;
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
@@ -549,13 +578,15 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t run)
     result_colliding_rate_trigger = trigger_lost / n_tf_sent;
   std::cout<<"data colliding rate= "<<result_colliding_rate_data<<std::endl;
   std::cout<<"trigger colliding rate = "<<result_colliding_rate_trigger<<std::endl;
-
-  std::ofstream outfile("../experiments-uora.txt",std::ios::app);
-  outfile<<"noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", RU Efficiency:"<<ofdmaEfficiency<<", CSMA/CA Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency;//<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets;
+  result_success_rate = n_uora_packets/(long double)(n_tf_sent*noNodes);
+  std::cout<<"success rate = "<<result_success_rate<<std::endl;
+  std::ofstream outfile("../experiments-log.txt",std::ios::app);
+  outfile<<"load = "<<load<<", packet size = "<<packetSize;
+  outfile<<", noRus:"<<noRus<<", noNodes:"<<noNodes<<", noAps:"<<noAps<<", RU Efficiency:"<<ofdmaEfficiency<<", CSMA/CA Efficiency:"<<bianchiEfficiency<<", Total Efficiency:"<<ofdmaEfficiency * bianchiEfficiency<<", total_throughput:"<<total_throughput<<", uora_throughput:"<<total_throughput/total_packets_received*n_uora_packets;
   outfile<<", data colliding rate= "<<result_colliding_rate_data;
   outfile<<", trigger colliding rate = "<<result_colliding_rate_trigger<<std::endl;
     outfile.close();
-  return result_normalized_throughput;
+  return total_throughput*18/noRus;
 }
 
 
