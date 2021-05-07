@@ -162,6 +162,7 @@ void wifiNodes::Configure ()
     "BeaconGeneration", BooleanValue(false),
     "EnableBeaconJitter",BooleanValue(true),    
     "RuNumber", UintegerValue(m_noRus),
+    "UlMuPacketDuration", UintegerValue((unsigned)(m_packetSize*3616/1023+200)),
     "MaxTfSlots", UintegerValue (m_maxTfSlots), "TfCw", UintegerValue (m_tfCw), "TfCwMax", UintegerValue(m_tfCwMax), "TfCwMin", UintegerValue (m_tfCwMin), "Alpha", DoubleValue(m_alpha), "nScheduled", UintegerValue(m_nScheduled));
   for (uint32_t i = 0; i < m_noAps; ++i){
     Ssid ssid = Ssid (ssidName[i]);
@@ -303,7 +304,7 @@ void runTrials(Gnuplot2dDataset &throughputDataset, Gnuplot2dDataset &succRateDa
     }
     stDev = sqrt (stDev / (trials - 1));
 	throughputDataset.Add(x, avgTh, stDev);
-    stDev = 0
+    stDev = 0;
     for (int i = 0; i < trials; ++i)
     {
         stDev += pow (succRate[i] - avgRate, 2);
@@ -318,42 +319,42 @@ int main (int argc, char *argv[])
     sprintf(ssidName[i],"%x",i); 
   }
   //parameters controlling the simulation process
-  std::string name[]={"AP","RU","STA","Packet_Size","load"};
+  std::string name[]={"AP","RU","STA","Packet_Size","load","God bless simulations"};
   //a row means a graph with the same x-axis. A column means an argument in this graph
     int min[5][5]={
-        {1,10,2,128,1000},
-        {1,10,1,128,1000},
-        {2,2,5,1024,10},
-        {1,10,3,128,1000},
-        {1,10,1,128,10}};
+        {2,2,10,1024,1000},// 10, 15, 20, 25
+        {2,10,8,16,1000},
+        {4,5,1,16,1000},
+        {1,10,3,16,1000},
+        {1,10,1,128,1000}};
     int max[5][5]={
-        {11, 18, 13, 1024, 1000},
-        {3, 18, 11, 1024, 1000},
-        {3, 12, 10, 1024, 1000},
+        {2, 12, 25, 1024, 1000},//increase RU with different STA
+        {12, 10, 8, 1024, 1000},//increase AP with different data size(cw=7)
+        {10, 5, 11, 16, 1000},//increase sta with differnt AP
         {10, 18, 3, 1024, 1000},
         {3, 18, 3, 1024, 1000}};
     int step[5][5]={
-    {2, 2, 8, 8, 10},
-    {2, 2, 2, 4, 10},
     {2, 2, 5, 2, 10},
+    {2, 2, 8, 4, 10},
+    {2, 2, 2, 4, 10},
     {3, 2, 2, 128, 10},
     {2, 2, 2, 2, 10}};
     bool isMultiply[5][5]={//is the "step" applied by multiply or addition
-        {0,1,0,1,1},
-        {0,1,0,1,1},
         {0,0,0,1,1},
-        {0,1,0,0,1},
-        {0,1,0,1,1}};
+        {0,0,0,1,1},
+        {0,0,0,1,1},
+        {0,0,0,0,1},
+        {0,0,0,1,1}};
     //numbers are enum of argument type
     int order[5][5]={
+    {4,3,0,2,1},
     {4,3,1,2,0},
     {4,3,1,0,2},
-    {4,3,0,2,1},
     {4,1,2,0,3},
     {0,1,2,3,4}};
     int arg[5]={0};
     for(unsigned dia_idx=0; dia_idx<3; dia_idx++)
-    {//10 graphs in total
+    {//6 graphs in total
     Gnuplot gnuplot = Gnuplot ("throughput diagram"), succRatePlot= Gnuplot("success rate diagram");
     gnuplot.SetTerminal ("canvas");
     succRatePlot.SetTerminal ("canvas");
@@ -374,7 +375,8 @@ int main (int argc, char *argv[])
      << "set style line 6 linewidth 3\n"
      << "set style line 7 linewidth 3\n"
      << "set style line 8 linewidth 3\n"
-     << "set style increment user";
+     << "set style increment user\n"
+     << "set dashtype 1 \"-\"";
     gnuplot.SetExtra (ss.str ());
     succRatePlot.SetExtra (ss.str ());
     for(arg[0] = min[dia_idx][order[dia_idx][0]]; arg[0]<=max[dia_idx][order[dia_idx][0]]; (isMultiply[dia_idx][order[dia_idx][0]]?arg[0]*=step[dia_idx][order[dia_idx][0]]:arg[0]+=step[dia_idx][order[dia_idx][0]]))
@@ -398,16 +400,21 @@ int main (int argc, char *argv[])
         	runTrials(throughputDataset, succRateDataset, nextArg[0], nextArg[2], nextArg[1], nextArg[4], nextArg[3]-1, trials, order[dia_idx][4]);
         }
         ss.str("");
-        for(int tmp=0;tmp<4;tmp++) ss<<name[order[dia_idx][tmp]]<<": "<<arg[tmp]<<" ";
+        for(int tmp=0;tmp<4;tmp++){
+          if(order[dia_idx][tmp]==4)continue;
+          ss<<name[order[dia_idx][tmp]]<<": "<<arg[tmp]<<" ";
+        }
         throughputDataset.SetTitle(ss.str());
         succRateDataset.SetTitle(ss.str());
         gnuplot.AddDataset (throughputDataset);
         succRatePlot.AddDataset (succRateDataset);
     }
-    std::ofstream throughputFile(name[order[dia_idx][3]]+"-"+name[order[dia_idx][4]]+"-throughput.plt");
+    ss.str("");
+    ss<<name[order[dia_idx][3]]<<"-"<<name[order[dia_idx][4]]<<min[dia_idx][order[dia_idx][3]];
+    std::ofstream throughputFile(ss.str()+"-throughput.plt");
     gnuplot.GenerateOutput (throughputFile);
     throughputFile.close();
-    std::ofstream succRateFile(name[order[dia_idx][3]]+"-"+name[order[dia_idx][4]]+"-succRate.plt");
+    std::ofstream succRateFile(ss.str()+"-succRate.plt");
     succRatePlot.GenerateOutput (succRateFile);
     succRateFile.close();
     }
@@ -431,7 +438,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t load,
   uint32_t ulMode = 1;//Only UL is supported
   uint32_t tfDuration = 168;
   uint32_t maxTfSlots = 16;
-  uint32_t cw = 15;
+  uint32_t cw = 7;
   uint32_t tfCw = 8;
   uint32_t tfCwMin = 8;
   uint32_t tfCwMax = 64;
@@ -560,7 +567,7 @@ double runOnce (uint32_t noAps, uint32_t noNodes, uint32_t noRus, uint32_t load,
   int n_uora_packets = total_packets_received - n_scheduled_packets;
   std::cout<<"Number of UORA packets = "<<n_uora_packets<<std::endl;
   std::cout<<"Printing Throughputs\n";
-  double total_throughput = total_bytes_received * 8/(6000000 * (simulationTime - 1));
+  double total_throughput = total_bytes_received * 8/(1000000 * (simulationTime - 1));
   std::cout<<"Aggregate Throughput = "<<total_throughput<< " Mbps\n";
   double beta = (double)n_uora_packets/n_tf_cycles;
   std::cout<<"Avg. N Packet per cycle = "<<beta<<std::endl;

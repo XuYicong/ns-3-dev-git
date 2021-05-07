@@ -88,6 +88,11 @@ ApWifiMac::GetTypeId (void)
                    UintegerValue (9),
                    MakeUintegerAccessor (&ApWifiMac::m_ruNumber),
                    MakeUintegerChecker<uint32_t> ())
+    .AddAttribute ("UlMuPacketDuration",
+                   "The uplink data packet duration for OFDMA in micro seconds",
+                   UintegerValue (3888),
+                   MakeUintegerAccessor (&ApWifiMac::m_tfPacketDuration),
+                   MakeUintegerChecker<uint32_t> ())
     .AddTraceSource ("tfCycleSuccess",
                      "Trace source indicating an AP "
                      "has successfully received data in a trigger frame cycle",
@@ -115,7 +120,7 @@ ApWifiMac::ApWifiMac ()
   SetTypeOfStation (AP);
 
   m_low->SetSummarizeTfCycleCallback(MakeCallback(&ApWifiMac::SummarizeTfCycle,this));
-  m_tfPacketDuration = 1032;//This is useless
+  //m_tfPacketDuration = 1032;//This is useless
   m_muModeToStart = false;
   for (int ru = 0; 0&&ru < 9; ru++)
    {
@@ -2010,7 +2015,7 @@ ApWifiMac::StopMuMode (void)
    }
   else
    {
-     m_tfPacketDuration = 3888; //This takes effect
+     //m_tfPacketDuration = 3888; //This takes effect
      Simulator::ScheduleNow (&ApWifiMac::StartMuModeUplink, this);
    }
 }
