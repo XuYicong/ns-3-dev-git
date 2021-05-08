@@ -124,3 +124,18 @@ However, we recommend to follow the Gitlab guidelines for starters,
 that includes creating a Gitlab account, forking the ns-3-dev project
 under the new account's name, and then cloning the forked repository.
 You can find more information in the [manual](https://www.nsnam.org/docs/manual/html/working-with-git.html).
+
+## Running UORA simulations
+
+Execute the following command:
+
+./waf --run test # run the test.cc script file under scratch directory
+
+## UORA simulation script behaviour
+
+The code would run multiple simulations to produce the GNU plot scripts
+used to plot diagrams. In the first second of each simulation, STA associate
+with each AP. After that, the multiple AP UORA process would start. At the
+end of each simulation, statistics data would be printed and written to a
+log file in the parent directory.
+
